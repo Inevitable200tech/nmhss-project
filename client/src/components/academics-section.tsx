@@ -6,17 +6,17 @@ export default function AcademicsSection() {
       <div className="container mx-auto px-4 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-testid="academics-title">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-aos="fade-up" data-testid="academics-title">
             Academic Excellence
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-testid="academics-subtitle">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200" data-testid="academics-subtitle">
             Comprehensive curriculum designed to foster critical thinking and lifelong learning
           </p>
         </div>
         
         {/* Grade Levels */}
         <div className="grid md:grid-cols-2 gap-8 mb-16">
-          <div className="bg-background p-8 rounded-xl shadow-lg border border-border hover-lift" data-testid="upper-primary-card">
+          <div className="bg-background p-8 rounded-xl shadow-lg border border-border hover-lift" data-aos="slide-right" data-testid="upper-primary-card">
             <div className="flex items-center mb-6">
               <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mr-4">
                 <BookOpen className="w-6 h-6 text-primary-foreground" />
@@ -42,7 +42,7 @@ export default function AcademicsSection() {
             </ul>
           </div>
           
-          <div className="bg-background p-8 rounded-xl shadow-lg border border-border hover-lift" data-testid="secondary-card">
+          <div className="bg-background p-8 rounded-xl shadow-lg border border-border hover-lift" data-aos="slide-left" data-testid="secondary-card">
             <div className="flex items-center mb-6">
               <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mr-4">
                 <CheckCircle className="w-6 h-6 text-white" />
@@ -70,10 +70,10 @@ export default function AcademicsSection() {
         </div>
         
         {/* Learning Resources */}
-        <div className="bg-muted p-8 md:p-12 rounded-2xl mb-16" data-testid="learning-resources">
+        <div className="bg-muted p-8 md:p-12 rounded-2xl mb-16" data-aos="fade-up" data-testid="learning-resources">
           <h3 className="text-3xl font-bold text-foreground mb-8 text-center">Learning Resources</h3>
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center" data-testid="library-resource">
+            <div className="text-center" data-aos="zoom-in" data-aos-delay="100" data-testid="library-resource">
               <img 
                 src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300" 
                 alt="School library with students studying" 
@@ -85,7 +85,7 @@ export default function AcademicsSection() {
               </p>
             </div>
             
-            <div className="text-center" data-testid="computer-resource">
+            <div className="text-center" data-aos="zoom-in" data-aos-delay="200" data-testid="computer-resource">
               <img 
                 src="https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300" 
                 alt="Computer laboratory with students" 
@@ -97,7 +97,7 @@ export default function AcademicsSection() {
               </p>
             </div>
             
-            <div className="text-center" data-testid="meal-resource">
+            <div className="text-center" data-aos="zoom-in" data-aos-delay="300" data-testid="meal-resource">
               <img 
                 src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300" 
                 alt="Students enjoying nutritious school meal" 

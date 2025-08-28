@@ -194,7 +194,7 @@ export default function ContactSection() {
           {/* Contact Information */}
           <div className="space-y-8">
             {/* School Information */}
-            <div className="bg-background p-8 rounded-2xl shadow-lg border border-border" data-testid="school-info">
+            <div className="bg-background p-8 rounded-2xl shadow-lg border border-border" data-aos="slide-left" data-testid="school-info">
               <h3 className="text-2xl font-bold text-foreground mb-6">School Information</h3>
               <div className="space-y-4">
                 <div className="flex items-start" data-testid="school-address">
@@ -253,7 +253,7 @@ export default function ContactSection() {
             </div>
             
             {/* Quick Links */}
-            <div className="bg-background p-8 rounded-2xl shadow-lg border border-border" data-testid="quick-links">
+            <div className="bg-background p-8 rounded-2xl shadow-lg border border-border" data-aos="slide-left" data-aos-delay="200" data-testid="quick-links">
               <h3 className="text-2xl font-bold text-foreground mb-6">Quick Links</h3>
               <div className="grid grid-cols-2 gap-4">
                 <a 

@@ -57,3 +57,26 @@ Preferred communication style: Simple, everyday language.
 **Performance Optimization**: React Query for intelligent caching, Vite for fast builds, and optimized asset loading.
 
 **Development Experience**: Hot module replacement, TypeScript strict mode, and comprehensive error handling for smooth development workflow.
+
+## Recent Changes
+
+**August 28, 2025 - Major Visual Enhancement Update:**
+- ✅ Added AOS (Animate On Scroll) library for smooth scroll animations
+- ✅ Enhanced CSS with advanced animations and visual effects:
+  - Glass morphism navigation and components
+  - Enhanced gradient backgrounds and hover effects
+  - Pulse animations for call-to-action buttons
+  - Floating animations for interactive elements
+  - Card shimmer effects on hover
+- ✅ Applied responsive design improvements with clamp() functions
+- ✅ Added comprehensive AOS animations throughout all sections:
+  - Hero: Staggered fade-up animations with delays
+  - About: Slide animations for content blocks
+  - Academics: Left/right slide animations for cards
+  - Achievements: Flip animations for statistics
+  - Faculty: Zoom-in effects for department cards
+  - Events: Slide-up animations for calendar
+  - Contact: Left slide animations for forms and info
+- ✅ Enhanced hero section with improved gradient overlay and parallax effect
+- ✅ Fixed backend storage implementation for contact forms, events, and news
+- ✅ Improved visual hierarchy with gradient text effects

@@ -6,17 +6,17 @@ export default function AboutSection() {
       <div className="container mx-auto px-4 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-testid="about-title">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-aos="fade-up" data-testid="about-title">
             About Our School
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-testid="about-subtitle">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200" data-testid="about-subtitle">
             Building futures through quality education and holistic development since 1946
           </p>
         </div>
         
         {/* Hero Content Grid */}
         <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
-          <div className="space-y-6">
+          <div className="space-y-6" data-aos="fade-right">
             <h3 className="text-3xl font-bold text-foreground" data-testid="heritage-title">Our Heritage</h3>
             <p className="text-lg text-muted-foreground leading-relaxed" data-testid="heritage-description-1">
               Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.
@@ -25,7 +25,7 @@ export default function AboutSection() {
               As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4" data-aos="fade-left">
             <img 
               src="https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" 
               alt="School buildings and courtyard" 
@@ -43,7 +43,7 @@ export default function AboutSection() {
         
         {/* Vision, Mission, Values */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <div className="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift" data-testid="vision-card">
+          <div className="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift enhanced-card" data-aos="fade-up" data-aos-delay="100" data-testid="vision-card">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-6">
               <Eye className="w-6 h-6 text-primary-foreground" />
             </div>
@@ -53,7 +53,7 @@ export default function AboutSection() {
             </p>
           </div>
           
-          <div className="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift" data-testid="mission-card">
+          <div className="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift enhanced-card" data-aos="fade-up" data-aos-delay="200" data-testid="mission-card">
             <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mb-6">
               <Zap className="w-6 h-6 text-white" />
             </div>
@@ -63,7 +63,7 @@ export default function AboutSection() {
             </p>
           </div>
           
-          <div className="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift" data-testid="values-card">
+          <div className="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift enhanced-card" data-aos="fade-up" data-aos-delay="300" data-testid="values-card">
             <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mb-6">
               <Heart className="w-6 h-6 text-white" />
             </div>
@@ -75,7 +75,7 @@ export default function AboutSection() {
         </div>
         
         {/* Facilities Overview */}
-        <div className="bg-muted p-8 md:p-12 rounded-2xl" data-testid="facilities-section">
+        <div className="bg-muted p-8 md:p-12 rounded-2xl" data-aos="zoom-in" data-testid="facilities-section">
           <h3 className="text-3xl font-bold text-foreground mb-8 text-center">School Facilities</h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="text-center" data-testid="facility-classrooms">

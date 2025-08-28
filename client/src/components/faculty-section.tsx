@@ -6,16 +6,16 @@ export default function FacultySection() {
       <div className="container mx-auto px-4 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-testid="faculty-title">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-aos="fade-up" data-testid="faculty-title">
             Our Dedicated Faculty
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-testid="faculty-subtitle">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200" data-testid="faculty-subtitle">
             Experienced educators committed to nurturing young minds and fostering academic excellence
           </p>
         </div>
         
         {/* Faculty Statistics */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid md:grid-cols-3 gap-8 mb-16" data-aos="fade-up">
           <div className="bg-background p-8 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="faculty-count">
             <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl font-bold text-primary-foreground">25+</span>
@@ -47,7 +47,7 @@ export default function FacultySection() {
             Academic Departments
           </h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift" data-testid="malayalam-dept">
+            <div className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift" data-aos="zoom-in" data-aos-delay="100" data-testid="malayalam-dept">
               <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
                 <BookOpen className="w-6 h-6 text-primary-foreground" />
               </div>
@@ -55,7 +55,7 @@ export default function FacultySection() {
               <p className="text-sm text-muted-foreground">Literature, grammar, and cultural studies</p>
             </div>
             
-            <div className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift" data-testid="english-dept">
+            <div className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift" data-aos="zoom-in" data-aos-delay="200" data-testid="english-dept">
               <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mb-4">
                 <Globe className="w-6 h-6 text-white" />
               </div>
@@ -63,7 +63,7 @@ export default function FacultySection() {
               <p className="text-sm text-muted-foreground">Language skills and global communication</p>
             </div>
             
-            <div className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift" data-testid="math-dept">
+            <div className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift" data-aos="zoom-in" data-aos-delay="300" data-testid="math-dept">
               <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mb-4">
                 <Calculator className="w-6 h-6 text-white" />
               </div>

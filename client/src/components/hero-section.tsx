@@ -18,21 +18,21 @@ export default function HeroSection() {
       <div 
         className="absolute inset-0 hero-parallax bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url(${heroImage})`
+          backgroundImage: `url(${heroImage})`
         }}
       />
       
       <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 fade-in" data-testid="hero-title">
+        <h1 className="text-5xl md:text-7xl font-bold mb-6 text-gradient" data-aos="fade-up" data-aos-delay="200" data-testid="hero-title">
           Navamukunda HSS
         </h1>
-        <p className="text-xl md:text-2xl mb-4 slide-in-left" data-testid="hero-subtitle">
+        <p className="text-xl md:text-2xl mb-4" data-aos="fade-up" data-aos-delay="400" data-testid="hero-subtitle">
           Thirunavaya
         </p>
-        <p className="text-lg md:text-xl mb-8 slide-in-right max-w-2xl mx-auto" data-testid="hero-description">
+        <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="600" data-testid="hero-description">
           Excellence in Education Since 1946 • Grades 5-12 • Malayalam Medium • Co-Educational
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center scale-in">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center" data-aos="fade-up" data-aos-delay="800">
           <a 
             href="#about" 
             onClick={(e) => {
@@ -43,7 +43,7 @@ export default function HeroSection() {
                 window.scrollTo({ top: offsetTop, behavior: 'smooth' });
               }
             }}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg font-semibold transition-all hover:scale-105"
+            className="gradient-primary text-white px-8 py-3 rounded-lg font-semibold transition-all hover:scale-105 pulse-primary"
             data-testid="hero-cta-primary"
           >
             Discover Our Legacy
@@ -69,10 +69,10 @@ export default function HeroSection() {
       {/* Scroll Indicator */}
       <button 
         onClick={handleScrollDown}
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-primary transition-colors"
+        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-primary transition-colors float"
         data-testid="scroll-indicator"
       >
-        <div className="w-6 h-10 border-2 border-white rounded-full flex justify-center">
+        <div className="w-6 h-10 border-2 border-white rounded-full flex justify-center glass-effect">
           <ArrowDown className="w-4 h-4 mt-2 animate-bounce" />
         </div>
       </button>

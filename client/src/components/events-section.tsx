@@ -125,16 +125,16 @@ export default function EventsSection() {
       <div className="container mx-auto px-4 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-testid="events-title">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-aos="fade-up" data-testid="events-title">
             Upcoming Events
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-testid="events-subtitle">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200" data-testid="events-subtitle">
             Stay updated with our academic calendar and exciting school activities
           </p>
         </div>
         
         {/* Current Month Events */}
-        <div className="bg-card p-8 rounded-2xl shadow-lg border border-border mb-12" data-testid="events-calendar">
+        <div className="bg-card p-8 rounded-2xl shadow-lg border border-border mb-12" data-aos="slide-up" data-testid="events-calendar">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-bold text-foreground" data-testid="current-month">
               {currentMonth}
@@ -183,7 +183,7 @@ export default function EventsSection() {
         </div>
         
         {/* Event Categories */}
-        <div className="grid md:grid-cols-4 gap-6 mb-12" data-testid="event-categories">
+        <div className="grid md:grid-cols-4 gap-6 mb-12" data-aos="fade-up" data-testid="event-categories">
           <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="academic-category">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
               <FlaskConical className="w-6 h-6 text-primary-foreground" />
@@ -218,7 +218,7 @@ export default function EventsSection() {
         </div>
         
         {/* News & Announcements */}
-        <div className="bg-muted p-8 md:p-12 rounded-2xl" data-testid="news-section">
+        <div className="bg-muted p-8 md:p-12 rounded-2xl" data-aos="fade-up" data-testid="news-section">
           <h3 className="text-3xl font-bold text-foreground mb-8 text-center">Latest News & Announcements</h3>
           <div className="space-y-6">
             {displayNews.map((item, index) => (

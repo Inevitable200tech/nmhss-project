@@ -6,17 +6,17 @@ export default function AchievementsSection() {
       <div className="container mx-auto px-4 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-testid="achievements-title">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-aos="fade-up" data-testid="achievements-title">
             Achievements & Success Stories
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-testid="achievements-subtitle">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200" data-testid="achievements-subtitle">
             Celebrating 77 years of student excellence and community impact
           </p>
         </div>
         
         {/* Achievement Highlights */}
         <div className="grid md:grid-cols-4 gap-6 mb-16">
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="years-stat">
+          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift enhanced-card" data-aos="flip-left" data-aos-delay="100" data-testid="years-stat">
             <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl font-bold text-primary-foreground">77+</span>
             </div>
@@ -24,7 +24,7 @@ export default function AchievementsSection() {
             <p className="text-sm text-muted-foreground">Since 1946</p>
           </div>
           
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="pass-rate-stat">
+          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift enhanced-card" data-aos="flip-left" data-aos-delay="200" data-testid="pass-rate-stat">
             <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-xl font-bold text-white">95%</span>
             </div>
@@ -32,7 +32,7 @@ export default function AchievementsSection() {
             <p className="text-sm text-muted-foreground">Board Examinations</p>
           </div>
           
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="alumni-stat">
+          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift enhanced-card" data-aos="flip-left" data-aos-delay="300" data-testid="alumni-stat">
             <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-xl font-bold text-white">500+</span>
             </div>
@@ -40,7 +40,7 @@ export default function AchievementsSection() {
             <p className="text-sm text-muted-foreground">Successful Graduates</p>
           </div>
           
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="awards-stat">
+          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift enhanced-card" data-aos="flip-left" data-aos-delay="400" data-testid="awards-stat">
             <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-xl font-bold text-primary-foreground">25+</span>
             </div>
