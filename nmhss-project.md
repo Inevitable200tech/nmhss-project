@@ -34,7 +34,11 @@ Built with the latest web technologies, the website is **fast, user-friendly, an
   - MongoDB / MySQL *(for storing student & school data)*  
 
 - **Deployment:**  
-  - GitHub Pages / Netlify / Vercel  
+  - GitHub Pages / Netlify / Vercel
+ 
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=html,css,js,nodejs,git,github,mongodb,typescript,tailwind,json" />
+</p>
 
 ---
 
