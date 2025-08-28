@@ -58,8 +58,8 @@ Thanks to these amazing people:
 
 | Name | Role | Profile |  
 |------|------|---------|  
-| ![](https://avatars.githubusercontent.com/u/1?v=4) <br> **Pranav Pradeesh** | 👨‍💻 Developer | [GitHub](https://github.com/Orewaluffy4) |  
-| ![](https://avatars.githubusercontent.com/u/2?v=4) <br> **Achu Pradeesh** | 🎨 Designer | [GitHub](https://github.com/Inevitable200tech) |  
+| ![](https://avatars.githubusercontent.com/Orewaluffy4) <br> **Pranav Pradeesh** | 👨‍💻 Developer | [GitHub](https://github.com/Orewaluffy4) |  
+| ![](https://avatars.githubusercontent.com/Inevitable200tech) <br> **Achu Pradeesh** | 🎨 Designer | [GitHub](https://github.com/Inevitable200tech) |  
 
 *(Add/remove contributors as needed — the avatar link uses GitHub profile pics.)*  
 
