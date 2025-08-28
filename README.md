@@ -56,5 +56,5 @@ Built with the latest web technologies, the website is **fast, user-friendly, an
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/school-website.git
-   cd school-website
+   git clone https://github.com/Inevitable200tech/nmhss-project.git
+   cd nmhss-project
