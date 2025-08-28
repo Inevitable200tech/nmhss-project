@@ -70,3 +70,8 @@ Thanks to these amazing people:
    ```bash
    git clone https://github.com/Inevitable200tech/nmhss-project.git
    cd nmhss-project
+   npm install 
+   npm install -D typescript tsx
+   npm install dotenv mongoose multer jsonwebtoken 
+   npm run build
+   npx tsx server/index.ts
