@@ -2,7 +2,7 @@ import { Facebook, Twitter, Linkedin } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-foreground text-primary-foreground py-16">
+    <footer className="bg-foreground dark:bg-background text-primary-foreground dark:text-foreground py-16 border-t border-border">
       <div className="container mx-auto px-4 lg:px-8">
         <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-8">
           {/* School Info */}
@@ -90,7 +90,7 @@ export default function Footer() {
         </div>
         
         {/* Footer Bottom */}
-        <div className="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center" data-testid="footer-bottom">
+        <div className="border-t border-border/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center" data-testid="footer-bottom">
           <p className="text-sm opacity-80">
             &copy; 2024 Navamukunda HSS Thirunavaya. All rights reserved.
           </p>

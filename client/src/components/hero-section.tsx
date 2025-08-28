@@ -23,7 +23,7 @@ export default function HeroSection() {
       />
       
       <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 text-gradient" data-aos="fade-up" data-aos-delay="200" data-testid="hero-title">
+        <h1 className="text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-lg" data-aos="fade-up" data-aos-delay="200" data-testid="hero-title">
           Navamukunda HSS
         </h1>
         <p className="text-xl md:text-2xl mb-4" data-aos="fade-up" data-aos-delay="400" data-testid="hero-subtitle">

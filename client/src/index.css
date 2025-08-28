@@ -56,7 +56,7 @@
 .dark {
   --background: hsl(222, 84%, 4.9%);
   --foreground: hsl(210, 40%, 98%);
-  --card: hsl(222, 84%, 4.9%);
+  --card: hsl(217, 32%, 8%);
   --card-foreground: hsl(210, 40%, 98%);
   --popover: hsl(222, 84%, 4.9%);
   --popover-foreground: hsl(210, 40%, 98%);
@@ -65,7 +65,7 @@
   --secondary: hsl(45, 93%, 47%);
   --secondary-foreground: hsl(222, 84%, 4.9%);
   --muted: hsl(217, 32%, 17%);
-  --muted-foreground: hsl(215, 16%, 47%);
+  --muted-foreground: hsl(215, 16%, 57%);
   --accent: hsl(158, 64%, 52%);
   --accent-foreground: hsl(210, 40%, 98%);
   --destructive: hsl(0, 84%, 60%);
@@ -160,6 +160,10 @@
     z-index: 1;
   }
   
+  .dark .hero-parallax::before {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 50%, rgba(51, 65, 85, 0.7) 100%);
+  }
+  
   .hero-parallax > * {
     position: relative;
     z-index: 2;
@@ -169,6 +173,11 @@
   .glass-effect {
     backdrop-filter: blur(16px) saturate(180%);
     background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.125);
+  }
+  
+  .dark .glass-effect {
+    background: rgba(17, 25, 40, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.125);
   }
   
@@ -188,6 +197,10 @@
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
   }
   
+  .dark .hover-lift:hover {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+  
   /* Gradient Backgrounds */
   .gradient-primary {
     background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
@@ -200,6 +213,13 @@
   /* Text Animations */
   .text-gradient {
     background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .dark .text-gradient {
+    background: linear-gradient(135deg, hsl(221, 83%, 63%), hsl(158, 64%, 62%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
