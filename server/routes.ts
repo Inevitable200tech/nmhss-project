@@ -1,10 +1,39 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertContactMessageSchema, insertEventSchema, insertNewsSchema } from "@shared/schema";
 import { z } from "zod";
+import jwt from "jsonwebtoken";
+
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "brocookedhard";
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+
+// Auth middleware
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: "No token provided" });
+  const token = authHeader.split(" ")[1];
+  try {
+    jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ message: "Invalid token" });
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Admin login route
+  app.post("/api/admin/login", (req, res) => {
+    const { username, password } = req.body;
+    if (username === ADMIN_USER && password === ADMIN_PASS) {
+      const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "1h" });
+      res.json({ success: true, token });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+  });
+
   // Contact form submission
   app.post("/api/contact", async (req, res) => {
     try {
@@ -40,8 +69,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create event (for future admin functionality)
-  app.post("/api/events", async (req, res) => {
+  // Create event (admin only)
+  app.post("/api/events", requireAuth, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(eventData);
@@ -55,8 +84,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create news (for future admin functionality)
-  app.post("/api/news", async (req, res) => {
+  // Create news (admin only)
+  app.post("/api/news", requireAuth, async (req, res) => {
     try {
       const newsData = insertNewsSchema.parse(req.body);
       const news = await storage.createNews(newsData);
@@ -67,6 +96,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: "Failed to create news" });
       }
+    }
+  });
+
+  // Get all editable sections
+  app.get("/api/sections", async (req, res) => {
+    try {
+      const sections = await storage.getSections();
+      res.json(sections);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sections" });
+    }
+  });
+
+  // Update section (admin only)
+  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateSection(req.params.id, req.body);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update section" });
     }
   });
 

@@ -1,0 +1,1341 @@
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navamukunda HSS Thirunavaya | Excellence in Education Since 1946</title>
+    <meta name="description" content="Navamukunda Higher Secondary School Thirunavaya - Providing quality education in Malayalam medium for grades 5-12 since 1946. Located in Malappuram district, Kerala.">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                },
+                fontFamily: {
+                    sans: ["var(--font-sans)"],
+                }
+            },
+        }
+    };
+    </script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Heroicons -->
+    <script src="https://unpkg.com/heroicons@2.0.16/dist/outline/index.js" type="module"></script>
+    
+    <style>
+        :root {
+            --background: hsl(210 40% 98%);
+            --foreground: hsl(222 84% 4.9%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222 84% 4.9%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222 84% 4.9%);
+            --primary: hsl(221 83% 53%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(45 93% 47%);
+            --secondary-foreground: hsl(222 84% 4.9%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215 16% 47%);
+            --accent: hsl(158 64% 52%);
+            --accent-foreground: hsl(210 40% 98%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214 32% 91%);
+            --input: hsl(214 32% 91%);
+            --ring: hsl(221 83% 53%);
+            --radius: 0.75rem;
+            --font-sans: 'Inter', system-ui, sans-serif;
+        }
+        
+        * {
+            font-family: var(--font-sans);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in-left {
+            animation: slideInLeft 0.8s ease-out;
+        }
+        
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .slide-in-right {
+            animation: slideInRight 0.8s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .scale-in {
+            animation: scaleIn 0.6s ease-out;
+        }
+        
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .hero-parallax {
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+        
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        .hover-lift {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+
+<body class="bg-background text-foreground">
+    <!-- Navigation -->
+    <!-- @COMPONENT: Navigation [sticky header with responsive menu] -->
+    <nav class="fixed top-0 w-full z-50 glass-effect border-b border-border">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <span class="text-primary-foreground font-bold text-lg">N</span>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg text-foreground">Navamukunda HSS</h1>
+                        <p class="text-xs text-muted-foreground">Thirunavaya</p>
+                    </div>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#home" class="text-foreground hover:text-primary transition-colors">Home</a>
+                    <a href="#about" class="text-foreground hover:text-primary transition-colors">About</a>
+                    <a href="#academics" class="text-foreground hover:text-primary transition-colors">Academics</a>
+                    <a href="#achievements" class="text-foreground hover:text-primary transition-colors">Achievements</a>
+                    <a href="#faculty" class="text-foreground hover:text-primary transition-colors">Faculty</a>
+                    <a href="#events" class="text-foreground hover:text-primary transition-colors">Events</a>
+                    <a href="#contact" class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">Contact</a>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="md:hidden p-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Mobile Navigation -->
+            <div id="mobile-menu" class="hidden md:hidden border-t border-border">
+                <div class="px-2 pt-2 pb-3 space-y-1">
+                    <a href="#home" class="block px-3 py-2 text-foreground hover:text-primary">Home</a>
+                    <a href="#about" class="block px-3 py-2 text-foreground hover:text-primary">About</a>
+                    <a href="#academics" class="block px-3 py-2 text-foreground hover:text-primary">Academics</a>
+                    <a href="#achievements" class="block px-3 py-2 text-foreground hover:text-primary">Achievements</a>
+                    <a href="#faculty" class="block px-3 py-2 text-foreground hover:text-primary">Faculty</a>
+                    <a href="#events" class="block px-3 py-2 text-foreground hover:text-primary">Events</a>
+                    <a href="#contact" class="block px-3 py-2 text-foreground hover:text-primary">Contact</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- @END_COMPONENT: Navigation -->
+
+    <!-- Hero Section -->
+    <!-- @COMPONENT: HeroSection [main banner with school image and introduction] -->
+    <section id="home" class="relative min-h-screen flex items-center justify-center">
+        <!-- Panoramic view of the school campus with main building and playground -->
+        <div class="absolute inset-0 hero-parallax" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080');">
+        </div>
+        
+        <div class="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
+            <h1 class="text-5xl md:text-7xl font-bold mb-6 fade-in">
+                Navamukunda HSS
+            </h1>
+            <p class="text-xl md:text-2xl mb-4 slide-in-left">
+                Thirunavaya
+            </p>
+            <p class="text-lg md:text-xl mb-8 slide-in-right max-w-2xl mx-auto">
+                Excellence in Education Since 1946 • Grades 5-12 • Malayalam Medium • Co-Educational
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center scale-in">
+                <a href="#about" class="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg font-semibold transition-all hover:scale-105">
+                    Discover Our Legacy
+                </a>
+                <a href="#contact" class="border-2 border-white text-white hover:bg-white hover:text-foreground px-8 py-3 rounded-lg font-semibold transition-all">
+                    Get in Touch
+                </a>
+            </div>
+        </div>
+        
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+            <div class="w-6 h-10 border-2 border-white rounded-full flex justify-center">
+                <div class="w-1 h-3 bg-white rounded-full mt-2 animate-bounce"></div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: HeroSection -->
+
+    <!-- About Us Section -->
+    <!-- @COMPONENT: AboutSection [school history, vision, mission, and facilities] -->
+    <section id="about" class="py-20 bg-background">
+        <div class="container mx-auto px-4 lg:px-8">
+            <!-- Section Header -->
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-foreground mb-4">About Our School</h2>
+                <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+                    Building futures through quality education and holistic development since 1946
+                </p>
+            </div>
+            
+            <!-- Hero Content Grid -->
+            <div class="grid lg:grid-cols-2 gap-12 items-center mb-16">
+                <div class="space-y-6">
+                    <h3 class="text-3xl font-bold text-foreground">Our Heritage</h3>
+                    <p class="text-lg text-muted-foreground leading-relaxed">
+                        Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.
+                    </p>
+                    <p class="text-lg text-muted-foreground leading-relaxed">
+                        As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Aerial view of school buildings and courtyard -->
+                    <img src="https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" alt="School buildings and courtyard" class="rounded-xl shadow-lg hover-lift" />
+                    <!-- Students walking through school corridors -->
+                    <img src="https://pixabay.com/get/gbbe146f73e30e40ccd1918662345cf740e523923a751c3ce8a04d6134a6507abd38950eac26f69c3110558dee8ba4b83ecc241103f89d2d399cb569ca2608800_1280.jpg" alt="Students in school corridors" class="rounded-xl shadow-lg hover-lift mt-8" />
+                </div>
+            </div>
+            
+            <!-- Vision, Mission, Values -->
+            <div class="grid md:grid-cols-3 gap-8 mb-16">
+                <div class="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift">
+                    <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-foreground mb-4">Our Vision</h3>
+                    <p class="text-muted-foreground">
+                        To be a center of educational excellence that empowers students with knowledge, values, and skills to become responsible global citizens and leaders of tomorrow.
+                    </p>
+                </div>
+                
+                <div class="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift">
+                    <div class="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-foreground mb-4">Our Mission</h3>
+                    <p class="text-muted-foreground">
+                        To provide quality education that nurtures intellectual curiosity, promotes cultural values, and develops character while ensuring holistic development of every student.
+                    </p>
+                </div>
+                
+                <div class="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift">
+                    <div class="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-foreground mb-4">Our Values</h3>
+                    <p class="text-muted-foreground">
+                        Integrity, excellence, inclusivity, and innovation guide our educational approach, fostering an environment where every student can thrive and reach their full potential.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Facilities Overview -->
+            <div class="bg-muted p-8 md:p-12 rounded-2xl">
+                <h3 class="text-3xl font-bold text-foreground mb-8 text-center">School Facilities</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-primary-foreground">30</span>
+                        </div>
+                        <h4 class="font-semibold text-foreground mb-2">Classrooms</h4>
+                        <p class="text-sm text-muted-foreground">Well-equipped learning spaces</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-xl font-bold text-white">2.5K</span>
+                        </div>
+                        <h4 class="font-semibold text-foreground mb-2">Library Books</h4>
+                        <p class="text-sm text-muted-foreground">Extensive collection of resources</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-white">25</span>
+                        </div>
+                        <h4 class="font-semibold text-foreground mb-2">Computers</h4>
+                        <p class="text-sm text-muted-foreground">Modern computer laboratory</p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span class="text-2xl font-bold text-primary-foreground">40</span>
+                        </div>
+                        <h4 class="font-semibold text-foreground mb-2">Restrooms</h4>
+                        <p class="text-sm text-muted-foreground">Separate facilities for all</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: AboutSection -->
+
+    <!-- Academics Section -->
+    <!-- @COMPONENT: AcademicsSection [curriculum, subjects, and learning resources] -->
+    <section id="academics" class="py-20 bg-card">
+        <div class="container mx-auto px-4 lg:px-8">
+            <!-- Section Header -->
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Academic Excellence</h2>
+                <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+                    Comprehensive curriculum designed to foster critical thinking and lifelong learning
+                </p>
+            </div>
+            
+            <!-- Grade Levels -->
+            <div class="grid md:grid-cols-2 gap-8 mb-16">
+                <div class="bg-background p-8 rounded-xl shadow-lg border border-border hover-lift">
+                    <div class="flex items-center mb-6">
+                        <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.832 18.477 19.246 18 17.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-foreground">Upper Primary (5-7)</h3>
+                    </div>
+                    <p class="text-muted-foreground mb-4">
+                        Foundation building with emphasis on core subjects, creative thinking, and moral values. Malayalam medium instruction ensures cultural connection.
+                    </p>
+                    <ul class="space-y-2 text-muted-foreground">
+                        <li class="flex items-center">
+                            <span class="w-2 h-2 bg-primary rounded-full mr-3"></span>
+                            Malayalam, English, Mathematics
+                        </li>
+                        <li class="flex items-center">
+                            <span class="w-2 h-2 bg-primary rounded-full mr-3"></span>
+                            Environmental Studies, Social Studies
+                        </li>
+                        <li class="flex items-center">
+                            <span class="w-2 h-2 bg-primary rounded-full mr-3"></span>
+                            Arts, Physical Education
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="bg-background p-8 rounded-xl shadow-lg border border-border hover-lift">
+                    <div class="flex items-center mb-6">
+                        <div class="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-foreground">Secondary & Higher Secondary (8-12)</h3>
+                    </div>
+                    <p class="text-muted-foreground mb-4">
+                        Advanced curriculum preparing students for higher education and career opportunities with specialized streams and skill development.
+                    </p>
+                    <ul class="space-y-2 text-muted-foreground">
+                        <li class="flex items-center">
+                            <span class="w-2 h-2 bg-secondary rounded-full mr-3"></span>
+                            Science, Mathematics, Commerce streams
+                        </li>
+                        <li class="flex items-center">
+                            <span class="w-2 h-2 bg-secondary rounded-full mr-3"></span>
+                            Computer Science, Languages
+                        </li>
+                        <li class="flex items-center">
+                            <span class="w-2 h-2 bg-secondary rounded-full mr-3"></span>
+                            Practical Labs, Career Guidance
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Learning Resources -->
+            <div class="bg-muted p-8 md:p-12 rounded-2xl mb-16">
+                <h3 class="text-3xl font-bold text-foreground mb-8 text-center">Learning Resources</h3>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="text-center">
+                        <!-- Modern library with students studying at tables -->
+                        <img src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300" alt="School library with students studying" class="rounded-xl shadow-lg mx-auto mb-6 hover-lift" />
+                        <h4 class="text-xl font-semibold text-foreground mb-3">Rich Library</h4>
+                        <p class="text-muted-foreground">
+                            2,500+ books spanning literature, science, and reference materials supporting comprehensive learning across all subjects.
+                        </p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <!-- Computer lab with students working on computers -->
+                        <img src="https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300" alt="Computer laboratory with students" class="rounded-xl shadow-lg mx-auto mb-6 hover-lift" />
+                        <h4 class="text-xl font-semibold text-foreground mb-3">Computer Lab</h4>
+                        <p class="text-muted-foreground">
+                            25 functional computers with internet access, providing hands-on experience in digital literacy and programming.
+                        </p>
+                    </div>
+                    
+                    <div class="text-center">
+                        <!-- Students having nutritious meal in school -->
+                        <img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300" alt="Students enjoying nutritious school meal" class="rounded-xl shadow-lg mx-auto mb-6 hover-lift" />
+                        <h4 class="text-xl font-semibold text-foreground mb-3">Mid-Day Meals</h4>
+                        <p class="text-muted-foreground">
+                            Nutritious meals prepared on campus ensuring proper nutrition for better learning and overall student health.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Medium of Instruction & Special Features -->
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-background p-8 rounded-xl shadow-lg border border-border">
+                    <h3 class="text-2xl font-bold text-foreground mb-6">Malayalam Medium Education</h3>
+                    <p class="text-muted-foreground mb-4">
+                        Our Malayalam medium instruction ensures students maintain strong connections with their cultural roots while receiving quality education. This approach enhances comprehension and learning outcomes.
+                    </p>
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-accent mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-muted-foreground">Cultural preservation and identity</span>
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-accent mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-muted-foreground">Enhanced learning comprehension</span>
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-accent mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-muted-foreground">Strong foundation in regional literature</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-background p-8 rounded-xl shadow-lg border border-border">
+                    <h3 class="text-2xl font-bold text-foreground mb-6">Co-Educational Environment</h3>
+                    <p class="text-muted-foreground mb-4">
+                        Our inclusive co-educational setting promotes gender equality, mutual respect, and collaborative learning, preparing students for real-world interactions.
+                    </p>
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-accent mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-muted-foreground">Equal opportunities for all students</span>
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-accent mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-muted-foreground">Collaborative learning environment</span>
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-accent mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span class="text-muted-foreground">Mutual respect and understanding</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: AcademicsSection -->
+
+    <!-- Achievements Section -->
+    <!-- @COMPONENT: AchievementsSection [student achievements, events, and success stories] -->
+    <section id="achievements" class="py-20 bg-background">
+        <div class="container mx-auto px-4 lg:px-8">
+            <!-- Section Header -->
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Achievements & Success Stories</h2>
+                <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+                    Celebrating 77 years of student excellence and community impact
+                </p>
+            </div>
+            
+            <!-- Achievement Highlights -->
+            <div class="grid md:grid-cols-4 gap-6 mb-16">
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl font-bold text-primary-foreground">77+</span>
+                    </div>
+                    <h3 class="text-lg font-semibold text-foreground mb-2">Years of Excellence</h3>
+                    <p class="text-sm text-muted-foreground">Since 1946</p>
+                </div>
+                
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-xl font-bold text-white">95%</span>
+                    </div>
+                    <h3 class="text-lg font-semibold text-foreground mb-2">Pass Rate</h3>
+                    <p class="text-sm text-muted-foreground">Board Examinations</p>
+                </div>
+                
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-xl font-bold text-white">500+</span>
+                    </div>
+                    <h3 class="text-lg font-semibold text-foreground mb-2">Alumni Network</h3>
+                    <p class="text-sm text-muted-foreground">Successful Graduates</p>
+                </div>
+                
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-xl font-bold text-primary-foreground">25+</span>
+                    </div>
+                    <h3 class="text-lg font-semibold text-foreground mb-2">Awards Won</h3>
+                    <p class="text-sm text-muted-foreground">Academic & Sports</p>
+                </div>
+            </div>
+            
+            <!-- Featured Achievements -->
+            <div class="grid lg:grid-cols-3 gap-8 mb-16">
+                <div class="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift">
+                    <!-- Academic achievement ceremony with trophies and certificates -->
+                    <img src="https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=250" alt="Academic achievement ceremony with awards" class="rounded-lg mb-6 w-full" />
+                    <h3 class="text-xl font-bold text-foreground mb-4">Academic Excellence</h3>
+                    <p class="text-muted-foreground mb-4">
+                        Our students consistently excel in board examinations, with many securing top ranks in district and state levels. The school's academic performance reflects our commitment to quality education.
+                    </p>
+                    <div class="flex items-center text-primary font-semibold">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        District Toppers
+                    </div>
+                </div>
+                
+                <div class="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift">
+                    <!-- Sports competition with students holding trophies -->
+                    <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=250" alt="Students celebrating sports victory" class="rounded-lg mb-6 w-full" />
+                    <h3 class="text-xl font-bold text-foreground mb-4">Sports Championships</h3>
+                    <p class="text-muted-foreground mb-4">
+                        Our athletes have brought glory to the school through victories in various inter-school and district-level sports competitions, showcasing talent beyond academics.
+                    </p>
+                    <div class="flex items-center text-secondary font-semibold">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"></path>
+                        </svg>
+                        Athletic Excellence
+                    </div>
+                </div>
+                
+                <div class="bg-card p-8 rounded-xl shadow-lg border border-border hover-lift">
+                    <!-- Cultural performance or arts competition -->
+                    <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=250" alt="Students performing in cultural event" class="rounded-lg mb-6 w-full" />
+                    <h3 class="text-xl font-bold text-foreground mb-4">Cultural Programs</h3>
+                    <p class="text-muted-foreground mb-4">
+                        Rich cultural heritage is preserved and promoted through various artistic programs, including traditional dance, music, and drama competitions at state level.
+                    </p>
+                    <div class="flex items-center text-accent font-semibold">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        </svg>
+                        Arts & Culture
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Success Stories -->
+            <div class="bg-muted p-8 md:p-12 rounded-2xl">
+                <h3 class="text-3xl font-bold text-foreground mb-8 text-center">Alumni Success Stories</h3>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center mr-4">
+                                <span class="text-white font-bold">DR</span>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-foreground" data-mock="true">Dr. Rajesh Kumar</h4>
+                                <p class="text-sm text-muted-foreground" data-mock="true">Class of 1995</p>
+                            </div>
+                        </div>
+                        <p class="text-muted-foreground" data-mock="true">
+                            "Navamukunda HSS laid the foundation for my medical career. The values instilled here guided me to become a leading cardiologist. The school's emphasis on both academics and character building shaped my professional journey."
+                        </p>
+                    </div>
+                    
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-secondary rounded-full flex items-center justify-center mr-4">
+                                <span class="text-white font-bold">PR</span>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-foreground" data-mock="true">Prof. Priya Nair</h4>
+                                <p class="text-sm text-muted-foreground" data-mock="true">Class of 2002</p>
+                            </div>
+                        </div>
+                        <p class="text-muted-foreground" data-mock="true">
+                            "The Malayalam medium education didn't limit my horizons but strengthened my roots. Today, as a university professor, I credit my success to the solid foundation and cultural values I received at Navamukunda."
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: AchievementsSection -->
+
+    <!-- Faculty Section -->
+    <!-- @COMPONENT: FacultySection [teacher profiles and departments] -->
+    <section id="faculty" class="py-20 bg-card">
+        <div class="container mx-auto px-4 lg:px-8">
+            <!-- Section Header -->
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Our Dedicated Faculty</h2>
+                <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+                    Experienced educators committed to nurturing young minds and fostering academic excellence
+                </p>
+            </div>
+            
+            <!-- Faculty Statistics -->
+            <div class="grid md:grid-cols-3 gap-8 mb-16">
+                <div class="bg-background p-8 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl font-bold text-primary-foreground">25+</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-2">Qualified Teachers</h3>
+                    <p class="text-muted-foreground">Experienced and certified educators</p>
+                </div>
+                
+                <div class="bg-background p-8 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl font-bold text-white">15+</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-2">Years Average Experience</h3>
+                    <p class="text-muted-foreground">Seasoned professionals in education</p>
+                </div>
+                
+                <div class="bg-background p-8 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl font-bold text-white">10+</span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-2">Departments</h3>
+                    <p class="text-muted-foreground">Specialized subject expertise</p>
+                </div>
+            </div>
+            
+            <!-- Department Structure -->
+            <div class="mb-16">
+                <h3 class="text-3xl font-bold text-foreground mb-8 text-center">Academic Departments</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.832 18.477 19.246 18 17.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-foreground mb-2">Malayalam Department</h4>
+                        <p class="text-sm text-muted-foreground">Literature, grammar, and cultural studies</p>
+                    </div>
+                    
+                    <div class="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-foreground mb-2">English Department</h4>
+                        <p class="text-sm text-muted-foreground">Language skills and global communication</p>
+                    </div>
+                    
+                    <div class="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-foreground mb-2">Mathematics Department</h4>
+                        <p class="text-sm text-muted-foreground">Analytical thinking and problem solving</p>
+                    </div>
+                    
+                    <div class="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-foreground mb-2">Science Department</h4>
+                        <p class="text-sm text-muted-foreground">Physics, Chemistry, Biology labs</p>
+                    </div>
+                    
+                    <div class="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-foreground mb-2">Social Science</h4>
+                        <p class="text-sm text-muted-foreground">History, Geography, Political Science</p>
+                    </div>
+                    
+                    <div class="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mb-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h4 class="text-lg font-semibold text-foreground mb-2">Computer Science</h4>
+                        <p class="text-sm text-muted-foreground">Programming, digital literacy, technology</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Featured Faculty -->
+            <div class="bg-muted p-8 md:p-12 rounded-2xl">
+                <h3 class="text-3xl font-bold text-foreground mb-8 text-center">Meet Our Leadership</h3>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                        <!-- Professional headshot of school principal -->
+                        <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300" alt="School Principal" class="w-24 h-24 rounded-full mx-auto mb-4 object-cover" />
+                        <h4 class="text-xl font-semibold text-foreground mb-2" data-mock="true">Mrs. Kumari Devi</h4>
+                        <p class="text-secondary font-medium mb-2">Principal</p>
+                        <p class="text-sm text-muted-foreground mb-4" data-mock="true">M.A., B.Ed., 25 years experience</p>
+                        <p class="text-sm text-muted-foreground" data-mock="true">
+                            "Leading with vision to create an environment where every student can discover their potential and achieve excellence."
+                        </p>
+                    </div>
+                    
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                        <!-- Professional headshot of vice principal -->
+                        <img src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300" alt="Vice Principal" class="w-24 h-24 rounded-full mx-auto mb-4 object-cover" />
+                        <h4 class="text-xl font-semibold text-foreground mb-2" data-mock="true">Mr. Suresh Kumar</h4>
+                        <p class="text-secondary font-medium mb-2">Vice Principal</p>
+                        <p class="text-sm text-muted-foreground mb-4" data-mock="true">M.Sc., B.Ed., 20 years experience</p>
+                        <p class="text-sm text-muted-foreground" data-mock="true">
+                            "Dedicated to fostering academic excellence and character development through innovative teaching methodologies."
+                        </p>
+                    </div>
+                    
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                        <!-- Professional headshot of senior teacher -->
+                        <img src="https://pixabay.com/get/gaa5f3bfeef88184150f842b813fd9b981a718516e505741d141106bc34f9e99bbba768cc7e241dcb324dda0f74cc98c00d5ceb62f7525888bb9781ce32631e3b_1280.jpg" alt="Department Head" class="w-24 h-24 rounded-full mx-auto mb-4 object-cover" />
+                        <h4 class="text-xl font-semibold text-foreground mb-2" data-mock="true">Mrs. Latha Menon</h4>
+                        <p class="text-secondary font-medium mb-2">Head of Academics</p>
+                        <p class="text-sm text-muted-foreground mb-4" data-mock="true">M.A., M.Ed., 18 years experience</p>
+                        <p class="text-sm text-muted-foreground" data-mock="true">
+                            "Committed to curriculum excellence and ensuring every student receives quality education that prepares them for the future."
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: FacultySection -->
+
+    <!-- Events Calendar Section -->
+    <!-- @COMPONENT: EventsSection [upcoming events and calendar] -->
+    <section id="events" class="py-20 bg-background">
+        <div class="container mx-auto px-4 lg:px-8">
+            <!-- Section Header -->
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Upcoming Events</h2>
+                <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+                    Stay updated with our academic calendar and exciting school activities
+                </p>
+            </div>
+            
+            <!-- Current Month Events -->
+            <div class="bg-card p-8 rounded-2xl shadow-lg border border-border mb-12">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-2xl font-bold text-foreground" data-bind="currentMonth">January 2024</h3>
+                    <div class="flex space-x-2">
+                        <button class="p-2 hover:bg-muted rounded-lg transition-colors" data-event="click:previousMonth">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </button>
+                        <button class="p-2 hover:bg-muted rounded-lg transition-colors" data-event="click:nextMonth">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- @MAP: upcomingEvents.map(event => ( -->
+                <div class="space-y-4">
+                    <div class="flex items-center p-4 bg-background rounded-lg border-l-4 border-primary hover-lift">
+                        <div class="flex-shrink-0 w-16 h-16 bg-primary rounded-lg flex flex-col items-center justify-center text-primary-foreground mr-4">
+                            <span class="text-sm font-semibold" data-mock="true">JAN</span>
+                            <span class="text-lg font-bold" data-mock="true">15</span>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="font-semibold text-foreground mb-1" data-mock="true">Annual Science Exhibition</h4>
+                            <p class="text-sm text-muted-foreground" data-mock="true">Students showcase innovative projects and experiments</p>
+                            <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span data-mock="true">9:00 AM - 3:00 PM</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center p-4 bg-background rounded-lg border-l-4 border-secondary hover-lift">
+                        <div class="flex-shrink-0 w-16 h-16 bg-secondary rounded-lg flex flex-col items-center justify-center text-white mr-4">
+                            <span class="text-sm font-semibold" data-mock="true">JAN</span>
+                            <span class="text-lg font-bold" data-mock="true">22</span>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="font-semibold text-foreground mb-1" data-mock="true">Malayalam Literary Competition</h4>
+                            <p class="text-sm text-muted-foreground" data-mock="true">Poetry, essay writing, and storytelling contests</p>
+                            <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span data-mock="true">10:00 AM - 2:00 PM</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center p-4 bg-background rounded-lg border-l-4 border-accent hover-lift">
+                        <div class="flex-shrink-0 w-16 h-16 bg-accent rounded-lg flex flex-col items-center justify-center text-white mr-4">
+                            <span class="text-sm font-semibold" data-mock="true">FEB</span>
+                            <span class="text-lg font-bold" data-mock="true">05</span>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="font-semibold text-foreground mb-1" data-mock="true">Sports Day Celebrations</h4>
+                            <p class="text-sm text-muted-foreground" data-mock="true">Annual athletic meet with track and field events</p>
+                            <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span data-mock="true">8:00 AM - 4:00 PM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_MAP )) -->
+            </div>
+            
+            <!-- Event Categories -->
+            <div class="grid md:grid-cols-4 gap-6 mb-12">
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-6 h-6 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-foreground mb-2">Academic</h4>
+                    <p class="text-sm text-muted-foreground">Exhibitions, competitions, assessments</p>
+                </div>
+                
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-foreground mb-2">Sports</h4>
+                    <p class="text-sm text-muted-foreground">Athletic meets, tournaments, fitness</p>
+                </div>
+                
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-foreground mb-2">Cultural</h4>
+                    <p class="text-sm text-muted-foreground">Arts, music, dance, drama</p>
+                </div>
+                
+                <div class="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+                    <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-6 h-6 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-foreground mb-2">Community</h4>
+                    <p class="text-sm text-muted-foreground">Parent meetings, social activities</p>
+                </div>
+            </div>
+            
+            <!-- News & Announcements -->
+            <div class="bg-muted p-8 md:p-12 rounded-2xl">
+                <h3 class="text-3xl font-bold text-foreground mb-8 text-center">Latest News & Announcements</h3>
+                <div class="space-y-6">
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-grow">
+                                <div class="flex items-center mb-2">
+                                    <span class="bg-primary text-primary-foreground text-xs font-semibold px-2 py-1 rounded mr-3">ANNOUNCEMENT</span>
+                                    <span class="text-sm text-muted-foreground" data-mock="true">January 10, 2024</span>
+                                </div>
+                                <h4 class="text-lg font-semibold text-foreground mb-2" data-mock="true">Admission Open for Academic Year 2024-25</h4>
+                                <p class="text-muted-foreground" data-mock="true">
+                                    Admission forms are now available for grades 5-11. Interested parents can collect forms from the school office or download from our website. Last date for submission is February 28, 2024.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-grow">
+                                <div class="flex items-center mb-2">
+                                    <span class="bg-secondary text-white text-xs font-semibold px-2 py-1 rounded mr-3">NEWS</span>
+                                    <span class="text-sm text-muted-foreground" data-mock="true">January 08, 2024</span>
+                                </div>
+                                <h4 class="text-lg font-semibold text-foreground mb-2" data-mock="true">Student Wins State Level Science Competition</h4>
+                                <p class="text-muted-foreground" data-mock="true">
+                                    Congratulations to Arjun Krishnan (Class 11) for securing first place in the Kerala State Science Olympiad. His innovative project on renewable energy solutions impressed the judges.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-card p-6 rounded-xl shadow-lg border border-border hover-lift">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-grow">
+                                <div class="flex items-center mb-2">
+                                    <span class="bg-accent text-white text-xs font-semibold px-2 py-1 rounded mr-3">UPDATE</span>
+                                    <span class="text-sm text-muted-foreground" data-mock="true">January 05, 2024</span>
+                                </div>
+                                <h4 class="text-lg font-semibold text-foreground mb-2" data-mock="true">New Computer Lab Inaugurated</h4>
+                                <p class="text-muted-foreground" data-mock="true">
+                                    The school has inaugurated a state-of-the-art computer laboratory with 15 new computers, enhancing digital learning opportunities for our students.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: EventsSection -->
+
+    <!-- Contact Section -->
+    <!-- @COMPONENT: ContactSection [contact form and school information] -->
+    <section id="contact" class="py-20 bg-card">
+        <div class="container mx-auto px-4 lg:px-8">
+            <!-- Section Header -->
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Get in Touch</h2>
+                <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+                    We're here to answer your questions and help you connect with our school community
+                </p>
+            </div>
+            
+            <div class="grid lg:grid-cols-2 gap-12">
+                <!-- Contact Form -->
+                <div class="bg-background p-8 rounded-2xl shadow-lg border border-border">
+                    <h3 class="text-2xl font-bold text-foreground mb-6">Send us a Message</h3>
+                    <form class="space-y-6" data-implementation="Should validate form before submission and send to backend">
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="firstName" class="block text-sm font-medium text-foreground mb-2">First Name</label>
+                                <input type="text" id="firstName" name="firstName" required class="w-full px-4 py-3 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors" placeholder="Enter your first name">
+                            </div>
+                            <div>
+                                <label for="lastName" class="block text-sm font-medium text-foreground mb-2">Last Name</label>
+                                <input type="text" id="lastName" name="lastName" required class="w-full px-4 py-3 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors" placeholder="Enter your last name">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-foreground mb-2">Email Address</label>
+                            <input type="email" id="email" name="email" required class="w-full px-4 py-3 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors" placeholder="Enter your email address">
+                        </div>
+                        
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-foreground mb-2">Phone Number</label>
+                            <input type="tel" id="phone" name="phone" class="w-full px-4 py-3 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors" placeholder="Enter your phone number">
+                        </div>
+                        
+                        <div>
+                            <label for="subject" class="block text-sm font-medium text-foreground mb-2">Subject</label>
+                            <select id="subject" name="subject" required class="w-full px-4 py-3 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors">
+                                <option value="">Select a subject</option>
+                                <option value="admission">Admission Inquiry</option>
+                                <option value="academics">Academic Information</option>
+                                <option value="facilities">Facilities & Infrastructure</option>
+                                <option value="events">Events & Activities</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="message" class="block text-sm font-medium text-foreground mb-2">Message</label>
+                            <textarea id="message" name="message" rows="4" required class="w-full px-4 py-3 bg-card border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors resize-vertical" placeholder="Enter your message"></textarea>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 px-6 rounded-lg transition-colors">
+                            Send Message
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Contact Information -->
+                <div class="space-y-8">
+                    <!-- School Information -->
+                    <div class="bg-background p-8 rounded-2xl shadow-lg border border-border">
+                        <h3 class="text-2xl font-bold text-foreground mb-6">School Information</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-start">
+                                <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                                    <svg class="w-5 h-5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-foreground mb-1">Address</h4>
+                                    <p class="text-muted-foreground">Navamukunda HSS Thirunavaya<br>TIRUR Block, Malappuram District<br>Kerala, India</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-foreground mb-1">Phone</h4>
+                                    <p class="text-muted-foreground" data-mock="true">+91 494 2XX XXXX<br>+91 494 2XX XXXX</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-foreground mb-1">Email</h4>
+                                    <p class="text-muted-foreground" data-mock="true">info@navamukunda.edu.in<br>principal@navamukunda.edu.in</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                                    <svg class="w-5 h-5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-foreground mb-1">Office Hours</h4>
+                                    <p class="text-muted-foreground">Monday - Friday: 9:00 AM - 4:00 PM<br>Saturday: 9:00 AM - 1:00 PM</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Links -->
+                    <div class="bg-background p-8 rounded-2xl shadow-lg border border-border">
+                        <h3 class="text-2xl font-bold text-foreground mb-6">Quick Links</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <a href="#admission" class="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group">
+                                <svg class="w-5 h-5 text-primary mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span class="font-medium text-foreground group-hover:text-primary transition-colors">Admission Form</span>
+                            </a>
+                            
+                            <a href="#fees" class="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group">
+                                <svg class="w-5 h-5 text-primary mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                                <span class="font-medium text-foreground group-hover:text-primary transition-colors">Fee Structure</span>
+                            </a>
+                            
+                            <a href="#handbook" class="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group">
+                                <svg class="w-5 h-5 text-primary mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.832 18.477 19.246 18 17.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                                </svg>
+                                <span class="font-medium text-foreground group-hover:text-primary transition-colors">Student Handbook</span>
+                            </a>
+                            
+                            <a href="#calendar" class="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group">
+                                <svg class="w-5 h-5 text-primary mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span class="font-medium text-foreground group-hover:text-primary transition-colors">Academic Calendar</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: ContactSection -->
+
+    <!-- Footer -->
+    <!-- @COMPONENT: Footer [links, social media, and school information] -->
+    <footer class="bg-foreground text-primary-foreground py-16">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="grid lg:grid-cols-4 md:grid-cols-2 gap-8">
+                <!-- School Info -->
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+                            <span class="text-primary-foreground font-bold text-xl">N</span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-xl">Navamukunda HSS</h3>
+                            <p class="text-sm opacity-80">Thirunavaya</p>
+                        </div>
+                    </div>
+                    <p class="text-sm opacity-80 leading-relaxed mb-4">
+                        Excellence in education since 1946. Nurturing young minds and building character through quality Malayalam medium education in a co-educational environment.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center hover:bg-primary/80 transition-colors">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center hover:bg-primary/80 transition-colors">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center hover:bg-primary/80 transition-colors">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h4 class="font-semibold text-lg mb-6">Quick Links</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#about" class="text-sm opacity-80 hover:opacity-100 transition-opacity">About Us</a></li>
+                        <li><a href="#academics" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Academics</a></li>
+                        <li><a href="#achievements" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Achievements</a></li>
+                        <li><a href="#faculty" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Faculty</a></li>
+                        <li><a href="#events" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Events</a></li>
+                        <li><a href="#contact" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources -->
+                <div>
+                    <h4 class="font-semibold text-lg mb-6">Resources</h4>
+                    <ul class="space-y-3">
+                        <li><a href="#admission" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Admission Form</a></li>
+                        <li><a href="#fees" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Fee Structure</a></li>
+                        <li><a href="#handbook" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Student Handbook</a></li>
+                        <li><a href="#calendar" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Academic Calendar</a></li>
+                        <li><a href="#results" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Exam Results</a></li>
+                        <li><a href="#gallery" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Photo Gallery</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact Info -->
+                <div>
+                    <h4 class="font-semibold text-lg mb-6">Contact Info</h4>
+                    <div class="space-y-3">
+                        <p class="text-sm opacity-80">
+                            Navamukunda HSS Thirunavaya<br>
+                            TIRUR Block, Malappuram District<br>
+                            Kerala, India
+                        </p>
+                        <p class="text-sm opacity-80" data-mock="true">
+                            Phone: +91 494 2XX XXXX
+                        </p>
+                        <p class="text-sm opacity-80" data-mock="true">
+                            Email: info@navamukunda.edu.in
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer Bottom -->
+            <div class="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-sm opacity-80">
+                    &copy; 2024 Navamukunda HSS Thirunavaya. All rights reserved.
+                </p>
+                <div class="flex space-x-6 mt-4 md:mt-0">
+                    <a href="#privacy" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Privacy Policy</a>
+                    <a href="#terms" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Terms of Service</a>
+                    <a href="#accessibility" class="text-sm opacity-80 hover:opacity-100 transition-opacity">Accessibility</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: Footer -->
+
+    <script>
+        // TODO: Implement business logic, API calls, or state management
+        (function() {
+            // Mobile menu functionality
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (mobileMenuBtn && mobileMenu) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+            
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        const offsetTop = target.offsetTop - 80; // Account for fixed header
+                        window.scrollTo({
+                            top: offsetTop,
+                            behavior: 'smooth'
+                        });
+                        
+                        // Close mobile menu if open
+                        if (mobileMenu) {
+                            mobileMenu.classList.add('hidden');
+                        }
+                    }
+                });
+            });
+            
+            // Form submission handling
+            const contactForm = document.querySelector('form');
+            if (contactForm) {
+                contactForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Basic form validation
+                    const requiredFields = this.querySelectorAll('[required]');
+                    let isValid = true;
+                    
+                    requiredFields.forEach(field => {
+                        if (!field.value.trim()) {
+                            isValid = false;
+                            field.classList.add('border-destructive');
+                        } else {
+                            field.classList.remove('border-destructive');
+                        }
+                    });
+                    
+                    if (isValid) {
+                        // TODO: Send form data to backend
+                        alert('Thank you for your message! We will get back to you soon.');
+                        this.reset();
+                    } else {
+                        alert('Please fill in all required fields.');
+                    }
+                });
+            }
+            
+            // Navigation highlighting on scroll
+            const sections = document.querySelectorAll('section[id]');
+            const navLinks = document.querySelectorAll('nav a[href^="#"]');
+            
+            function highlightNavigation() {
+                let current = '';
+                
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop - 100;
+                    if (window.pageYOffset >= sectionTop) {
+                        current = section.getAttribute('id');
+                    }
+                });
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('text-primary');
+                    if (link.getAttribute('href') === `#${current}`) {
+                        link.classList.add('text-primary');
+                    }
+                });
+            }
+            
+            // Add scroll event listener with throttling
+            let ticking = false;
+            function onScroll() {
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                        highlightNavigation();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }
+            
+            window.addEventListener('scroll', onScroll);
+            
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', highlightNavigation);
+        })();
+    </script>
+</body>
+</html>

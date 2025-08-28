@@ -9,11 +9,13 @@ import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import AdminPage from "@/pages/admin"; // Import your admin page
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+        <Route path="/admin" component={AdminPage} /> {/* Add this line */}
       <Route component={NotFound} />
     </Switch>
   );
