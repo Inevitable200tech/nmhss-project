@@ -1,6 +1,6 @@
-# 🏫 School Website
+# 🏫 NMHSS Thirunnavaya
 
-Welcome to the **School Website Project**!  
+Welcome to the **NMHSS Thirunnavaya**!  
 This is a modern, responsive, and interactive website designed to showcase school information, achievements, and activities.  
 Built with the latest web technologies, the website is **fast, user-friendly, and visually engaging** with smooth animations.
 
