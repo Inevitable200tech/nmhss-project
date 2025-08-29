@@ -104,13 +104,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all editable sections
-  app.get("/api/sections", async (req, res) => {
+// Get sections (public)
+app.get("/api/sections", async (req, res) => {
     try {
-      const sections = await storage.getSections();
-      res.json(sections);
+      const name = req.query.name as string;
+      const sections = await storage.getSections(name);
+      if (name && sections.length === 0) {
+        res.status(404).json({ error: `No section found with name: ${name}` });
+      } else {
+        res.json(sections);
+      }
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch sections" });
+    }
+  });
+
+  // Create section (admin only)
+  app.post("/api/sections", requireAuth, async (req, res) => {
+    try {
+      const sectionData = insertSectionSchema.parse(req.body);
+      const section = await storage.createSection(sectionData);
+      res.json(section);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create section" });
+      }
     }
   });
 

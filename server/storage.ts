@@ -17,7 +17,8 @@ export interface IStorage {
   createEvent(event: InsertEvent): Promise<Event>;
   getNews(): Promise<News[]>;
   createNews(news: InsertNews): Promise<News>;
-  getSections(): Promise<Section[]>;
+  getSections(name?: string): Promise<Section[]>;
+  createSection(section: InsertSection): Promise<Section>;
   updateSection(id: string, data: InsertSection): Promise<Section | null>;
 }
 
@@ -36,7 +37,12 @@ export class MongoStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const doc = await UserModel.create(insertUser);
-    return doc.toObject() as User;
+    const plainDoc = doc.toObject() as { _id: mongoose.Types.ObjectId; username: string; password: string };
+    return {
+      id: plainDoc._id.toString(),
+      username: plainDoc.username,
+      password: plainDoc.password,
+    } as User;
   }
 
   async createContactMessage(insertMessage: InsertContactMessage): Promise<ContactMessage> {
@@ -44,7 +50,26 @@ export class MongoStorage implements IStorage {
       ...insertMessage,
       phone: insertMessage.phone ?? undefined,
     });
-    return doc.toObject() as ContactMessage;
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone?: string;
+      subject: string;
+      message: string;
+      createdAt: Date;
+    };
+    return {
+      id: plainDoc._id.toString(),
+      firstName: plainDoc.firstName,
+      lastName: plainDoc.lastName,
+      email: plainDoc.email,
+      phone: plainDoc.phone,
+      subject: plainDoc.subject,
+      message: plainDoc.message,
+      createdAt: plainDoc.createdAt,
+    } as ContactMessage;
   }
 
   async getEvents(): Promise<Event[]> {
@@ -54,7 +79,24 @@ export class MongoStorage implements IStorage {
 
   async createEvent(insertEvent: InsertEvent): Promise<Event> {
     const doc = await EventModel.create(insertEvent);
-    return doc.toObject() as Event;
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      title: string;
+      description: string;
+      date: Date;
+      time: string;
+      category: string;
+      createdAt: Date;
+    };
+    return {
+      id: plainDoc._id.toString(),
+      title: plainDoc.title,
+      description: plainDoc.description,
+      date: plainDoc.date,
+      time: plainDoc.time,
+      category: plainDoc.category,
+      createdAt: plainDoc.createdAt,
+    } as Event;
   }
 
   async getNews(): Promise<News[]> {
@@ -64,12 +106,50 @@ export class MongoStorage implements IStorage {
 
   async createNews(insertNews: InsertNews): Promise<News> {
     const doc = await NewsModel.create(insertNews);
-    return doc.toObject() as News;
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      title: string;
+      content: string;
+      type: string;
+      createdAt: Date;
+    };
+    return {
+      id: plainDoc._id.toString(),
+      title: plainDoc.title,
+      content: plainDoc.content,
+      type: plainDoc.type,
+      createdAt: plainDoc.createdAt,
+    } as News;
   }
 
-  async getSections(): Promise<Section[]> {
-    const docs = await SectionModel.find().lean().exec();
+  async getSections(name?: string): Promise<Section[]> {
+    const query = name ? { name } : {};
+    const docs = await SectionModel.find(query).lean().exec();
     return docs.map(doc => ({ ...doc, id: doc._id.toString() })) as Section[];
+  }
+
+  async createSection(insertSection: InsertSection): Promise<Section> {
+    const doc = await SectionModel.create(insertSection);
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      name: string;
+      title: string;
+      subtitle?: string;
+      paragraphs?: string[];
+      images?: string[];
+      stats?: { label: string; value: string; description?: string }[];
+      profiles?: { name: string; role: string; description: string; image?: string }[];
+    };
+    return {
+      id: plainDoc._id.toString(),
+      name: plainDoc.name,
+      title: plainDoc.title,
+      subtitle: plainDoc.subtitle,
+      paragraphs: plainDoc.paragraphs,
+      images: plainDoc.images,
+      stats: plainDoc.stats,
+      profiles: plainDoc.profiles,
+    } as Section;
   }
 
   async updateSection(id: string, data: InsertSection): Promise<Section | null> {

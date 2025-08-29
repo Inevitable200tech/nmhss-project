@@ -2,11 +2,13 @@ import { z } from "zod";
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface User extends Document {
+  id: string;
   username: string;
   password: string;
 }
 
 export interface ContactMessage extends Document {
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -17,6 +19,7 @@ export interface ContactMessage extends Document {
 }
 
 export interface Event extends Document {
+  id: string;
   title: string;
   description: string;
   date: Date;
@@ -26,6 +29,7 @@ export interface Event extends Document {
 }
 
 export interface News extends Document {
+  id: string;
   title: string;
   content: string;
   type: string;
@@ -33,6 +37,7 @@ export interface News extends Document {
 }
 
 export interface Section extends Document {
+  id: string;
   name: string;
   title: string;
   subtitle?: string;
@@ -62,11 +67,13 @@ export interface ClientNews {
 }
 
 export const userSchema = new Schema<User>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
 }, { timestamps: false });
 
 export const contactMessageSchema = new Schema<ContactMessage>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   email: { type: String, required: true },
@@ -77,6 +84,7 @@ export const contactMessageSchema = new Schema<ContactMessage>({
 }, { timestamps: false });
 
 export const eventSchema = new Schema<Event>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
   date: { type: Date, required: true },
@@ -86,6 +94,7 @@ export const eventSchema = new Schema<Event>({
 }, { timestamps: false });
 
 export const newsSchema = new Schema<News>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
   title: { type: String, required: true },
   content: { type: String, required: true },
   type: { type: String, required: true },
@@ -93,6 +102,7 @@ export const newsSchema = new Schema<News>({
 }, { timestamps: false });
 
 export const sectionSchema = new Schema<Section>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
   name: { type: String, required: true, unique: true },
   title: { type: String, required: true },
   subtitle: { type: String },

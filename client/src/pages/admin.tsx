@@ -3,8 +3,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { insertSectionSchema, insertEventSchema, insertNewsSchema } from "@shared/schema";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { insertSectionSchema } from "@shared/schema";
 import { z } from "zod";
+import AboutSection from "@/components/about-section";
+
+type ClientSection = {
+  name: string;
+  title: string;
+  subtitle?: string;
+  paragraphs?: string[];
+  images?: string[];
+  stats?: { label: string; value: string; description?: string }[];
+  profiles?: { name: string; role: string; description: string; image?: string }[];
+};
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -12,16 +24,29 @@ export default function AdminPage() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<{ id: number; text: string; type: "success" | "error" }[]>([]);
-  const [newEvent, setNewEvent] = useState({ title: "", description: "", date: "", time: "", category: "" });
-  const [newNews, setNewNews] = useState({ title: "", content: "", type: "" });
-  const [sectionForms, setSectionForms] = useState<
-    Record<string, { stats: { label: string; value: string; description: string }[]; profiles: { name: string; role: string; description: string; image: string }[] }>
-  >({});
+  const [aboutData, setAboutData] = useState<ClientSection>({
+    name: "about",
+    title: "",
+    subtitle: "",
+    paragraphs: ["", ""],
+    images: ["", ""],
+    stats: [
+      { label: "", value: "", description: "" },
+      { label: "", value: "", description: "" },
+      { label: "", value: "", description: "" },
+      { label: "", value: "", description: "" },
+    ],
+  });
+  const [previewMode, setPreviewMode] = useState(false);
+  const [previewData, setPreviewData] = useState<ClientSection | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const queryClient = useQueryClient();
+  const [sectionId, setSectionId] = useState("");
 
   // Add message with auto-dismiss after 5 seconds
   const addMessage = (text: string, type: "success" | "error") => {
     const id = Date.now();
+    console.log(`Adding message: ${text} (Type: ${type}, ID: ${id})`);
     setMessages((prev) => [...prev, { id, text, type }]);
     setTimeout(() => {
       setMessages((prev) => prev.filter((msg) => msg.id !== id));
@@ -30,37 +55,46 @@ export default function AdminPage() {
 
   // Handle logout
   const handleLogout = () => {
+    console.log("Logging out: Clearing token and resetting state");
     setToken("");
     localStorage.removeItem("adminToken");
     setLoggedIn(false);
+    setSelectedCategory("");
     addMessage("Logged out successfully", "success");
   };
 
   // Validate token on mount
   useEffect(() => {
     if (token) {
+      console.log("Validating token on mount:", token);
       fetch("/api/admin/verify", {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((res) => {
           if (res.ok) {
+            console.log("Token verification successful");
             setLoggedIn(true);
           } else {
+            console.error("Token verification failed:", res.status, res.statusText);
             setToken("");
             localStorage.removeItem("adminToken");
             setLoggedIn(false);
           }
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error("Token verification error:", err.message);
           setToken("");
           localStorage.removeItem("adminToken");
           setLoggedIn(false);
         });
+    } else {
+      console.log("No token found on mount");
     }
   }, [token]);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log("Login attempt:", form);
     setError("");
     try {
       const res = await fetch("/api/admin/login", {
@@ -69,6 +103,7 @@ export default function AdminPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
+      console.log("Login response:", data);
       if (data.success) {
         setToken(data.token);
         setLoggedIn(true);
@@ -78,38 +113,118 @@ export default function AdminPage() {
         setError(data.message);
         addMessage(data.message, "error");
       }
-    } catch {
+    } catch (err) {
+      console.error("Login error:", err);
       setError("Login failed");
       addMessage("Login failed", "error");
     }
   };
 
-  const { data: sections, isLoading } = useQuery({
-    queryKey: ["sections"],
+  const { data: aboutSection, isLoading: aboutLoading, error: queryError } = useQuery({
+    queryKey: ["/api/sections/about"],
     queryFn: async () => {
-      const res = await fetch("/api/sections", {
+      console.log("Fetching about section with token:", token);
+      const res = await fetch("/api/sections?name=about", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to fetch");
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Fetch about section failed:", {
+          status: res.status,
+          statusText: res.statusText,
+          responseText: text.slice(0, 200),
+        });
+        throw new Error(`Failed to fetch: ${res.status} ${res.statusText}`);
+      }
       const sections = await res.json();
-      // Initialize section forms
-      setSectionForms(
-        sections.reduce((acc: any, section: any) => ({
-          ...acc,
-          [section.id]: {
-            stats: section.stats || [],
-            profiles: section.profiles || [],
-          },
-        }), {})
-      );
-      return sections;
+      console.log("Fetched about section response:", sections);
+      const section = Array.isArray(sections) ? sections.find((s: any) => s.name === "about") : sections;
+      if (section) {
+        console.log("Setting sectionId:", section.id);
+        setSectionId(section.id);
+        setAboutData({
+          name: "about",
+          title: section.title || "",
+          subtitle: section.subtitle || "",
+          paragraphs: section.paragraphs || ["", ""],
+          images: section.images || ["", ""],
+          stats:
+            section.stats || [
+              { label: "", value: "", description: "" },
+              { label: "", value: "", description: "" },
+              { label: "", value: "", description: "" },
+              { label: "", value: "", description: "" },
+            ],
+        });
+      } else {
+        console.warn("No 'about' section found, initializing default");
+        setAboutData({
+          name: "about",
+          title: "About Us",
+          subtitle: "Welcome to our school",
+          paragraphs: ["", ""],
+          images: ["", ""],
+          stats: [
+            { label: "", value: "", description: "" },
+            { label: "", value: "", description: "" },
+            { label: "", value: "", description: "" },
+            { label: "", value: "", description: "" },
+          ],
+        });
+      }
+      return section;
     },
     enabled: loggedIn,
   });
 
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      console.log("Creating new section with data:", data);
+      const res = await fetch("/api/sections", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Create section failed:", {
+          status: res.status,
+          statusText: res.statusText,
+          responseText: text.slice(0, 200),
+        });
+        throw new Error(`Failed to create: ${res.status} ${res.statusText}`);
+      }
+      const result = await res.json();
+      console.log("Create section response:", result);
+      setSectionId(result.id);
+      return result;
+    },
+    onSuccess: () => {
+      console.log("Create successful, invalidating query cache");
+      queryClient.invalidateQueries({ queryKey: ["/api/sections/about"] });
+      addMessage("About section created successfully", "success");
+      setPreviewMode(false);
+      setPreviewData(null);
+    },
+    onError: (error: any) => {
+      console.error("Create error:", error.message);
+      addMessage(`Failed to create: ${error.message}`, "error");
+      setPreviewMode(false);
+      setPreviewData(null);
+    },
+  });
+
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await fetch(`/api/sections/${id}`, {
+    mutationFn: async (data: any) => {
+      if (!sectionId) {
+        console.log("No sectionId, attempting to create new section");
+        return await createMutation.mutateAsync(data);
+      }
+      console.log("Updating section with ID:", sectionId, "Data:", data);
+      const res = await fetch(`/api/sections/${sectionId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -117,126 +232,158 @@ export default function AdminPage() {
         },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to update");
-      return res.json();
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Update section failed:", {
+          status: res.status,
+          statusText: res.statusText,
+          responseText: text.slice(0, 200),
+        });
+        throw new Error(`Failed to update: ${res.status} ${res.statusText}`);
+      }
+      const result = await res.json();
+      console.log("Update section response:", result);
+      return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["sections"] });
-      addMessage("Section updated successfully", "success");
+      console.log("Update successful, invalidating query cache");
+      queryClient.invalidateQueries({ queryKey: ["/api/sections/about"] });
+      addMessage("About section updated successfully", "success");
+      setPreviewMode(false);
+      setPreviewData(null);
     },
     onError: (error: any) => {
-      addMessage(error.message || "Failed to update section", "error");
+      console.error("Update error:", error.message);
+      addMessage(`Failed to update: ${error.message}`, "error");
+      setPreviewMode(false);
+      setPreviewData(null);
     },
   });
 
-  const createEventMutation = useMutation({
-    mutationFn: async (eventData: any) => {
-      const res = await fetch("/api/events", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(eventData),
+  const handleCreateAboutSection = () => {
+    console.log("Creating default about section");
+    try {
+      const defaultData = insertSectionSchema.parse({
+        name: "about",
+        title: "About Us",
+        subtitle: "Welcome to our school",
+        paragraphs: ["", ""],
+        images: ["", ""],
+        stats: [
+          { label: "", value: "", description: "" },
+          { label: "", value: "", description: "" },
+          { label: "", value: "", description: "" },
+          { label: "", value: "", description: "" },
+        ],
       });
-      if (!res.ok) throw new Error("Failed to create event");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      setNewEvent({ title: "", description: "", date: "", time: "", category: "" });
-      addMessage("Event created successfully", "success");
-    },
-    onError: (error: any) => {
-      addMessage(error.message || "Failed to create event", "error");
-    },
-  });
+      createMutation.mutate(defaultData);
+    } catch (error) {
+      console.error("Failed to create default about section:", error);
+      addMessage("Failed to create default about section", "error");
+    }
+  };
 
-  const createNewsMutation = useMutation({
-    mutationFn: async (newsData: any) => {
-      const res = await fetch("/api/news", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(newsData),
+  const handleAddParagraph = () => {
+    console.log("Adding new paragraph to aboutData");
+    setAboutData((prev) => ({ ...prev, paragraphs: [...(prev.paragraphs || []), ""] }));
+  };
+
+  const handleRemoveParagraph = (index: number) => {
+    console.log(`Removing paragraph at index ${index}`);
+    setAboutData((prev) => ({
+      ...prev,
+      paragraphs: (prev.paragraphs || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleParagraphChange = (index: number, value: string) => {
+    console.log(`Updating paragraph ${index}:`, value);
+    setAboutData((prev) => {
+      const paragraphs = [...(prev.paragraphs || [])];
+      paragraphs[index] = value;
+      return { ...prev, paragraphs };
+    });
+  };
+
+  const handleAddImage = () => {
+    console.log("Adding new image to aboutData");
+    setAboutData((prev) => ({ ...prev, images: [...(prev.images || []), ""] }));
+  };
+
+  const handleRemoveImage = (index: number) => {
+    console.log(`Removing image at index ${index}`);
+    setAboutData((prev) => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleImageChange = (index: number, value: string) => {
+    console.log(`Updating image ${index}:`, value);
+    setAboutData((prev) => {
+      const images = [...(prev.images || [])];
+      images[index] = value;
+      return { ...prev, images };
+    });
+  };
+
+  const handleAddStat = () => {
+    console.log("Adding new stat to aboutData");
+    setAboutData((prev) => ({ ...prev, stats: [...(prev.stats || []), { label: "", value: "", description: "" }] }));
+  };
+
+  const handleRemoveStat = (index: number) => {
+    console.log(`Removing stat at index ${index}`);
+    setAboutData((prev) => ({
+      ...prev,
+      stats: (prev.stats || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleStatChange = (index: number, field: "label" | "value" | "description", value: string) => {
+    console.log(`Updating stat ${index} field ${field}:`, value);
+    setAboutData((prev) => {
+      const stats = [...(prev.stats || [])];
+      stats[index] = { ...stats[index], [field]: value };
+      return { ...prev, stats };
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    console.log("Form submitted with data:", aboutData);
+    try {
+      const data = insertSectionSchema.parse({
+        name: "about",
+        title: aboutData.title,
+        subtitle: aboutData.subtitle,
+        paragraphs: (aboutData.paragraphs || []).filter((p) => p.trim()),
+        images: (aboutData.images || []).filter((i) => i.trim()),
+        stats: (aboutData.stats || []).filter((s) => s.label.trim() && s.value.trim()),
       });
-      if (!res.ok) throw new Error("Failed to create news");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
-      setNewNews({ title: "", content: "", type: "" });
-      addMessage("News created successfully", "success");
-    },
-    onError: (error: any) => {
-      addMessage(error.message || "Failed to create news", "error");
-    },
-  });
-
-  const handleAddStat = (sectionId: string) => {
-    setSectionForms((prev) => ({
-      ...prev,
-      [sectionId]: {
-        ...prev[sectionId],
-        stats: [...(prev[sectionId]?.stats || []), { label: "", value: "", description: "" }],
-      },
-    }));
+      console.log("Validated form data:", data);
+      setPreviewData(data);
+      setPreviewMode(true);
+    } catch (error) {
+      console.error("About section validation failed:", error);
+      addMessage("About section validation failed", "error");
+    }
   };
 
-  const handleAddProfile = (sectionId: string) => {
-    setSectionForms((prev) => ({
-      ...prev,
-      [sectionId]: {
-        ...prev[sectionId],
-        profiles: [...(prev[sectionId]?.profiles || []), { name: "", role: "", description: "", image: "" }],
-      },
-    }));
+  const handlePreviewConfirm = () => {
+    if (previewData) {
+      console.log("Preview confirmed, saving data:", previewData);
+      updateMutation.mutate(previewData);
+    } else {
+      console.error("No preview data to save");
+      addMessage("No preview data to save", "error");
+    }
   };
 
-  const handleRemoveStat = (sectionId: string, index: number) => {
-    setSectionForms((prev) => ({
-      ...prev,
-      [sectionId]: {
-        ...prev[sectionId],
-        stats: prev[sectionId].stats.filter((_, i) => i !== index),
-      },
-    }));
-  };
-
-  const handleRemoveProfile = (sectionId: string, index: number) => {
-    setSectionForms((prev) => ({
-      ...prev,
-      [sectionId]: {
-        ...prev[sectionId],
-        profiles: prev[sectionId].profiles.filter((_, i) => i !== index),
-      },
-    }));
-  };
-
-  const handleStatChange = (sectionId: string, index: number, field: string, value: string) => {
-    setSectionForms((prev) => ({
-      ...prev,
-      [sectionId]: {
-        ...prev[sectionId],
-        stats: prev[sectionId].stats.map((stat: any, i: number) =>
-          i === index ? { ...stat, [field]: value } : stat
-        ),
-      },
-    }));
-  };
-
-  const handleProfileChange = (sectionId: string, index: number, field: string, value: string) => {
-    setSectionForms((prev) => ({
-      ...prev,
-      [sectionId]: {
-        ...prev[sectionId],
-        profiles: prev[sectionId].profiles.map((profile: any, i: number) =>
-          i === index ? { ...profile, [field]: value } : profile
-        ),
-      },
-    }));
+  const handlePreviewCancel = () => {
+    console.log("Preview cancelled, resetting preview state");
+    setPreviewMode(false);
+    setPreviewData(null);
   };
 
   if (!loggedIn) {
@@ -270,267 +417,365 @@ export default function AdminPage() {
     );
   }
 
-  return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <Button variant="outline" onClick={handleLogout}>
-          Logout
-        </Button>
-      </div>
-      {/* Message Display */}
-      {messages.length > 0 && (
-        <div className="mb-4 space-y-2">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`p-3 rounded text-sm animate-fade-out ${
-                msg.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-              }`}
-            >
-              {msg.text}
-            </div>
-          ))}
+  if (previewMode && previewData) {
+    return (
+      <div className="min-h-screen bg-background p-4 relative">
+        <style>
+          {`
+            .preview-compact .enhanced-card {
+              padding: 0.75rem !important;
+            }
+            .preview-compact .enhanced-card h3 {
+              font-size: 1rem !important;
+              margin-bottom: 0.5rem !important;
+            }
+            .preview-compact .enhanced-card p {
+              font-size: 0.75rem !important;
+            }
+            .preview-compact .enhanced-card div.w-12.h-12 {
+              width: 2rem !important;
+              height: 2rem !important;
+            }
+            .preview-compact .enhanced-card svg {
+              width: 1rem !important;
+              height: 1rem !important;
+            }
+            .preview-compact .facilities-section {
+              padding: 1.5rem !important;
+            }
+            .preview-compact .facilities-section h3 {
+              font-size: 1.25rem !important;
+              margin-bottom: 1rem !important;
+            }
+            .preview-compact .facilities-section .w-16.h-16 {
+              width: 3rem !important;
+              height: 3rem !important;
+            }
+            .preview-compact .facilities-section span {
+              font-size: 1rem !important;
+            }
+            .preview-compact .facilities-section h4 {
+              font-size: 0.875rem !important;
+              margin-bottom: 0.25rem !important;
+            }
+            .preview-compact .facilities-section p {
+              font-size: 0.75rem !important;
+            }
+          `}
+        </style>
+        <div className="container mx-auto">
+          <h1 className="text-3xl font-bold mb-4">Preview About Section</h1>
+          <div className="preview-compact">
+            <AboutSection section={previewData} />
+          </div>
         </div>
-      )}
-      {/* Section Editing */}
-      <div className="mb-8 p-4 border rounded">
-        <h2 className="text-2xl font-semibold mb-4">Edit Sections</h2>
-        {isLoading ? (
-          <p>Loading sections...</p>
-        ) : (
-          sections?.map((section: any) => (
-            <div key={section.id} className="mb-4 p-4 border rounded">
-              <h3 className="text-xl font-semibold mb-2">{section.name}</h3>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  try {
-                    const data = insertSectionSchema.parse({
-                      name: section.name,
-                      title: (e.target as any).title.value,
-                      subtitle: (e.target as any).subtitle.value,
-                      paragraphs: (e.target as any).paragraphs.value.split("\n").filter((p: string) => p.trim()),
-                      images: (e.target as any).images.value.split(",").map((i: string) => i.trim()).filter((i: string) => i),
-                      stats: sectionForms[section.id]?.stats.filter((s: any) => s.label && s.value),
-                      profiles: sectionForms[section.id]?.profiles.filter((p: any) => p.name && p.role && p.description),
-                    });
-                    updateMutation.mutate({ id: section.id, data });
-                  } catch (error) {
-                    console.error("Section validation failed:", error);
-                    addMessage("Section validation failed", "error");
-                  }
-                }}
+        <div className="fixed bottom-4 right-4 flex gap-2">
+          <Button onClick={handlePreviewConfirm} className="bg-green-600 hover:bg-green-700">
+            OK
+          </Button>
+          <Button onClick={handlePreviewCancel} variant="outline">
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <div className="min-h-screen bg-background flex">
+        {/* Sidebar */}
+        <div className="w-64 bg-card shadow-lg p-4">
+          <h2 className="text-xl font-bold mb-4">Admin Panel</h2>
+          <ul className="space-y-2">
+            <li>
+              <Button
+                variant={selectedCategory === "about" ? "default" : "outline"}
+                className="w-full text-left"
+                onClick={() => setSelectedCategory("about")}
               >
-                <Input
-                  name="title"
-                  defaultValue={section.title}
-                  placeholder="Section Title"
-                  className="mb-2"
-                  required
-                />
-                <Input
-                  name="subtitle"
-                  defaultValue={section.subtitle}
-                  placeholder="Section Subtitle"
-                  className="mb-2"
-                />
-                <Textarea
-                  name="paragraphs"
-                  defaultValue={section.paragraphs?.join("\n")}
-                  placeholder="Paragraphs (one per line)"
-                  className="mb-2"
-                />
-                <Input
-                  name="images"
-                  defaultValue={section.images?.join(",")}
-                  placeholder="Image URLs (comma-separated)"
-                  className="mb-2"
-                />
-                <h4 className="text-lg font-semibold mt-4 mb-2">Stats</h4>
-                {sectionForms[section.id]?.stats.map((stat: any, index: number) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={stat.label}
-                      onChange={(e) => handleStatChange(section.id, index, "label", e.target.value)}
-                      placeholder="Label"
-                      className="flex-1"
-                    />
-                    <Input
-                      value={stat.value}
-                      onChange={(e) => handleStatChange(section.id, index, "value", e.target.value)}
-                      placeholder="Value"
-                      className="flex-1"
-                    />
-                    <Input
-                      value={stat.description}
-                      onChange={(e) => handleStatChange(section.id, index, "description", e.target.value)}
-                      placeholder="Description"
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={() => handleRemoveStat(section.id, index)}
-                    >
-                      Remove
-                    </Button>
+                About
+              </Button>
+            </li>
+          </ul>
+          <Button variant="outline" className="w-full mt-4" onClick={handleLogout}>
+            Logout
+          </Button>
+        </div>
+        {/* Main Content */}
+        <div className="flex-1 p-4">
+          <div className="container mx-auto max-w-2xl">
+            <h1 className="text-3xl font-bold mb-4">Content Management</h1>
+            {/* Message Display */}
+            {messages.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`p-3 rounded text-sm animate-fade-out ${
+                      msg.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {msg.text}
                   </div>
                 ))}
-                <Button type="button" variant="outline" onClick={() => handleAddStat(section.id)} className="mb-4">
-                  Add Stat
-                </Button>
-                <h4 className="text-lg font-semibold mt-4 mb-2">Profiles</h4>
-                {sectionForms[section.id]?.profiles.map((profile: any, index: number) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <Input
-                      value={profile.name}
-                      onChange={(e) => handleProfileChange(section.id, index, "name", e.target.value)}
-                      placeholder="Name"
-                      className="flex-1"
-                    />
-                    <Input
-                      value={profile.role}
-                      onChange={(e) => handleProfileChange(section.id, index, "role", e.target.value)}
-                      placeholder="Role"
-                      className="flex-1"
-                    />
-                    <Input
-                      value={profile.description}
-                      onChange={(e) => handleProfileChange(section.id, index, "description", e.target.value)}
-                      placeholder="Description"
-                      className="flex-1"
-                    />
-                    <Input
-                      value={profile.image}
-                      onChange={(e) => handleProfileChange(section.id, index, "image", e.target.value)}
-                      placeholder="Image URL"
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={() => handleRemoveProfile(section.id, index)}
-                    >
-                      Remove
+              </div>
+            )}
+            {selectedCategory === "about" ? (
+              aboutLoading ? (
+                <p>Loading about section...</p>
+              ) : queryError ? (
+                <div>
+                  <p className="text-red-500 mb-4">Failed to load about section: {queryError.message}</p>
+                  <Button onClick={handleCreateAboutSection} className="mb-4">
+                    Create Default About Section
+                  </Button>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Input
+                          value={aboutData.title}
+                          onChange={(e) => setAboutData((prev) => ({ ...prev, title: e.target.value }))}
+                          placeholder="About Title"
+                          className="mb-2"
+                          required
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>This changes the main header title in the About section (h2 tag)</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Input
+                          value={aboutData.subtitle}
+                          onChange={(e) => setAboutData((prev) => ({ ...prev, subtitle: e.target.value }))}
+                          placeholder="About Subtitle"
+                          className="mb-2"
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>This changes the subtitle text below the title in the About section (p tag)</TooltipContent>
+                    </Tooltip>
+                    <h4 className="text-lg font-semibold">Paragraphs (Heritage Description)</h4>
+                    {(aboutData.paragraphs || []).map((para, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Textarea
+                              value={para}
+                              onChange={(e) => handleParagraphChange(index, e.target.value)}
+                              placeholder={`Paragraph ${index + 1}`}
+                              className="flex-1"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            This changes the {index + 1}th paragraph in the Heritage section of About
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button type="button" variant="destructive" onClick={() => handleRemoveParagraph(index)}>
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" onClick={handleAddParagraph}>
+                      Add Paragraph
                     </Button>
-                  </div>
-                ))}
-                <Button type="button" variant="outline" onClick={() => handleAddProfile(section.id)} className="mb-4">
-                  Add Profile
-                </Button>
-                <Button type="submit">Update Section</Button>
-              </form>
-            </div>
-          ))
-        )}
+                    <h4 className="text-lg font-semibold">Images (Heritage Images)</h4>
+                    {(aboutData.images || []).map((img, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              value={img}
+                              onChange={(e) => handleImageChange(index, e.target.value)}
+                              placeholder={`Image URL ${index + 1}`}
+                              className="flex-1"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            This changes the {index + 1}th image in the Heritage section of About
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button type="button" variant="destructive" onClick={() => handleRemoveImage(index)}>
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" onClick={handleAddImage}>
+                      Add Image
+                    </Button>
+                    <h4 className="text-lg font-semibold">Stats (Facilities Section)</h4>
+                    {(aboutData.stats || []).map((stat, index) => (
+                      <div key={index} className="space-y-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              value={stat.label}
+                              onChange={(e) => handleStatChange(index, "label", e.target.value)}
+                              placeholder="Stat Label (e.g., Classrooms)"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>This changes the label for stat {index + 1} in Facilities</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              value={stat.value}
+                              onChange={(e) => handleStatChange(index, "value", e.target.value)}
+                              placeholder="Stat Value (e.g., 30)"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>This changes the value for stat {index + 1} in Facilities</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              value={stat.description}
+                              onChange={(e) => handleStatChange(index, "description", e.target.value)}
+                              placeholder="Stat Description (e.g., Well-equipped learning spaces)"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            This changes the description for stat {index + 1} in Facilities
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button type="button" variant="destructive" onClick={() => handleRemoveStat(index)}>
+                          Remove Stat
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" onClick={handleAddStat}>
+                      Add Stat
+                    </Button>
+                    <Button type="submit" className="w-full mt-4">Preview Changes</Button>
+                  </form>
+                </div>
+              ) : (
+                <div>
+                  <h2 className="text-2xl font-bold mb-4">Edit About Section</h2>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Input
+                          value={aboutData.title}
+                          onChange={(e) => setAboutData((prev) => ({ ...prev, title: e.target.value }))}
+                          placeholder="About Title"
+                          className="mb-2"
+                          required
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>This changes the main header title in the About section (h2 tag)</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Input
+                          value={aboutData.subtitle}
+                          onChange={(e) => setAboutData((prev) => ({ ...prev, subtitle: e.target.value }))}
+                          placeholder="About Subtitle"
+                          className="mb-2"
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>This changes the subtitle text below the title in the About section (p tag)</TooltipContent>
+                    </Tooltip>
+                    <h4 className="text-lg font-semibold">Paragraphs (Heritage Description)</h4>
+                    {(aboutData.paragraphs || []).map((para, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Textarea
+                              value={para}
+                              onChange={(e) => handleParagraphChange(index, e.target.value)}
+                              placeholder={`Paragraph ${index + 1}`}
+                              className="flex-1"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            This changes the {index + 1}th paragraph in the Heritage section of About
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button type="button" variant="destructive" onClick={() => handleRemoveParagraph(index)}>
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" onClick={handleAddParagraph}>
+                      Add Paragraph
+                    </Button>
+                    <h4 className="text-lg font-semibold">Images (Heritage Images)</h4>
+                    {(aboutData.images || []).map((img, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              value={img}
+                              onChange={(e) => handleImageChange(index, e.target.value)}
+                              placeholder={`Image URL ${index + 1}`}
+                              className="flex-1"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            This changes the {index + 1}th image in the Heritage section of About
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button type="button" variant="destructive" onClick={() => handleRemoveImage(index)}>
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" onClick={handleAddImage}>
+                      Add Image
+                    </Button>
+                    <h4 className="text-lg font-semibold">Stats (Facilities Section)</h4>
+                    {(aboutData.stats || []).map((stat, index) => (
+                      <div key={index} className="space-y-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              value={stat.label}
+                              onChange={(e) => handleStatChange(index, "label", e.target.value)}
+                              placeholder="Stat Label (e.g., Classrooms)"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>This changes the label for stat {index + 1} in Facilities</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              value={stat.value}
+                              onChange={(e) => handleStatChange(index, "value", e.target.value)}
+                              placeholder="Stat Value (e.g., 30)"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>This changes the value for stat {index + 1} in Facilities</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Input
+                              value={stat.description}
+                              onChange={(e) => handleStatChange(index, "description", e.target.value)}
+                              placeholder="Stat Description (e.g., Well-equipped learning spaces)"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            This changes the description for stat {index + 1} in Facilities
+                          </TooltipContent>
+                        </Tooltip>
+                        <Button type="button" variant="destructive" onClick={() => handleRemoveStat(index)}>
+                          Remove Stat
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" onClick={handleAddStat}>
+                      Add Stat
+                    </Button>
+                    <Button type="submit" className="w-full mt-4">Preview Changes</Button>
+                  </form>
+                </div>
+              )
+            ) : (
+              <p className="text-gray-500">Select a category from the sidebar to edit content.</p>
+            )}
+          </div>
+        </div>
       </div>
-
-      {/* Event Creation Form */}
-      <div className="mb-8 p-4 border rounded">
-        <h3 className="text-xl font-semibold mb-4">Create New Event</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            try {
-              const eventData = insertEventSchema.parse({
-                ...newEvent,
-                date: new Date(newEvent.date),
-              });
-              createEventMutation.mutate(eventData);
-            } catch (error) {
-              console.error("Event validation failed:", error);
-              addMessage("Event validation failed", "error");
-            }
-          }}
-        >
-          <Input
-            name="title"
-            value={newEvent.title}
-            onChange={(e) => setNewEvent((prev) => ({ ...prev, title: e.target.value }))}
-            placeholder="Event Title"
-            className="mb-2"
-            required
-          />
-          <Textarea
-            name="description"
-            value={newEvent.description}
-            onChange={(e) => setNewEvent((prev) => ({ ...prev, description: e.target.value }))}
-            placeholder="Event Description"
-            className="mb-2"
-            required
-          />
-          <Input
-            type="date"
-            name="date"
-            value={newEvent.date}
-            onChange={(e) => setNewEvent((prev) => ({ ...prev, date: e.target.value }))}
-            placeholder="Event Date"
-            className="mb-2"
-            required
-          />
-          <Input
-            name="time"
-            value={newEvent.time}
-            onChange={(e) => setNewEvent((prev) => ({ ...prev, time: e.target.value }))}
-            placeholder="Event Time (e.g., 10:00 AM)"
-            className="mb-2"
-            required
-          />
-          <Input
-            name="category"
-            value={newEvent.category}
-            onChange={(e) => setNewEvent((prev) => ({ ...prev, category: e.target.value }))}
-            placeholder="Event Category"
-            className="mb-2"
-            required
-          />
-          <Button type="submit">Create Event</Button>
-        </form>
-      </div>
-
-      {/* News Creation Form */}
-      <div className="mb-8 p-4 border rounded">
-        <h3 className="text-xl font-semibold mb-4">Create New News</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            try {
-              const newsData = insertNewsSchema.parse(newNews);
-              createNewsMutation.mutate(newsData);
-            } catch (error) {
-              console.error("News validation failed:", error);
-              addMessage("News validation failed", "error");
-            }
-          }}
-        >
-          <Input
-            name="title"
-            value={newNews.title}
-            onChange={(e) => setNewNews((prev) => ({ ...prev, title: e.target.value }))}
-            placeholder="News Title"
-            className="mb-2"
-            required
-          />
-          <Textarea
-            name="content"
-            value={newNews.content}
-            onChange={(e) => setNewNews((prev) => ({ ...prev, content: e.target.value }))}
-            placeholder="News Content"
-            className="mb-2"
-            required
-          />
-          <Input
-            name="type"
-            value={newNews.type}
-            onChange={(e) => setNewNews((prev) => ({ ...prev, type: e.target.value }))}
-            placeholder="News Type"
-            className="mb-2"
-            required
-          />
-          <Button type="submit">Create News</Button>
-        </form>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 }

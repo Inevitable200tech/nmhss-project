@@ -2,8 +2,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Eye, Zap, Heart } from "lucide-react";
 import type { Section } from "@shared/schema";
 
-export default function AboutSection() {
-  const { data: section, isLoading } = useQuery<Section>({
+type ClientSection = {
+  name: string;
+  title: string;
+  subtitle?: string;
+  paragraphs?: string[];
+  images?: string[];
+  stats?: { label: string; value: string; description?: string }[];
+  profiles?: { name: string; role: string; description: string; image?: string }[];
+};
+
+export default function AboutSection({ section: propSection }: { section?: ClientSection }) {
+  const { data: fetchedSection, isLoading } = useQuery<Section>({
     queryKey: ["/api/sections/about"],
     queryFn: async () => {
       const res = await fetch("/api/sections?name=about");
@@ -11,21 +21,32 @@ export default function AboutSection() {
       const sections = await res.json();
       return sections[0]; // Assuming unique name
     },
+    enabled: !propSection, // Only fetch if no prop is provided
   });
 
-  if (isLoading) return <div>Loading...</div>;
+  const section: ClientSection = propSection || {
+    name: fetchedSection?.name || "about",
+    title: fetchedSection?.title || "",
+    subtitle: fetchedSection?.subtitle || "",
+    paragraphs: fetchedSection?.paragraphs || [],
+    images: fetchedSection?.images || [],
+    stats: fetchedSection?.stats || [],
+    profiles: fetchedSection?.profiles || [],
+  };
+
+  if (isLoading && !propSection) return <div>Loading...</div>;
 
   const fallbackImages = [
     "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
     "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
   ];
 
-  const images = section?.images && section.images.length > 0 ? section.images.slice(0, 2) : fallbackImages;
-  const paragraphs = section?.paragraphs && section.paragraphs.length > 0 ? section.paragraphs : [
+  const images = section.images && section.images.length > 0 ? section.images.slice(0, 2) : fallbackImages;
+  const paragraphs = section.paragraphs && section.paragraphs.length > 0 ? section.paragraphs : [
     "Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.",
     "As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.",
   ];
-  const stats = section?.stats && section.stats.length > 0 ? section.stats : [
+  const stats = section.stats && section.stats.length > 0 ? section.stats : [
     { label: "Classrooms", value: "30", description: "Well-equipped learning spaces" },
     { label: "Library Books", value: "2.5K", description: "Extensive collection of resources" },
     { label: "Computers", value: "25", description: "Modern computer laboratory" },
@@ -42,7 +63,7 @@ export default function AboutSection() {
             data-aos="fade-up"
             data-testid="about-title"
           >
-            {section?.title || "About Our School"}
+            {section.title || "About Our School"}
           </h2>
           <p
             className="text-xl text-muted-foreground max-w-2xl mx-auto"
@@ -50,7 +71,7 @@ export default function AboutSection() {
             data-aos-delay="200"
             data-testid="about-subtitle"
           >
-            {section?.subtitle || "Building futures through quality education and holistic development since 1946"}
+            {section.subtitle || "Building futures through quality education and holistic development since 1946"}
           </p>
         </div>
 
