@@ -1,5 +1,5 @@
 import { z } from "zod";
-import mongoose, { Schema, model, Document, Model } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface User extends Document {
   username: string;
@@ -26,6 +26,35 @@ export interface Event extends Document {
 }
 
 export interface News extends Document {
+  title: string;
+  content: string;
+  type: string;
+  createdAt: Date;
+}
+
+export interface Section extends Document {
+  name: string;
+  title: string;
+  subtitle?: string;
+  paragraphs?: string[];
+  images?: string[];
+  stats?: { label: string; value: string; description?: string }[];
+  profiles?: { name: string; role: string; description: string; image?: string }[];
+}
+
+// Frontend-specific types (plain objects without Mongoose Document properties)
+export interface ClientEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: Date;
+  time: string;
+  category: string;
+  createdAt: Date;
+}
+
+export interface ClientNews {
+  id: string;
   title: string;
   content: string;
   type: string;
@@ -63,11 +92,15 @@ export const newsSchema = new Schema<News>({
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: false });
 
-// Prevent model overwrite
-export const UserModel: Model<User> = mongoose.models.User || model<User>("User", userSchema);
-export const ContactMessageModel: Model<ContactMessage> = mongoose.models.ContactMessage || model<ContactMessage>("ContactMessage", contactMessageSchema);
-export const EventModel: Model<Event> = mongoose.models.Event || model<Event>("Event", eventSchema);
-export const NewsModel: Model<News> = mongoose.models.News || model<News>("News", newsSchema);
+export const sectionSchema = new Schema<Section>({
+  name: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  subtitle: { type: String },
+  paragraphs: [{ type: String }],
+  images: [{ type: String }],
+  stats: [{ label: String, value: String, description: { type: String, required: false } }],
+  profiles: [{ name: String, role: String, description: String, image: { type: String, required: false } }],
+}, { timestamps: false });
 
 export const insertUserSchema = z.object({
   username: z.string(),
@@ -97,7 +130,18 @@ export const insertNewsSchema = z.object({
   type: z.string(),
 });
 
+export const insertSectionSchema = z.object({
+  name: z.string(),
+  title: z.string(),
+  subtitle: z.string().optional(),
+  paragraphs: z.array(z.string()).optional(),
+  images: z.array(z.string()).optional(),
+  stats: z.array(z.object({ label: z.string(), value: z.string(), description: z.string().optional() })).optional(),
+  profiles: z.array(z.object({ name: z.string(), role: z.string(), description: z.string(), image: z.string().optional() })).optional(),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type InsertNews = z.infer<typeof insertNewsSchema>;
+export type InsertSection = z.infer<typeof insertSectionSchema>;

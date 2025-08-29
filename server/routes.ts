@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertContactMessageSchema, insertEventSchema, insertNewsSchema } from "@shared/schema";
+import { insertContactMessageSchema, insertEventSchema, insertNewsSchema, insertSectionSchema } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 
@@ -32,6 +32,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } else {
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
+  });
+
+  // Admin token verification route
+  app.get("/api/admin/verify", requireAuth, (req, res) => {
+    res.json({ success: true, message: "Token is valid" });
   });
 
   // Contact form submission
@@ -112,10 +117,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update section (admin only)
   app.put("/api/sections/:id", requireAuth, async (req, res) => {
     try {
-      const updated = await storage.updateSection(req.params.id, req.body);
+      const sectionData = insertSectionSchema.parse(req.body);
+      const updated = await storage.updateSection(req.params.id, sectionData);
+      if (!updated) return res.status(404).json({ error: "Section not found" });
       res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Failed to update section" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update section" });
+      }
     }
   });
 

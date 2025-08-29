@@ -1,21 +1,42 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Clock, FlaskConical, Dumbbell, Music, Users } from "lucide-react";
-import type { Event, News } from "@shared/schema";
+import type { ClientEvent, ClientNews } from "@shared/schema";
 
 export default function EventsSection() {
   const [currentMonth, setCurrentMonth] = useState("January 2024");
 
-  const { data: events = [], isLoading: eventsLoading } = useQuery<Event[]>({
+  const { data: events = [], isLoading: eventsLoading } = useQuery<ClientEvent[]>({
     queryKey: ["/api/events"],
+    queryFn: async () => {
+      const res = await fetch("/api/events");
+      if (!res.ok) throw new Error("Failed to fetch events");
+      const data = await res.json();
+      return data.map((event: any) => ({
+        ...event,
+        date: new Date(event.date),
+        createdAt: new Date(event.createdAt),
+      }));
+    },
   });
 
-  const { data: news = [], isLoading: newsLoading } = useQuery<News[]>({
+  const { data: news = [], isLoading: newsLoading } = useQuery<ClientNews[]>({
     queryKey: ["/api/news"],
+    queryFn: async () => {
+      const res = await fetch("/api/news");
+      if (!res.ok) throw new Error("Failed to fetch news");
+      const data = await res.json();
+      return data.map((item: any) => ({
+        ...item,
+        createdAt: new Date(item.createdAt),
+      }));
+    },
   });
 
-  // Mock events for demonstration
-  const mockEvents = [
+  if (eventsLoading || newsLoading) return <div>Loading...</div>;
+
+  // Mock data for fallbacks
+  const mockEvents: ClientEvent[] = [
     {
       id: "1",
       title: "Annual Science Exhibition",
@@ -23,6 +44,7 @@ export default function EventsSection() {
       date: new Date("2024-01-15"),
       time: "9:00 AM - 3:00 PM",
       category: "academic",
+      createdAt: new Date("2024-01-01"),
     },
     {
       id: "2",
@@ -31,6 +53,7 @@ export default function EventsSection() {
       date: new Date("2024-01-22"),
       time: "10:00 AM - 2:00 PM",
       category: "cultural",
+      createdAt: new Date("2024-01-01"),
     },
     {
       id: "3",
@@ -39,11 +62,11 @@ export default function EventsSection() {
       date: new Date("2024-02-05"),
       time: "8:00 AM - 4:00 PM",
       category: "sports",
+      createdAt: new Date("2024-01-01"),
     },
   ];
 
-  // Mock news for demonstration
-  const mockNews = [
+  const mockNews: ClientNews[] = [
     {
       id: "1",
       title: "Admission Open for Academic Year 2024-25",
@@ -71,21 +94,21 @@ export default function EventsSection() {
   const displayNews = news.length > 0 ? news : mockNews;
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    }).split(' ');
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }).split(" ");
   };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'academic':
+      case "academic":
         return <FlaskConical className="w-6 h-6 text-primary-foreground" />;
-      case 'sports':
+      case "sports":
         return <Dumbbell className="w-6 h-6 text-white" />;
-      case 'cultural':
+      case "cultural":
         return <Music className="w-6 h-6 text-white" />;
-      case 'community':
+      case "community":
         return <Users className="w-6 h-6 text-primary-foreground" />;
       default:
         return <FlaskConical className="w-6 h-6 text-primary-foreground" />;
@@ -94,29 +117,29 @@ export default function EventsSection() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'academic':
-        return 'border-primary';
-      case 'sports':
-        return 'border-secondary';
-      case 'cultural':
-        return 'border-accent';
-      case 'community':
-        return 'border-primary';
+      case "academic":
+        return "border-primary bg-primary";
+      case "sports":
+        return "border-secondary bg-secondary";
+      case "cultural":
+        return "border-accent bg-accent";
+      case "community":
+        return "border-primary bg-primary";
       default:
-        return 'border-primary';
+        return "border-primary bg-primary";
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'announcement':
-        return 'bg-primary text-primary-foreground';
-      case 'news':
-        return 'bg-secondary text-white';
-      case 'update':
-        return 'bg-accent text-white';
+      case "announcement":
+        return "bg-primary text-primary-foreground";
+      case "news":
+        return "bg-secondary text-white";
+      case "update":
+        return "bg-accent text-white";
       default:
-        return 'bg-primary text-primary-foreground';
+        return "bg-primary text-primary-foreground";
     }
   };
 
@@ -125,46 +148,63 @@ export default function EventsSection() {
       <div className="container mx-auto px-4 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-aos="fade-up" data-testid="events-title">
+          <h2
+            className="text-4xl md:text-5xl font-bold text-foreground mb-4"
+            data-aos="fade-up"
+            data-testid="events-title"
+          >
             Upcoming Events
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200" data-testid="events-subtitle">
+          <p
+            className="text-xl text-muted-foreground max-w-2xl mx-auto"
+            data-aos="fade-up"
+            data-aos-delay="200"
+            data-testid="events-subtitle"
+          >
             Stay updated with our academic calendar and exciting school activities
           </p>
         </div>
-        
+
         {/* Current Month Events */}
-        <div className="bg-card p-8 rounded-2xl shadow-lg border border-border mb-12" data-aos="slide-up" data-testid="events-calendar">
+        <div
+          className="bg-card p-8 rounded-2xl shadow-lg border border-border mb-12"
+          data-aos="slide-up"
+          data-testid="events-calendar"
+        >
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-bold text-foreground" data-testid="current-month">
               {currentMonth}
             </h3>
             <div className="flex space-x-2">
-              <button 
+              <button
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
                 data-testid="previous-month"
+                onClick={() => setCurrentMonth("December 2023")} // Placeholder logic
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button 
+              <button
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
                 data-testid="next-month"
+                onClick={() => setCurrentMonth("February 2024")} // Placeholder logic
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             {displayEvents.map((event, index) => {
-              const [month, day] = formatDate(event.date);
+              const [month, day] = formatDate(new Date(event.date));
               return (
-                <div 
-                  key={event.id || index} 
+                <div
+                  key={event.id || index}
                   className={`flex items-center p-4 bg-background rounded-lg border-l-4 ${getCategoryColor(event.category)} hover-lift`}
                   data-testid={`event-item-${index}`}
                 >
-                  <div className={`flex-shrink-0 w-16 h-16 ${event.category === 'academic' ? 'bg-primary' : event.category === 'sports' ? 'bg-secondary' : 'bg-accent'} rounded-lg flex flex-col items-center justify-center text-primary-foreground mr-4`}>
+                  <div
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-primary-foreground mr-4 ${getCategoryColor(event.category)}`}
+                  >
                     <span className="text-sm font-semibold">{month.toUpperCase()}</span>
                     <span className="text-lg font-bold">{day}</span>
                   </div>
@@ -181,63 +221,80 @@ export default function EventsSection() {
             })}
           </div>
         </div>
-        
+
         {/* Event Categories */}
         <div className="grid md:grid-cols-4 gap-6 mb-12" data-aos="fade-up" data-testid="event-categories">
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="academic-category">
+          <div
+            className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift"
+            data-testid="academic-category"
+          >
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-              <FlaskConical className="w-6 h-6 text-primary-foreground" />
+              {getCategoryIcon("academic")}
             </div>
             <h4 className="font-semibold text-foreground mb-2">Academic</h4>
             <p className="text-sm text-muted-foreground">Exhibitions, competitions, assessments</p>
           </div>
-          
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="sports-category">
+          <div
+            className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift"
+            data-testid="sports-category"
+          >
             <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
-              <Dumbbell className="w-6 h-6 text-white" />
+              {getCategoryIcon("sports")}
             </div>
             <h4 className="font-semibold text-foreground mb-2">Sports</h4>
             <p className="text-sm text-muted-foreground">Athletic meets, tournaments, fitness</p>
           </div>
-          
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="cultural-category">
+          <div
+            className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift"
+            data-testid="cultural-category"
+          >
             <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mx-auto mb-4">
-              <Music className="w-6 h-6 text-white" />
+              {getCategoryIcon("cultural")}
             </div>
             <h4 className="font-semibold text-foreground mb-2">Cultural</h4>
             <p className="text-sm text-muted-foreground">Arts, music, dance, drama</p>
           </div>
-          
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift" data-testid="community-category">
+          <div
+            className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift"
+            data-testid="community-category"
+          >
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-              <Users className="w-6 h-6 text-primary-foreground" />
+              {getCategoryIcon("community")}
             </div>
             <h4 className="font-semibold text-foreground mb-2">Community</h4>
             <p className="text-sm text-muted-foreground">Parent meetings, social activities</p>
           </div>
         </div>
-        
+
         {/* News & Announcements */}
-        <div className="bg-muted p-8 md:p-12 rounded-2xl" data-aos="fade-up" data-testid="news-section">
-          <h3 className="text-3xl font-bold text-foreground mb-8 text-center">Latest News & Announcements</h3>
+        <div
+          className="bg-muted p-8 md:p-12 rounded-2xl"
+          data-aos="fade-up"
+          data-testid="news-section"
+        >
+          <h3 className="text-3xl font-bold text-foreground mb-8 text-center">
+            Latest News & Announcements
+          </h3>
           <div className="space-y-6">
             {displayNews.map((item, index) => (
-              <div 
-                key={item.id || index} 
+              <div
+                key={item.id || index}
                 className="bg-card p-6 rounded-xl shadow-lg border border-border hover-lift"
                 data-testid={`news-item-${index}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-grow">
                     <div className="flex items-center mb-2">
-                      <span className={`${getTypeColor(item.type)} text-xs font-semibold px-2 py-1 rounded mr-3`}>
+                      <span
+                        className={`${getTypeColor(item.type)} text-xs font-semibold px-2 py-1 rounded mr-3`}
+                      >
                         {item.type.toUpperCase()}
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {item.createdAt.toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
+                        {new Date(item.createdAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
                         })}
                       </span>
                     </div>
