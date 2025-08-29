@@ -1,68 +1,103 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import mongoose, { Schema, model, Document, Model } from "mongoose";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+export interface User extends Document {
+  username: string;
+  password: string;
+}
+
+export interface ContactMessage extends Document {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  createdAt: Date;
+}
+
+export interface Event extends Document {
+  title: string;
+  description: string;
+  date: Date;
+  time: string;
+  category: string;
+  createdAt: Date;
+}
+
+export interface News extends Document {
+  title: string;
+  content: string;
+  type: string;
+  createdAt: Date;
+}
+
+export const userSchema = new Schema<User>({
+  username: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+}, { timestamps: false });
+
+export const contactMessageSchema = new Schema<ContactMessage>({
+  firstName: { type: String, required: true },
+  lastName: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: { type: String },
+  subject: { type: String, required: true },
+  message: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+}, { timestamps: false });
+
+export const eventSchema = new Schema<Event>({
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  date: { type: Date, required: true },
+  time: { type: String, required: true },
+  category: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+}, { timestamps: false });
+
+export const newsSchema = new Schema<News>({
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  type: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+}, { timestamps: false });
+
+// Prevent model overwrite
+export const UserModel: Model<User> = mongoose.models.User || model<User>("User", userSchema);
+export const ContactMessageModel: Model<ContactMessage> = mongoose.models.ContactMessage || model<ContactMessage>("ContactMessage", contactMessageSchema);
+export const EventModel: Model<Event> = mongoose.models.Event || model<Event>("Event", eventSchema);
+export const NewsModel: Model<News> = mongoose.models.News || model<News>("News", newsSchema);
+
+export const insertUserSchema = z.object({
+  username: z.string(),
+  password: z.string(),
 });
 
-export const contactMessages = pgTable("contact_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  email: text("email").notNull(),
-  phone: text("phone"),
-  subject: text("subject").notNull(),
-  message: text("message").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+export const insertContactMessageSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  subject: z.string(),
+  message: z.string(),
 });
 
-export const events = pgTable("events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  date: timestamp("date").notNull(),
-  time: text("time").notNull(),
-  category: text("category").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+export const insertEventSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  date: z.date(),
+  time: z.string(),
+  category: z.string(),
 });
 
-export const news = pgTable("news", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  content: text("content").notNull(),
-  type: text("type").notNull(), // 'announcement', 'news', 'update'
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
-
-export const insertContactMessageSchema = createInsertSchema(contactMessages).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertEventSchema = createInsertSchema(events).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertNewsSchema = createInsertSchema(news).omit({
-  id: true,
-  createdAt: true,
+export const insertNewsSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  type: z.string(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
 export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
-export type ContactMessage = typeof contactMessages.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
-export type Event = typeof events.$inferSelect;
 export type InsertNews = z.infer<typeof insertNewsSchema>;
-export type News = typeof news.$inferSelect;
