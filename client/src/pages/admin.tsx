@@ -74,7 +74,7 @@ export default function AdminPage() {
               placeholder="Username"
               className="mb-4 w-full p-2 border rounded"
               required
-              style={{ color: "black", backgroundColor: "#0000" }}
+              style={{ color: "#fff", backgroundColor: "#0000" }}
 
             />
             <input
@@ -87,7 +87,7 @@ export default function AdminPage() {
               placeholder="Password"
               className="mb-4 w-full p-2 border rounded"
               required
-              style={{ color: "black", backgroundColor: "#0000" }}
+              style={{ color: "#fff", backgroundColor: "#0000" }}
             />
             {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
             <Button type="submit" className="w-full">
