@@ -9,19 +9,30 @@ import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import AdminPage from "@/pages/admin"; // Import your admin page
-import AboutAdminPage from "@/pages/about-admin"; // Add import at the top
-import AdminEvents from "@/pages/admin-events"; // Import AdminEvents component
-import AdminNews from "@/pages/admin-news"; // Import AdminNews component
+import AdminPage from "@/pages/admin";
+import AboutAdminPage from "@/pages/about-admin";
+import AdminEvents from "@/pages/admin-events";
+import AdminNews from "@/pages/admin-news";
+
+// Use named import for ProtectedRoute
+import { ProtectedRoute } from "@/components/ProtectedRoute"; // Corrected import
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-        <Route path="/admin" component={AdminPage} /> {/* Add this line */}
-              <Route path="/about-admin" component={AboutAdminPage} /> {/* NEW ROUTE */}
-              <Route path="/admin-events" component={AdminEvents} /> {/* NEW ROUTE */}
-              <Route path="/admin-news" component={AdminNews} /> {/* NEW ROUTE */}
+      <Route path="/admin" component={AdminPage} />
+
+      {/* Protected admin routes */}
+      <ProtectedRoute>
+        <div>
+          <Route path="/about-admin" component={AboutAdminPage} />
+          <Route path="/admin-events" component={AdminEvents} />
+          <Route path="/admin-news" component={AdminNews} />
+        </div>
+      </ProtectedRoute>
+
+      {/* Fallback route for 404 */}
       <Route component={NotFound} />
     </Switch>
   );
