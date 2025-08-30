@@ -10,12 +10,14 @@ import NotFound from "@/pages/not-found";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import AdminPage from "@/pages/admin"; // Import your admin page
+import AboutAdminPage from "@/pages/about-admin"; // Add import at the top
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
         <Route path="/admin" component={AdminPage} /> {/* Add this line */}
+              <Route path="/about-admin" component={AboutAdminPage} /> {/* NEW ROUTE */}
       <Route component={NotFound} />
     </Switch>
   );
