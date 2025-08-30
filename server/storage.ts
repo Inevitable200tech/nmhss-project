@@ -1,12 +1,34 @@
 import mongoose, { Schema, model, Document, Model } from "mongoose";
-import { type User, type InsertUser, type ContactMessage, type InsertContactMessage, type Event, type InsertEvent, type News, type InsertNews, type Section, type InsertSection, userSchema, contactMessageSchema, eventSchema, newsSchema, sectionSchema } from "@shared/schema";
+import {
+  type User,
+  type InsertUser,
+  type ContactMessage,
+  type InsertContactMessage,
+  type Event,
+  type InsertEvent,
+  type News,
+  type InsertNews,
+  type Section,
+  type InsertSection,
+  userSchema,
+  contactMessageSchema,
+  eventSchema,
+  newsSchema,
+  sectionSchema,
+} from "@shared/schema";
 
 // Define models
-const UserModel: Model<User> = mongoose.models.User || model<User>("User", userSchema);
-const ContactMessageModel: Model<ContactMessage> = mongoose.models.ContactMessage || model<ContactMessage>("ContactMessage", contactMessageSchema);
-const EventModel: Model<Event> = mongoose.models.Event || model<Event>("Event", eventSchema);
-const NewsModel: Model<News> = mongoose.models.News || model<News>("News", newsSchema);
-const SectionModel: Model<Section> = mongoose.models.Section || model<Section>("Section", sectionSchema);
+const UserModel: Model<User> =
+  mongoose.models.User || model<User>("User", userSchema);
+const ContactMessageModel: Model<ContactMessage> =
+  mongoose.models.ContactMessage ||
+  model<ContactMessage>("ContactMessage", contactMessageSchema);
+const EventModel: Model<Event> =
+  mongoose.models.Event || model<Event>("Event", eventSchema);
+const NewsModel: Model<News> =
+  mongoose.models.News || model<News>("News", newsSchema);
+const SectionModel: Model<Section> =
+  mongoose.models.Section || model<Section>("Section", sectionSchema);
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -15,8 +37,12 @@ export interface IStorage {
   createContactMessage(message: InsertContactMessage): Promise<ContactMessage>;
   getEvents(): Promise<Event[]>;
   createEvent(event: InsertEvent): Promise<Event>;
+  deleteEvent(id: string): Promise<Event | null>;
+  updateEvent(id: string, data: InsertEvent): Promise<Event | null>;
   getNews(): Promise<News[]>;
   createNews(news: InsertNews): Promise<News>;
+  updateNews(id: string, data: InsertNews): Promise<News | null>;
+  deleteNews(id: string): Promise<News | null>;
   getSections(name?: string): Promise<Section[]>;
   createSection(section: InsertSection): Promise<Section>;
   updateSection(id: string, data: InsertSection): Promise<Section | null>;
@@ -37,7 +63,11 @@ export class MongoStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const doc = await UserModel.create(insertUser);
-    const plainDoc = doc.toObject() as { _id: mongoose.Types.ObjectId; username: string; password: string };
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      username: string;
+      password: string;
+    };
     return {
       id: plainDoc._id.toString(),
       username: plainDoc.username,
@@ -45,7 +75,9 @@ export class MongoStorage implements IStorage {
     } as User;
   }
 
-  async createContactMessage(insertMessage: InsertContactMessage): Promise<ContactMessage> {
+  async createContactMessage(
+    insertMessage: InsertContactMessage
+  ): Promise<ContactMessage> {
     const doc = await ContactMessageModel.create({
       ...insertMessage,
       phone: insertMessage.phone ?? undefined,
@@ -74,7 +106,7 @@ export class MongoStorage implements IStorage {
 
   async getEvents(): Promise<Event[]> {
     const docs = await EventModel.find().sort({ date: 1 }).lean().exec();
-    return docs.map(doc => ({ ...doc, id: doc._id.toString() })) as Event[];
+    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as Event[];
   }
 
   async createEvent(insertEvent: InsertEvent): Promise<Event> {
@@ -99,10 +131,41 @@ export class MongoStorage implements IStorage {
     } as Event;
   }
 
-  async getNews(): Promise<News[]> {
-    const docs = await NewsModel.find().sort({ createdAt: -1 }).lean().exec();
-    return docs.map(doc => ({ ...doc, id: doc._id.toString() })) as News[];
+  async deleteEvent(id: string): Promise<Event | null> {
+    const doc = await EventModel.findByIdAndDelete(id).lean().exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as Event;
   }
+
+  async updateEvent(id: string, data: InsertEvent): Promise<Event | null> {
+    const doc = await EventModel.findByIdAndUpdate(id, data, {
+      new: true,
+    })
+      .lean()
+      .exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as Event;
+  }
+
+  async getNews(): Promise<News[]> {
+  const now = new Date();
+  const docs = await NewsModel.find({
+    $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }],
+  })
+    .sort({ createdAt: -1 })
+    .lean()
+    .exec();
+
+  return docs.map(
+    (doc) =>
+      ({
+        ...doc,
+        id: doc._id.toString(),
+      }) as News
+  );
+}
+
+
 
   async createNews(insertNews: InsertNews): Promise<News> {
     const doc = await NewsModel.create(insertNews);
@@ -112,6 +175,7 @@ export class MongoStorage implements IStorage {
       content: string;
       type: string;
       createdAt: Date;
+      expiresAt?: Date | null;
     };
     return {
       id: plainDoc._id.toString(),
@@ -119,13 +183,33 @@ export class MongoStorage implements IStorage {
       content: plainDoc.content,
       type: plainDoc.type,
       createdAt: plainDoc.createdAt,
+      expiresAt: plainDoc.expiresAt ?? null,
     } as News;
+  }
+
+  async updateNews(id: string, data: InsertNews): Promise<News | null> {
+    const doc = await NewsModel.findByIdAndUpdate(id, data, {
+      new: true,
+    })
+      .lean()
+      .exec();
+    if (!doc) return null;
+    return {
+      ...doc,
+      id: doc._id.toString(),
+    } as News;
+  }
+
+  async deleteNews(id: string): Promise<News | null> {
+    const doc = await NewsModel.findByIdAndDelete(id).lean().exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as News;
   }
 
   async getSections(name?: string): Promise<Section[]> {
     const query = name ? { name } : {};
     const docs = await SectionModel.find(query).lean().exec();
-    return docs.map(doc => ({ ...doc, id: doc._id.toString() })) as Section[];
+    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as Section[];
   }
 
   async createSection(insertSection: InsertSection): Promise<Section> {
@@ -138,7 +222,12 @@ export class MongoStorage implements IStorage {
       paragraphs?: string[];
       images?: string[];
       stats?: { label: string; value: string; description?: string }[];
-      profiles?: { name: string; role: string; description: string; image?: string }[];
+      profiles?: {
+        name: string;
+        role: string;
+        description: string;
+        image?: string;
+      }[];
     };
     return {
       id: plainDoc._id.toString(),
@@ -152,23 +241,19 @@ export class MongoStorage implements IStorage {
     } as Section;
   }
 
-  async updateSection(id: string, data: InsertSection): Promise<Section | null> {
-    const doc = await SectionModel.findByIdAndUpdate(id, data, { new: true }).lean().exec();
+  async updateSection(
+    id: string,
+    data: InsertSection
+  ): Promise<Section | null> {
+    const doc = await SectionModel.findByIdAndUpdate(id, data, {
+      new: true,
+    })
+      .lean()
+      .exec();
     if (!doc) return null;
     return { ...doc, id: doc._id.toString() } as Section;
   }
-  async deleteEvent(id: string): Promise<Event | null> {
-    const doc = await EventModel.findByIdAndDelete(id).lean().exec();
-    if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as Event;
-  }
-
-  async updateEvent(id: string, data: InsertEvent): Promise<Event | null> {
-    const doc = await EventModel.findByIdAndUpdate(id, data, { new: true }).lean().exec();
-    if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as Event;
-  }
-
+  
 }
 
 export const storage = new MongoStorage();

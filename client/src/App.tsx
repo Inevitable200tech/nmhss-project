@@ -12,6 +12,7 @@ import "aos/dist/aos.css";
 import AdminPage from "@/pages/admin"; // Import your admin page
 import AboutAdminPage from "@/pages/about-admin"; // Add import at the top
 import AdminEvents from "@/pages/admin-events"; // Import AdminEvents component
+import AdminNews from "@/pages/admin-news"; // Import AdminNews component
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
         <Route path="/admin" component={AdminPage} /> {/* Add this line */}
               <Route path="/about-admin" component={AboutAdminPage} /> {/* NEW ROUTE */}
               <Route path="/admin-events" component={AdminEvents} /> {/* NEW ROUTE */}
+              <Route path="/admin-news" component={AdminNews} /> {/* NEW ROUTE */}
       <Route component={NotFound} />
     </Switch>
   );

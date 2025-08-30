@@ -34,6 +34,7 @@ export interface News extends Document {
   content: string;
   type: string;
   createdAt: Date;
+  expiresAt?: Date | null; // ✅ optional expiry
 }
 
 export interface Section extends Document {
@@ -64,6 +65,7 @@ export interface ClientNews {
   content: string;
   type: string;
   createdAt: Date;
+  expiresAt?: Date | null; // ✅ frontend expiry
 }
 
 export const userSchema = new Schema<User>({
@@ -99,6 +101,7 @@ export const newsSchema = new Schema<News>({
   content: { type: String, required: true },
   type: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date, required: false }, // ✅ optional expiry
 }, { timestamps: false });
 
 export const sectionSchema = new Schema<Section>({
@@ -137,7 +140,14 @@ export const insertEventSchema = z.object({
 export const insertNewsSchema = z.object({
   title: z.string(),
   content: z.string(),
-  type: z.string(),
+  type: z.enum(["announcement", "news", "update"]), // restrict allowed values
+  expiresAt: z.preprocess(
+    (val) => {
+      if (!val || val === "") return null; // empty → null
+      return new Date(val as string);
+    },
+    z.date().nullable()
+  ).optional(),
 });
 
 export const insertSectionSchema = z.object({

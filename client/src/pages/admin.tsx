@@ -103,7 +103,14 @@ export default function AdminPage() {
           <li>
             <a href="/admin-events">
               <Button variant="outline" className="w-full text-left">
-                Manage Events & News
+                Manage Events
+              </Button>
+            </a>
+          </li>
+          <li>
+            <a href="/admin-news">
+              <Button variant="outline" className="w-full text-left">
+                Manage News
               </Button>
             </a>
           </li>

@@ -1,7 +1,12 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertContactMessageSchema, insertEventSchema, insertNewsSchema, insertSectionSchema } from "@shared/schema";
+import {
+  insertContactMessageSchema,
+  insertEventSchema,
+  insertNewsSchema,
+  insertSectionSchema,
+} from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 
@@ -64,6 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // Get news
   app.get("/api/news", async (req, res) => {
     try {
@@ -73,6 +79,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch news" });
     }
   });
+
+
 
   // Create event (admin only)
   app.post("/api/events", async (req, res) => {
@@ -115,11 +123,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   // Create news (admin only)
-  app.post("/api/news", requireAuth, async (req, res) => {
+  app.post("/api/news", async (req, res) => {
     try {
-      const newsData = insertNewsSchema.parse(req.body);
+      const newsData = insertNewsSchema
+        .extend({
+          expiresAt: z
+            .union([z.string(), z.null()])
+            .optional()
+            .transform((val) => (val ? new Date(val) : null))
+            .refine(
+              (date) => !date || date > new Date(),
+              { message: "Expiry date must be in the future" }
+            ),
+        })
+        .parse(req.body);
+
       const news = await storage.createNews(newsData);
       res.json({ success: true, news });
     } catch (error) {
@@ -128,6 +147,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: "Failed to create news" });
       }
+    }
+  });
+
+
+  // Update news (admin only)
+  app.put("/api/news/:id", async (req, res) => {
+    try {
+      const newsData = insertNewsSchema
+        .extend({
+          expiresAt: z
+            .union([z.string(), z.null()])
+            .optional()
+            .transform((val) => (val ? new Date(val) : null))
+            .refine(
+              (date) => !date || date > new Date(),
+              { message: "Expiry date must be in the future" }
+            ),
+        })
+        .parse(req.body);
+
+      const updated = await storage.updateNews(req.params.id, newsData);
+      if (!updated) return res.status(404).json({ error: "News not found" });
+      res.json({ success: true, news: updated });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update news" });
+      }
+    }
+  });
+
+  // Delete news (admin only)
+  app.delete("/api/news/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteNews(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "News not found" });
+      res.json({ success: true, id: req.params.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete news" });
     }
   });
 
@@ -147,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create section (admin only)
-  app.post("/api/sections", requireAuth, async (req, res) => {
+  app.post("/api/sections", async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const section = await storage.createSection(sectionData);
@@ -162,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update section (admin only)
-  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+  app.put("/api/sections/:id", async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const updated = await storage.updateSection(req.params.id, sectionData);
