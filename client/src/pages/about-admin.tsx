@@ -13,9 +13,11 @@ export default function AboutAdminPage() {
   const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
-  const [messages, setMessages] = useState<
-    { id: number; text: string; type: "success" | "error" }[]
-  >([]);
+  const [messages, setMessages] = useState<{
+    id: number;
+    text: string;
+    type: "success" | "error";
+  }[]>([]);
   const [aboutData, setAboutData] = useState<any>({
     name: "about",
     title: "",
@@ -33,6 +35,30 @@ export default function AboutAdminPage() {
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [sectionId, setSectionId] = useState("");
   const queryClient = useQueryClient();
+
+  // --- Fallback Values ---
+  const fallbackImages = [
+    "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
+    "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
+  ];
+  const fallbackParagraphs = [
+    "Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.",
+    "As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.",
+  ];
+  const fallbackStats = [
+    { label: "Classrooms", value: "30", description: "Well-equipped learning spaces" },
+    { label: "Library Books", value: "2.5K", description: "Extensive collection of resources" },
+    { label: "Computers", value: "25", description: "Modern computer laboratory" },
+    { label: "Restrooms", value: "40", description: "Separate facilities for all" },
+  ];
+
+  const addMessage = (text: string, type: "success" | "error") => {
+    const id = Date.now();
+    setMessages((prev) => [...prev, { id, text, type }]);
+    setTimeout(() => {
+      setMessages((prev) => prev.filter((msg) => msg.id !== id));
+    }, 5000);
+  };
 
   // --- AUTHENTICATION CHECK ---
   useEffect(() => {
@@ -54,14 +80,7 @@ export default function AboutAdminPage() {
     }
   }, [token]);
 
-  // --- NOTIFICATION HELPER ---
-  const addMessage = (text: string, type: "success" | "error") => {
-    const id = Date.now();
-    setMessages((prev) => [...prev, { id, text, type }]);
-    setTimeout(() => {
-      setMessages((prev) => prev.filter((msg) => msg.id !== id));
-    }, 5000);
-  };
+  
 
   // --- LOGIN HANDLER ---
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -105,16 +124,9 @@ export default function AboutAdminPage() {
           name: "about",
           title: section.title || "",
           subtitle: section.subtitle || "",
-          paragraphs: section.paragraphs || ["", ""],
-          images: section.images || ["", ""],
-          stats:
-            section.stats ||
-            [
-              { label: "", value: "", description: "" },
-              { label: "", value: "", description: "" },
-              { label: "", value: "", description: "" },
-              { label: "", value: "", description: "" },
-            ],
+          paragraphs: section.paragraphs || fallbackParagraphs,
+          images: section.images || fallbackImages,
+          stats: section.stats || fallbackStats,
         });
       }
       return section;
@@ -178,6 +190,19 @@ export default function AboutAdminPage() {
     },
   });
 
+  // --- RESET FORM TO DEFAULT VALUES ---
+  const restoreDefaults = () => {
+    setAboutData({
+      name: "about",
+      title: "About Us",
+      subtitle: "Building futures through quality education and holistic development since 1946",
+      paragraphs: fallbackParagraphs,
+      images: fallbackImages,
+      stats: fallbackStats,
+    });
+    addMessage("Form reset to default values", "success");
+  };
+
   // --- FORM SUBMIT HANDLER ---
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -201,6 +226,7 @@ export default function AboutAdminPage() {
     if (previewData) updateMutation.mutate(previewData);
     else addMessage("No preview data to save", "error");
   };
+
 
   // --- UI RENDERING ---
 
@@ -257,6 +283,7 @@ export default function AboutAdminPage() {
   }
 
   // EDIT MODE
+  // --- UI RENDERING ---
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background flex">
@@ -290,17 +317,20 @@ export default function AboutAdminPage() {
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
+                required
                 placeholder="Title"
                 value={aboutData.title}
                 onChange={(e) => setAboutData({ ...aboutData, title: e.target.value })}
               />
               <Input
+                required
                 placeholder="Subtitle"
                 value={aboutData.subtitle}
                 onChange={(e) => setAboutData({ ...aboutData, subtitle: e.target.value })}
               />
               {aboutData.paragraphs.map((p: string, i: number) => (
                 <Textarea
+                  required
                   key={i}
                   placeholder={`Paragraph ${i + 1}`}
                   value={p}
@@ -313,6 +343,7 @@ export default function AboutAdminPage() {
               ))}
               {aboutData.images.map((img: string, i: number) => (
                 <Input
+                  required
                   key={i}
                   placeholder={`Image URL ${i + 1}`}
                   value={img}
@@ -326,6 +357,7 @@ export default function AboutAdminPage() {
               {aboutData.stats.map((s: any, i: number) => (
                 <div key={i} className="grid grid-cols-3 gap-2">
                   <Input
+                    required
                     placeholder="Label"
                     value={s.label}
                     onChange={(e) => {
@@ -335,6 +367,7 @@ export default function AboutAdminPage() {
                     }}
                   />
                   <Input
+                    required
                     placeholder="Value"
                     value={s.value}
                     onChange={(e) => {
@@ -344,6 +377,7 @@ export default function AboutAdminPage() {
                     }}
                   />
                   <Input
+                    required
                     placeholder="Description"
                     value={s.description}
                     onChange={(e) => {
@@ -358,6 +392,15 @@ export default function AboutAdminPage() {
                 Preview Changes
               </Button>
             </form>
+
+            {/* Restore Defaults Button */}
+            <Button
+              variant="outline"
+              onClick={restoreDefaults}
+              className="mt-4"
+            >
+              Restore Defaults
+            </Button>
           </div>
         </div>
       </div>

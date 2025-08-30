@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Token is valid" });
   });
 
-  // Contact form submission
+  // Public contact form
   app.post("/api/contact", async (req, res) => {
     try {
       const contactData = insertContactMessageSchema.parse(req.body);
@@ -59,31 +59,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get events
+  // Public GET routes
   app.get("/api/events", async (req, res) => {
     try {
       const events = await storage.getEvents();
       res.json(events);
-    } catch (error) {
+    } catch {
       res.status(500).json({ error: "Failed to fetch events" });
     }
   });
 
-
-  // Get news
   app.get("/api/news", async (req, res) => {
     try {
       const news = await storage.getNews();
       res.json(news);
-    } catch (error) {
+    } catch {
       res.status(500).json({ error: "Failed to fetch news" });
     }
   });
 
+  app.get("/api/sections", async (req, res) => {
+    try {
+      const name = req.query.name as string;
+      const sections = await storage.getSections(name);
+      if (name && sections.length === 0) {
+        res.status(404).json({ error: `No section found with name: ${name}` });
+      } else {
+        res.json(sections);
+      }
+    } catch {
+      res.status(500).json({ error: "Failed to fetch sections" });
+    }
+  });
 
+  // -------------------
+  // Admin-only routes
+  // -------------------
 
-  // Create event (admin only)
-  app.post("/api/events", async (req, res) => {
+  // Events
+  app.post("/api/events", requireAuth, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(eventData);
@@ -97,18 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/events/:id", async (req, res) => {
-    try {
-      const deleted = await storage.deleteEvent(req.params.id);
-      if (!deleted) return res.status(404).json({ error: "Event not found" });
-      res.json({ success: true, id: req.params.id });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to delete event" });
-    }
-  });
-
-  // Update event (admin only)
-  app.put("/api/events/:id", async (req, res) => {
+  app.put("/api/events/:id", requireAuth, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const updated = await storage.updateEvent(req.params.id, eventData);
@@ -123,8 +126,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create news (admin only)
-  app.post("/api/news", async (req, res) => {
+  app.delete("/api/events/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteEvent(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Event not found" });
+      res.json({ success: true, id: req.params.id });
+    } catch {
+      res.status(500).json({ error: "Failed to delete event" });
+    }
+  });
+
+  // News
+  app.post("/api/news", requireAuth, async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -132,10 +145,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .union([z.string(), z.null()])
             .optional()
             .transform((val) => (val ? new Date(val) : null))
-            .refine(
-              (date) => !date || date > new Date(),
-              { message: "Expiry date must be in the future" }
-            ),
+            .refine((date) => !date || date > new Date(), {
+              message: "Expiry date must be in the future",
+            }),
         })
         .parse(req.body);
 
@@ -150,9 +162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-  // Update news (admin only)
-  app.put("/api/news/:id", async (req, res) => {
+  app.put("/api/news/:id", requireAuth, async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -160,10 +170,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .union([z.string(), z.null()])
             .optional()
             .transform((val) => (val ? new Date(val) : null))
-            .refine(
-              (date) => !date || date > new Date(),
-              { message: "Expiry date must be in the future" }
-            ),
+            .refine((date) => !date || date > new Date(), {
+              message: "Expiry date must be in the future",
+            }),
         })
         .parse(req.body);
 
@@ -179,34 +188,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete news (admin only)
-  app.delete("/api/news/:id", async (req, res) => {
+  app.delete("/api/news/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteNews(req.params.id);
       if (!deleted) return res.status(404).json({ error: "News not found" });
       res.json({ success: true, id: req.params.id });
-    } catch (error) {
+    } catch {
       res.status(500).json({ error: "Failed to delete news" });
     }
   });
 
-  // Get sections (public)
-  app.get("/api/sections", async (req, res) => {
-    try {
-      const name = req.query.name as string;
-      const sections = await storage.getSections(name);
-      if (name && sections.length === 0) {
-        res.status(404).json({ error: `No section found with name: ${name}` });
-      } else {
-        res.json(sections);
-      }
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch sections" });
-    }
-  });
-
-  // Create section (admin only)
-  app.post("/api/sections", async (req, res) => {
+  // Sections
+  app.post("/api/sections", requireAuth, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const section = await storage.createSection(sectionData);
@@ -220,8 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update section (admin only)
-  app.put("/api/sections/:id", async (req, res) => {
+  app.put("/api/sections/:id", requireAuth, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const updated = await storage.updateSection(req.params.id, sectionData);

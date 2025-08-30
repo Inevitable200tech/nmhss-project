@@ -13,6 +13,7 @@ export default function AdminNews() {
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null); // State for date error
 
   // Helper to show auto-hide message
   const showMessage = (msg: string) => {
@@ -38,7 +39,7 @@ export default function AdminNews() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
         },
         body: JSON.stringify(payload),
       });
@@ -61,7 +62,7 @@ export default function AdminNews() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
         },
         body: JSON.stringify(payload),
       });
@@ -85,7 +86,7 @@ export default function AdminNews() {
       }
       const res = await fetch(`/api/news/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
       });
       if (!res.ok) throw new Error("Failed to delete news");
       return res.json();
@@ -101,8 +102,21 @@ export default function AdminNews() {
     },
   });
 
+  // Submit handler (add or update)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Client-side validation for expiration date
+    const expiryDate = new Date(formData.expiresAt);
+    const currentDate = new Date();
+
+    // Check if the expiry date is in the future
+    if (formData.expiresAt && expiryDate <= currentDate) {
+      setDateError("❌ Expiry date must be in the future.");
+      return; // Prevent form submission
+    } else {
+      setDateError(null); // Clear error if the date is valid
+    }
+
     editingId ? updateNews.mutate({ id: editingId, data: formData }) : createNews.mutate(formData);
   };
 
@@ -169,9 +183,7 @@ export default function AdminNews() {
               <option value="news">News</option>
               <option value="update">Update</option>
             </select>
-            <small className="text-gray-400 text-xs">
-              Choose what kind of news item this is.
-            </small>
+            <small className="text-gray-400 text-xs">Choose what kind of news item this is.</small>
           </div>
 
           <div>
@@ -183,6 +195,7 @@ export default function AdminNews() {
               className="w-full p-2 rounded bg-gray-700 text-white"
             />
             <small className="text-gray-400 text-xs">Leave blank for no expiry</small>
+            {dateError && <p className="text-red-500 text-xs mt-2">{dateError}</p>} {/* Show error */}
           </div>
 
           {/* Buttons */}
@@ -216,13 +229,9 @@ export default function AdminNews() {
             <div className="bg-gray-800 p-4 rounded-lg">
               <h3 className="font-semibold text-lg">{formData.title || "Title Preview"}</h3>
               <p className="text-sm text-gray-300">{formData.content || "Content Preview"}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Type: {formData.type || "Type Preview"}
-              </p>
+              <p className="text-xs text-gray-400 mt-1">Type: {formData.type || "Type Preview"}</p>
               {formData.expiresAt && (
-                <p className="text-xs text-gray-500">
-                  Expires: {new Date(formData.expiresAt).toLocaleDateString()}
-                </p>
+                <p className="text-xs text-gray-500">Expires: {new Date(formData.expiresAt).toLocaleDateString()}</p>
               )}
             </div>
           </div>
@@ -232,51 +241,48 @@ export default function AdminNews() {
       {/* News List */}
       <div className="bg-gray-800 p-5 rounded-lg shadow-lg">
         <h2 className="text-xl font-semibold mb-4">Existing News</h2>
-        <ul className="space-y-4">
-          {news.map((item) => (
-            <li
-              key={item.id}
-              className="p-4 bg-gray-900 rounded-lg flex justify-between items-start hover:bg-gray-700 transition"
-            >
-              <div>
-                <h3 className="font-semibold text-lg">{item.title}</h3>
-                <p className="text-sm text-gray-300">{item.content}</p>
-                <span className="text-xs text-gray-400">Type: {item.type}</span>
-                {item.expiresAt && (
-                  <p className="text-xs text-gray-500">
-                    Expires: {new Date(item.expiresAt).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  title="Edit this news"
-                  onClick={() => {
-                    setEditingId(item.id);
-                    setFormData({
-                      title: item.title,
-                      content: item.content,
-                      type: item.type,
-                      expiresAt: item.expiresAt
-                        ? new Date(item.expiresAt).toISOString().split("T")[0]
-                        : "",
-                    });
-                  }}
-                  className="p-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  title="Delete this news"
-                  onClick={() => deleteNews.mutate(item.id)}
-                  className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {news.length === 0 ? (
+          <p className="text-gray-400">No existing news</p> // Show no existing news message
+        ) : (
+          <ul className="space-y-4">
+            {news.map((item) => (
+              <li key={item.id} className="p-4 bg-gray-900 rounded-lg flex justify-between items-start hover:bg-gray-700 transition">
+                <div>
+                  <h3 className="font-semibold text-lg">{item.title}</h3>
+                  <p className="text-sm text-gray-300">{item.content}</p>
+                  <span className="text-xs text-gray-400">Type: {item.type}</span>
+                  {item.expiresAt && (
+                    <p className="text-xs text-gray-500">Expires: {new Date(item.expiresAt).toLocaleDateString()}</p>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    title="Edit this news"
+                    onClick={() => {
+                      setEditingId(item.id);
+                      setFormData({
+                        title: item.title,
+                        content: item.content,
+                        type: item.type,
+                        expiresAt: item.expiresAt ? new Date(item.expiresAt).toISOString().split("T")[0] : "",
+                      });
+                    }}
+                    className="p-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    title="Delete this news"
+                    onClick={() => deleteNews.mutate(item.id)}
+                    className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

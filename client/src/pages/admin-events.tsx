@@ -1,4 +1,3 @@
-// admin-events.tsx
 import { useState, useEffect } from "react";
 import type { ClientEvent } from "@shared/schema";
 
@@ -23,8 +22,11 @@ export default function AdminEvents() {
   // Fetch all events
   const fetchEvents = async () => {
     try {
+      console.log("[Event Management] Fetching all events...");
       const res = await fetch("/api/events");
       const data = await res.json();
+      console.log("[Event Management] Events fetched:", data);
+
       setEvents(
         data.map((event: any) => ({
           ...event,
@@ -33,17 +35,19 @@ export default function AdminEvents() {
         }))
       );
     } catch (err) {
-      console.error("Failed to load events", err);
+      console.error("[Event Management] Failed to load events", err);
     }
   };
 
   useEffect(() => {
+    console.log("[Event Management] useEffect: Component mounted, fetching events...");
     fetchEvents();
   }, []);
 
   // Submit handler (add or update)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[Event Management] Handle submit triggered.");
     setLoading(true);
     setMessage(null);
 
@@ -55,53 +59,84 @@ export default function AdminEvents() {
         time,
         category,
       };
+      console.log("[Event Management] Payload:", payload);
+
+      const token = localStorage.getItem("adminToken");
 
       let res;
       if (editId) {
-        // Update existing event
+        console.log("[Event Management] Updating event with ID:", editId);
         res = await fetch(`/api/events/${editId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,  // Attach the token here
+          },
           body: JSON.stringify(payload),
         });
       } else {
-        // Create new event
+        console.log("[Event Management] Creating new event...");
         res = await fetch("/api/events", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,  // Attach the token here
+          },
           body: JSON.stringify(payload),
         });
       }
 
       const data = await res.json();
+      console.log("[Event Management] Server response:", data);
       if (!res.ok) throw new Error(data.error || "Failed to save event");
 
       setMessage(editId ? "✅ Event updated successfully!" : "✅ Event added successfully!");
+      console.log("[Event Management] Event saved successfully.");
       resetForm();
       fetchEvents();
     } catch (err: any) {
       setMessage("❌ " + err.message);
+      console.error("[Event Management] Error saving event:", err.message);
     } finally {
       setLoading(false);
+      console.log("[Event Management] Submit process complete.");
     }
   };
 
   // Delete handler
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this event?")) return;
+
+    // Add the Authorization header with the Bearer token
     try {
-      const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
+      const token = localStorage.getItem("adminToken");
+      console.log("[Event Management] Handle Delete triggered for event ID:", id);
+      console.log("[Event Management] Token:", token);
+
+      const res = await fetch(`/api/events/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,  // Make sure this is included
+        },
+      });
+
       const data = await res.json();
+      console.log("[Event Management] Delete event response:", data);
+
       if (!res.ok) throw new Error(data.error || "Failed to delete event");
+
       setMessage("🗑️ Event deleted successfully!");
       fetchEvents();
     } catch (err: any) {
       setMessage("❌ " + err.message);
+      console.error("[Event Management] Error deleting event:", err.message);
     }
   };
 
   // Load event into form for editing
   const handleEdit = (event: ClientEvent) => {
+    console.log("[Event Management] Edit event triggered:", event);
     setEditId(event.id);
     setTitle(event.title);
     setDescription(event.description);
@@ -112,6 +147,7 @@ export default function AdminEvents() {
 
   // Reset form
   const resetForm = () => {
+    console.log("[Event Management] Resetting form.");
     setEditId(null);
     setTitle("");
     setDescription("");
@@ -136,11 +172,10 @@ export default function AdminEvents() {
         {/* Status Message */}
         {message && (
           <div
-            className={`mb-4 p-3 rounded ${
-              message.startsWith("✅") || message.startsWith("🗑️")
-                ? "bg-green-700 text-green-100"
-                : "bg-red-700 text-red-100"
-            }`}
+            className={`mb-4 p-3 rounded ${message.startsWith("✅") || message.startsWith("🗑️")
+              ? "bg-green-700 text-green-100"
+              : "bg-red-700 text-red-100"
+              }`}
           >
             {message}
           </div>

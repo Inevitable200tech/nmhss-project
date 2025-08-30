@@ -61,12 +61,16 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold text-foreground mb-6 text-center">Admin Login</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
+            Admin Login
+          </h2>
           <form onSubmit={handleLogin}>
             <input
               name="username"
               value={form.username}
-              onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, username: e.target.value }))
+              }
               placeholder="Username"
               className="mb-4 w-full p-2 border rounded"
               required
@@ -75,18 +79,32 @@ export default function AdminPage() {
               type="password"
               name="password"
               value={form.password}
-              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, password: e.target.value }))
+              }
               placeholder="Password"
               className="mb-4 w-full p-2 border rounded"
               required
             />
             {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-            <Button type="submit" className="w-full">Login</Button>
+            <Button type="submit" className="w-full">
+              Login
+            </Button>
           </form>
+
+          {/* Back to homepage button */}
+          <Button
+            variant="outline"
+            className="w-full mt-4"
+            onClick={() => (window.location.href = "/")}
+          >
+            ← Back to Homepage
+          </Button>
         </div>
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-background flex">
