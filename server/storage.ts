@@ -157,6 +157,18 @@ export class MongoStorage implements IStorage {
     if (!doc) return null;
     return { ...doc, id: doc._id.toString() } as Section;
   }
+  async deleteEvent(id: string): Promise<Event | null> {
+    const doc = await EventModel.findByIdAndDelete(id).lean().exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as Event;
+  }
+
+  async updateEvent(id: string, data: InsertEvent): Promise<Event | null> {
+    const doc = await EventModel.findByIdAndUpdate(id, data, { new: true }).lean().exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as Event;
+  }
+
 }
 
 export const storage = new MongoStorage();

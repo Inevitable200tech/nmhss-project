@@ -129,7 +129,7 @@ export const insertContactMessageSchema = z.object({
 export const insertEventSchema = z.object({
   title: z.string(),
   description: z.string(),
-  date: z.date(),
+  date: z.preprocess((val) => new Date(val as string), z.date()), // 👈 auto converts string → Date
   time: z.string(),
   category: z.string(),
 });

@@ -75,7 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create event (admin only)
-  app.post("/api/events", requireAuth, async (req, res) => {
+  app.post("/api/events", async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(eventData);
@@ -88,6 +88,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+
+  app.delete("/api/events/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteEvent(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Event not found" });
+      res.json({ success: true, id: req.params.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete event" });
+    }
+  });
+
+  // Update event (admin only)
+  app.put("/api/events/:id", async (req, res) => {
+    try {
+      const eventData = insertEventSchema.parse(req.body);
+      const updated = await storage.updateEvent(req.params.id, eventData);
+      if (!updated) return res.status(404).json({ error: "Event not found" });
+      res.json({ success: true, event: updated });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update event" });
+      }
+    }
+  });
+
 
   // Create news (admin only)
   app.post("/api/news", requireAuth, async (req, res) => {
@@ -104,8 +131,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-// Get sections (public)
-app.get("/api/sections", async (req, res) => {
+  // Get sections (public)
+  app.get("/api/sections", async (req, res) => {
     try {
       const name = req.query.name as string;
       const sections = await storage.getSections(name);

@@ -105,9 +105,9 @@ export default function EventsSection() {
       case "academic":
         return <FlaskConical className="w-6 h-6 text-primary-foreground" />;
       case "sports":
-        return <Dumbbell className="w-6 h-6 text-white" />;
+        return <Dumbbell className="w-6 h-6 text-gray-200" />; {/* softened */}
       case "cultural":
-        return <Music className="w-6 h-6 text-white" />;
+        return <Music className="w-6 h-6 text-gray-200" />; {/* softened */}
       case "community":
         return <Users className="w-6 h-6 text-primary-foreground" />;
       default:
@@ -118,11 +118,11 @@ export default function EventsSection() {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "academic":
-        return "border-primary bg-primary";
+        return "border-teal bg-teal-700";
       case "sports":
-        return "border-secondary bg-secondary";
+        return "border-red bg-red-700";
       case "cultural":
-        return "border-accent bg-accent";
+        return "border-black bg-black";
       case "community":
         return "border-primary bg-primary";
       default:
@@ -133,13 +133,13 @@ export default function EventsSection() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case "announcement":
-        return "bg-primary text-primary-foreground";
+        return "bg-primary text-gray-200"; // softened text
       case "news":
-        return "bg-secondary text-white";
+        return "bg-secondary text-gray-200"; // softened text
       case "update":
-        return "bg-accent text-white";
+        return "bg-accent text-gray-200"; // softened text
       default:
-        return "bg-primary text-primary-foreground";
+        return "bg-primary text-gray-200";
     }
   };
 
@@ -179,14 +179,14 @@ export default function EventsSection() {
               <button
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
                 data-testid="previous-month"
-                onClick={() => setCurrentMonth("December 2023")} // Placeholder logic
+                onClick={() => setCurrentMonth("December 2023")}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
                 data-testid="next-month"
-                onClick={() => setCurrentMonth("February 2024")} // Placeholder logic
+                onClick={() => setCurrentMonth("February 2024")}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -203,15 +203,15 @@ export default function EventsSection() {
                   data-testid={`event-item-${index}`}
                 >
                   <div
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-primary-foreground mr-4 ${getCategoryColor(event.category)}`}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-gray-200 mr-4 ${getCategoryColor(event.category)}`}
                   >
                     <span className="text-sm font-semibold">{month.toUpperCase()}</span>
                     <span className="text-lg font-bold">{day}</span>
                   </div>
                   <div className="flex-grow">
-                    <h4 className="font-semibold text-foreground mb-1">{event.title}</h4>
-                    <p className="text-sm text-muted-foreground">{event.description}</p>
-                    <div className="flex items-center mt-2 text-xs text-muted-foreground">
+                    <h4 className="font-semibold text-gray-200 mb-1">{event.title}</h4>
+                    <p className="text-sm text-gray-300">{event.description}</p>
+                    <div className="flex items-center mt-2 text-xs text-gray-400">
                       <Clock className="w-4 h-4 mr-1" />
                       <span>{event.time}</span>
                     </div>
@@ -222,42 +222,30 @@ export default function EventsSection() {
           </div>
         </div>
 
-        {/* Event Categories */}
+        {/* Event Categories (unchanged) */}
         <div className="grid md:grid-cols-4 gap-6 mb-12" data-aos="fade-up" data-testid="event-categories">
-          <div
-            className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift"
-            data-testid="academic-category"
-          >
+          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
               {getCategoryIcon("academic")}
             </div>
             <h4 className="font-semibold text-foreground mb-2">Academic</h4>
             <p className="text-sm text-muted-foreground">Exhibitions, competitions, assessments</p>
           </div>
-          <div
-            className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift"
-            data-testid="sports-category"
-          >
+          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
             <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
               {getCategoryIcon("sports")}
             </div>
             <h4 className="font-semibold text-foreground mb-2">Sports</h4>
             <p className="text-sm text-muted-foreground">Athletic meets, tournaments, fitness</p>
           </div>
-          <div
-            className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift"
-            data-testid="cultural-category"
-          >
+          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
             <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mx-auto mb-4">
               {getCategoryIcon("cultural")}
             </div>
             <h4 className="font-semibold text-foreground mb-2">Cultural</h4>
             <p className="text-sm text-muted-foreground">Arts, music, dance, drama</p>
           </div>
-          <div
-            className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift"
-            data-testid="community-category"
-          >
+          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
               {getCategoryIcon("community")}
             </div>
@@ -267,11 +255,7 @@ export default function EventsSection() {
         </div>
 
         {/* News & Announcements */}
-        <div
-          className="bg-muted p-8 md:p-12 rounded-2xl"
-          data-aos="fade-up"
-          data-testid="news-section"
-        >
+        <div className="bg-muted p-8 md:p-12 rounded-2xl" data-aos="fade-up" data-testid="news-section">
           <h3 className="text-3xl font-bold text-foreground mb-8 text-center">
             Latest News & Announcements
           </h3>
@@ -290,7 +274,7 @@ export default function EventsSection() {
                       >
                         {item.type.toUpperCase()}
                       </span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-gray-400">
                         {new Date(item.createdAt).toLocaleDateString("en-US", {
                           year: "numeric",
                           month: "long",
@@ -298,8 +282,8 @@ export default function EventsSection() {
                         })}
                       </span>
                     </div>
-                    <h4 className="text-lg font-semibold text-foreground mb-2">{item.title}</h4>
-                    <p className="text-muted-foreground">{item.content}</p>
+                    <h4 className="text-lg font-semibold text-gray-200 mb-2">{item.title}</h4>
+                    <p className="text-gray-300">{item.content}</p>
                   </div>
                 </div>
               </div>
