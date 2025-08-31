@@ -228,9 +228,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/sections/:id", async (req, res) => {
     try {
-      console.log("Updating section with ID:", req.params.id);
-      console.log("Request body:", req.body);
-
       const sectionData = insertSectionSchema.parse(req.body);
       const updated = await storage.updateSection(req.params.id, sectionData);
       if (!updated) return res.status(404).json({ error: "Section not found" });
@@ -239,7 +236,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error(error);
     }
   });
-
 
   // Upload file (image or video)
 
