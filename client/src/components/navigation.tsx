@@ -29,21 +29,19 @@ export default function Navigation() {
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">
-                N
-              </span>
-            </div>
-            <div>
-              <h1 className="font-bold text-lg text-foreground">NMHSS</h1>
-              <p className="text-xs text-muted-foreground">Thirunavaya</p>
-            </div>
+          <div className="flex items-center">
+            <img
+              src="/attached_assets/logo.png"
+              alt="Navamukunda HSS Logo"
+              className="h-10 w-auto object-contain"
+            />
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <ThemeToggle />
+            <div className="ml-2">
+              <ThemeToggle />
+            </div>
             <a
               href="#home"
               onClick={(e) => handleLinkClick(e, "#home")}
@@ -87,13 +85,18 @@ export default function Navigation() {
               Events
             </a>
             <a
+              href="/gallery"
+              className="text-foreground hover:text-primary transition-colors"
+            >
+              Gallery
+            </a>
+            <a
               href="#contact"
               onClick={(e) => handleLinkClick(e, "#contact")}
               className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
             >
               Contact
             </a>
-            {/* ✅ Admin link */}
             <a
               href="/admin"
               className="text-foreground hover:text-primary transition-colors"
@@ -104,7 +107,9 @@ export default function Navigation() {
 
           {/* Mobile Menu Toggle */}
           <div className="md:hidden flex items-center space-x-2">
-            <ThemeToggle />
+            <div className="ml-2">
+              <ThemeToggle />
+            </div>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2"
@@ -165,13 +170,18 @@ export default function Navigation() {
                 Events
               </a>
               <a
+                href="/gallery"
+                className="block px-3 py-2 text-foreground hover:text-primary"
+              >
+                Gallery
+              </a>
+              <a
                 href="#contact"
                 onClick={(e) => handleLinkClick(e, "#contact")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
                 Contact
               </a>
-              {/* ✅ Admin link in mobile */}
               <a
                 href="/admin"
                 className="block px-3 py-2 text-foreground hover:text-primary"

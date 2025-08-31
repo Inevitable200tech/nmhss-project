@@ -13,7 +13,8 @@ export default function HeroSection() {
     },
   });
 
-  const handleScroll = (sectionId: string) => {
+  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>, sectionId: string) => {
+    e.preventDefault();
     const target = document.querySelector(sectionId);
     if (target) {
       const offsetTop = target.getBoundingClientRect().top + window.pageYOffset - 80;
@@ -26,24 +27,24 @@ export default function HeroSection() {
   const fallbackImage = "https://images.unsplash.com/photo-1497864149931-3e41b53db656?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080";
 
   return (
-    <section id="home" className="relative min-h-screen flex items-center justify-center">
+    <section id="home" className="relative min-h-screen flex items-center justify-center bg-background">
       <div
         className="absolute inset-0 hero-parallax bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url(${section?.images?.[0] || fallbackImage})`,
         }}
       />
-      <div className="relative z-10 text-center text-white px-4 max-w-4xl mx-auto">
+      <div className="relative z-10 text-center px-4 max-w-4xl mx-auto glass-effect p-8 rounded-lg">
         <h1
-          className="text-5xl md:text-7xl font-bold mb-6 text-white drop-shadow-lg"
+          className="responsive-heading font-bold text-foreground mb-6 drop-shadow-lg fade-in"
           data-aos="fade-up"
           data-aos-delay="200"
           data-testid="hero-title"
         >
-          {section?.title || "Navamukunda HSS"}
+          {section?.title || "Navamukunda HSS, Thirunavaya"}
         </h1>
         <p
-          className="text-xl md:text-2xl mb-4"
+          className="responsive-subheading text-muted-foreground mb-4 slide-in-left"
           data-aos="fade-up"
           data-aos-delay="400"
           data-testid="hero-subtitle"
@@ -51,7 +52,7 @@ export default function HeroSection() {
           {section?.subtitle || "Thirunavaya"}
         </p>
         <p
-          className="text-lg md:text-xl mb-8 max-w-2xl mx-auto"
+          className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto slide-in-right"
           data-aos="fade-up"
           data-aos-delay="600"
           data-testid="hero-description"
@@ -66,37 +67,33 @@ export default function HeroSection() {
         >
           <a
             href="#about"
-            onClick={(e) => {
-              e.preventDefault();
-              handleScroll("#about");
-            }}
-            className="gradient-primary text-white px-8 py-3 rounded-lg font-semibold transition-all hover:scale-105 pulse-primary"
+            onClick={(e) => handleScroll(e, "#about")}
+            className="gradient-primary text-primary-foreground px-8 py-3 rounded-lg font-semibold transition-all button-scale"
             data-testid="hero-cta-primary"
           >
             Discover Our Legacy
           </a>
           <a
             href="#contact"
-            onClick={(e) => {
-              e.preventDefault();
-              handleScroll("#contact");
-            }}
-            className="border-2 border-white text-white hover:bg-white hover:text-foreground px-8 py-3 rounded-lg font-semibold transition-all"
+            onClick={(e) => handleScroll(e, "#contact")}
+            className="border-2 border-foreground text-foreground hover:bg-foreground hover:text-background px-8 py-3 rounded-lg font-semibold transition-all button-scale"
             data-testid="hero-cta-secondary"
           >
             Get in Touch
           </a>
         </div>
       </div>
-      <button
-        onClick={() => handleScroll("#about")}
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white hover:text-primary transition-colors float"
-        data-testid="scroll-indicator"
-      >
-        <div className="w-6 h-10 border-2 border-white rounded-full flex justify-center glass-effect">
-          <ArrowDown className="w-4 h-4 mt-2 animate-bounce" />
-        </div>
-      </button>
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20">
+        <button
+          onClick={(e) => handleScroll(e, "#about")}
+          className="text-foreground hover:text-primary transition-colors button-scale"
+          data-testid="scroll-indicator"
+        >
+          <div className="w-8 h-12 border-2 border-foreground rounded-full flex justify-center glass-effect">
+            <ArrowDown className="w-5 h-5 mt-2 animate-bounce text-foreground" />
+          </div>
+        </button>
+      </div>
     </section>
   );
 }

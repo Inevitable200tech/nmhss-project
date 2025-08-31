@@ -1,11 +1,12 @@
+/* client/src/index.css */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body{
-  overflow-x:hidden;
+body {
+  overflow-x: hidden;
 }
 
 :root {
@@ -144,6 +145,25 @@ body{
     to { opacity: 1; transform: scale(1); }
   }
   
+  /* Button Scale Effect */
+  .button-scale {
+    transition: transform 0.2s ease-in-out;
+    transform-origin: center;
+  }
+  
+  .button-scale:hover {
+    transform: scale(1.1);
+  }
+  
+  .button-scale:active {
+    animation: clickScale 0.1s ease-in-out;
+  }
+  
+  @keyframes clickScale {
+    0% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  
   /* Hero Section */
   .hero-parallax {
     background-attachment: fixed;
@@ -176,19 +196,33 @@ body{
   /* Glass Morphism Effect */
   .glass-effect {
     backdrop-filter: blur(16px) saturate(180%);
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.125);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: rgba(200, 200, 200, 0.98);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
   
   .dark .glass-effect {
-    background: rgba(17, 25, 40, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.125);
+    background: rgba(17, 25, 40, 0.9);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Fallback for browsers without backdrop-filter support */
+  @supports not (backdrop-filter: blur(16px)) {
+    .glass-effect {
+      background: rgba(200, 200, 200, 0.98);
+    }
+    .dark .glass-effect {
+      background: rgba(17, 25, 40, 0.9);
+    }
   }
   
   .glass-dark {
     backdrop-filter: blur(16px) saturate(180%);
-    background: rgba(17, 25, 40, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.125);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: rgba(17, 25, 40, 0.9);
+    border: 1px solid var(--border);
   }
   
   /* Enhanced Hover Effects */
