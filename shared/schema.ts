@@ -104,16 +104,29 @@ export const newsSchema = new Schema<News>({
   expiresAt: { type: Date, required: false }, // ✅ optional expiry
 }, { timestamps: false });
 
-export const sectionSchema = new Schema<Section>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
+export const SectionSchema = new Schema({
   name: { type: String, required: true, unique: true },
-  title: { type: String, required: true },
-  subtitle: { type: String },
-  paragraphs: [{ type: String }],
-  images: [{ type: String }],
-  stats: [{ label: String, value: String, description: { type: String, required: false } }],
-  profiles: [{ name: String, role: String, description: String, image: { type: String, required: false } }],
-}, { timestamps: false });
+  title: String,
+  subtitle: String,
+  paragraphs: [String],
+  // instead of plain strings, store objects with id + url
+  images: [
+    {
+      id: { type: String, required: true },   // Media _id
+      url: { type: String, required: true },  // "/api/media/:id" or external URL
+    },
+  ],
+  stats: [
+    {
+      label: String,
+      value: String,
+      description: String,
+    },
+  ],
+});
+
+export const SectionModel = mongoose.model("Section", SectionSchema);
+
 
 export const insertUserSchema = z.object({
   username: z.string(),
@@ -152,14 +165,46 @@ export const insertNewsSchema = z.object({
 
 export const insertSectionSchema = z.object({
   name: z.string(),
-  title: z.string(),
+  title: z.string().optional(),
   subtitle: z.string().optional(),
   paragraphs: z.array(z.string()).optional(),
-  images: z.array(z.string()).optional(),
-  stats: z.array(z.object({ label: z.string(), value: z.string(), description: z.string().optional() })).optional(),
-  profiles: z.array(z.object({ name: z.string(), role: z.string(), description: z.string(), image: z.string().optional() })).optional(),
+  images: z
+    .array(
+      z.object({
+        id: z.string(),
+        url: z.string(),
+      })
+    )
+    .optional(),
+  stats: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+        description: z.string(),
+      })
+    )
+    .optional(),
 });
 
+export interface Media extends Document {
+  filename: string;
+  contentType: string;
+  data: Buffer;
+  type: "image" | "video";
+  uploadedAt: Date;
+}
+
+
+const mediaSchema = new Schema<Media>({
+  filename: { type: String, required: true },
+  contentType: { type: String, required: true },
+  data: { type: Buffer, required: true },
+  type: { type: String, enum: ["image", "video"], required: true },
+  uploadedAt: { type: Date, default: Date.now },
+});
+
+export const MediaModel = mongoose.model<Media>("Media", mediaSchema);
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
 export type InsertEvent = z.infer<typeof insertEventSchema>;

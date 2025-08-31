@@ -1,4 +1,6 @@
 import mongoose, { Schema, model, Document, Model } from "mongoose";
+import multer from "multer";
+
 import {
   type User,
   type InsertUser,
@@ -14,8 +16,10 @@ import {
   contactMessageSchema,
   eventSchema,
   newsSchema,
-  sectionSchema,
+  SectionSchema,
 } from "@shared/schema";
+
+export const upload = multer({ storage: multer.memoryStorage() });
 
 // Define models
 const UserModel: Model<User> =
@@ -28,7 +32,7 @@ const EventModel: Model<Event> =
 const NewsModel: Model<News> =
   mongoose.models.News || model<News>("News", newsSchema);
 const SectionModel: Model<Section> =
-  mongoose.models.Section || model<Section>("Section", sectionSchema);
+  mongoose.models.Section || model<Section>("Section", SectionSchema);
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -148,22 +152,22 @@ export class MongoStorage implements IStorage {
   }
 
   async getNews(): Promise<News[]> {
-  const now = new Date();
-  const docs = await NewsModel.find({
-    $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }],
-  })
-    .sort({ createdAt: -1 })
-    .lean()
-    .exec();
+    const now = new Date();
+    const docs = await NewsModel.find({
+      $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }],
+    })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
 
-  return docs.map(
-    (doc) =>
-      ({
-        ...doc,
-        id: doc._id.toString(),
-      }) as News
-  );
-}
+    return docs.map(
+      (doc) =>
+        ({
+          ...doc,
+          id: doc._id.toString(),
+        }) as News
+    );
+  }
 
 
 
@@ -241,19 +245,18 @@ export class MongoStorage implements IStorage {
     } as Section;
   }
 
-  async updateSection(
-    id: string,
-    data: InsertSection
-  ): Promise<Section | null> {
-    const doc = await SectionModel.findByIdAndUpdate(id, data, {
-      new: true,
-    })
-      .lean()
-      .exec();
-    if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as Section;
-  }
-  
+  async updateSection(name: string, data: InsertSection): Promise<Section | null> {
+  const doc = await SectionModel.findOneAndUpdate({ name }, data, {
+    new: true,
+    upsert: true, // create if not exists
+  })
+    .lean()
+    .exec();
+  if (!doc) return null;
+  return { ...doc, id: doc._id.toString() } as Section;
+}
+
+
 }
 
 export const storage = new MongoStorage();

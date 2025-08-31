@@ -9,7 +9,6 @@ dotenv.config({ path: "cert.env" }); // Adjust the path if your .env is elsewher
 
 log("Starting server initialization…");
 log(`Loaded environment variables: MONGO_URL=${process.env.MONGO_URL}, PORT=${process.env.PORT}`);
-
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -50,7 +49,7 @@ app.use((req, res, next) => {
   try {
     await mongoose.connect(mongoUrl);
     log(`Connected to MongoDB at ${mongoUrl}`);
-
+    
   } catch (err) {
     log(`Failed to connect to MongoDB: ${(err instanceof Error ? err.message : String(err))}`);
     log("Exiting process due to MongoDB connection failure.");

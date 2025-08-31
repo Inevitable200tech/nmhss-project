@@ -7,7 +7,7 @@ type ClientSection = {
   title: string;
   subtitle?: string;
   paragraphs?: string[];
-  images?: string[];
+  images?: { id: string; url: string }[];
   stats?: { label: string; value: string; description?: string }[];
   profiles?: { name: string; role: string; description: string; image?: string }[];
 };
@@ -29,16 +29,17 @@ export default function AboutSection({ section: propSection }: { section?: Clien
     title: fetchedSection?.title || "",
     subtitle: fetchedSection?.subtitle || "",
     paragraphs: fetchedSection?.paragraphs || [],
-    images: fetchedSection?.images || [],
-    stats: fetchedSection?.stats || [],
+    images: (fetchedSection?.images
+      ?.map((img: any) => (typeof img === 'string' ? { id: '', url: img } : img))
+      || []) as { id: string; url: string }[], stats: fetchedSection?.stats || [],
     profiles: fetchedSection?.profiles || [],
   };
 
   if (isLoading && !propSection) return <div>Loading...</div>;
 
   const fallbackImages = [
-    "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
-    "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
+    { id: "fallback1", url: "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" },
+    { id: "fallback2", url: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" },
   ];
 
   const images = section.images && section.images.length > 0 ? section.images.slice(0, 2) : fallbackImages;
@@ -95,7 +96,7 @@ export default function AboutSection({ section: propSection }: { section?: Clien
             {images.map((img, index) => (
               <img
                 key={index}
-                src={img}
+                src={img.url}
                 alt={`School image ${index + 1}`}
                 className={`rounded-xl shadow-lg hover-lift ${index === 1 ? "mt-8" : ""}`}
                 data-testid={index === 0 ? "school-building-image" : "students-corridor-image"}
@@ -157,9 +158,8 @@ export default function AboutSection({ section: propSection }: { section?: Clien
             {stats.map((stat, index) => (
               <div key={index} className="text-center" data-testid={`facility-${stat.label.toLowerCase()}`}>
                 <div
-                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                    index % 2 === 0 ? "bg-primary" : "bg-secondary"
-                  }`}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${index % 2 === 0 ? "bg-primary" : "bg-secondary"
+                    }`}
                 >
                   <span className="text-2xl font-bold text-primary-foreground">{stat.value}</span>
                 </div>

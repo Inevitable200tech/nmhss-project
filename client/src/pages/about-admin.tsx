@@ -1,409 +1,305 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { insertSectionSchema } from "@shared/schema";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 import AboutSection from "@/components/about-section";
 
+type ImageInput = {
+  url: string;
+  id?: string; // only set if uploaded
+  mode: "url" | "upload";
+};
+
+type AboutData = {
+  name: string;
+  title: string;
+  subtitle: string;
+  paragraphs: string[];
+  images: ImageInput[];
+  stats: { label: string; value: string; description: string }[];
+};
+
+const fallbackParagraphs = [
+  "This is the default about section paragraph one.",
+  "This is the default about section paragraph two.",
+];
+
+const fallbackImages: ImageInput[] = [
+  { url: "", mode: "url" },
+  { url: "", mode: "url" },
+];
+
+const fallbackStats = [
+  { label: "Students", value: "0", description: "Number of students" },
+  { label: "Teachers", value: "0", description: "Number of teachers" },
+  { label: "Alumni", value: "0", description: "Number of alumni" },
+  { label: "Courses", value: "0", description: "Number of courses" },
+];
+
 export default function AboutAdminPage() {
-  // --- STATE MANAGEMENT ---
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [error, setError] = useState("");
-  const [messages, setMessages] = useState<{
-    id: number;
-    text: string;
-    type: "success" | "error";
-  }[]>([]);
-  const [aboutData, setAboutData] = useState<any>({
+  const [aboutData, setAboutData] = useState<AboutData>({
     name: "about",
-    title: "",
-    subtitle: "",
-    paragraphs: ["", ""],
-    images: ["", ""],
-    stats: [
-      { label: "", value: "", description: "" },
-      { label: "", value: "", description: "" },
-      { label: "", value: "", description: "" },
-      { label: "", value: "", description: "" },
-    ],
+    title: "About Us",
+    subtitle:
+      "Building futures through quality education and holistic development since 1946",
+    paragraphs: fallbackParagraphs,
+    images: fallbackImages,
+    stats: fallbackStats,
   });
+
   const [previewMode, setPreviewMode] = useState(false);
-  const [previewData, setPreviewData] = useState<any | null>(null);
-  const [sectionId, setSectionId] = useState("");
-  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  // --- Fallback Values ---
-  const fallbackImages = [
-    "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
-    "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
-  ];
-  const fallbackParagraphs = [
-    "Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.",
-    "As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.",
-  ];
-  const fallbackStats = [
-    { label: "Classrooms", value: "30", description: "Well-equipped learning spaces" },
-    { label: "Library Books", value: "2.5K", description: "Extensive collection of resources" },
-    { label: "Computers", value: "25", description: "Modern computer laboratory" },
-    { label: "Restrooms", value: "40", description: "Separate facilities for all" },
-  ];
-
-  const addMessage = (text: string, type: "success" | "error") => {
-    const id = Date.now();
-    setMessages((prev) => [...prev, { id, text, type }]);
-    setTimeout(() => {
-      setMessages((prev) => prev.filter((msg) => msg.id !== id));
-    }, 5000);
+  const handleChange = (field: keyof AboutData, value: any) => {
+    setAboutData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // --- AUTHENTICATION CHECK ---
-  useEffect(() => {
-    if (token) {
-      fetch("/api/admin/verify", { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => {
-          if (res.ok) setLoggedIn(true);
-          else {
-            setToken("");
-            localStorage.removeItem("adminToken");
-            setLoggedIn(false);
-          }
-        })
-        .catch(() => {
-          setToken("");
-          localStorage.removeItem("adminToken");
-          setLoggedIn(false);
-        });
-    }
-  }, [token]);
+  const handleImageModeToggle = (index: number) => {
+    const updated = [...aboutData.images];
+    updated[index].mode = updated[index].mode === "url" ? "upload" : "url";
+    updated[index].url = "";
+    updated[index].id = undefined;
+    setAboutData({ ...aboutData, images: updated });
+  };
 
-  
+  const handleImageUrlChange = (index: number, value: string) => {
+    const updated = [...aboutData.images];
+    updated[index].url = value;
+    updated[index].id = undefined;
+    setAboutData({ ...aboutData, images: updated });
+  };
 
-  // --- LOGIN HANDLER ---
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
+  const handleFileUpload = async (file: File, index: number) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
     try {
-      const res = await fetch("/api/admin/login", {
+      const res = await fetch("/api/media", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: formData,
       });
       const data = await res.json();
-      if (data.success) {
-        setToken(data.token);
-        setLoggedIn(true);
-        localStorage.setItem("adminToken", data.token);
-        addMessage("Logged in successfully", "success");
+
+      if (res.ok) {
+        const updated = [...aboutData.images];
+        updated[index] = { url: data.url, id: data.id, mode: "upload" };
+        setAboutData({ ...aboutData, images: updated });
+        toast({ title: "Success", description: "File uploaded successfully" });
       } else {
-        setError(data.message);
-        addMessage(data.message, "error");
+        toast({ title: "Error", description: data.message });
       }
-    } catch {
-      setError("Login failed");
-      addMessage("Login failed", "error");
+    } catch (err) {
+      toast({ title: "Error", description: "Upload failed" });
     }
   };
 
-  // --- FETCH ABOUT SECTION ---
-  useQuery({
-    queryKey: ["/api/sections/about"],
-    queryFn: async () => {
-      const res = await fetch("/api/sections?name=about");
-      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-      const sections = await res.json();
-      const section = Array.isArray(sections)
-        ? sections.find((s: any) => s.name === "about")
-        : sections;
-      if (section) {
-        setSectionId(section._id || section.id);
-        setAboutData({
-          name: "about",
-          title: section.title || "",
-          subtitle: section.subtitle || "",
-          paragraphs: section.paragraphs || fallbackParagraphs,
-          images: section.images || fallbackImages,
-          stats: section.stats || fallbackStats,
-        });
+  const handleRemoveImage = async (index: number) => {
+    const img = aboutData.images[index];
+    if (img.id) {
+      try {
+        await fetch(`/api/media/${img.id}`, { method: "DELETE" });
+      } catch (err) {
+        toast({ title: "Error", description: "Failed to delete media" });
       }
-      return section;
-    },
-    enabled: loggedIn,
-  });
+    }
+    const updated = [...aboutData.images];
+    updated[index] = { url: "", mode: "url" };
+    setAboutData({ ...aboutData, images: updated });
+  };
 
-  // --- CREATE / UPDATE MUTATIONS ---
-  const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch("/api/sections", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(`Failed to create: ${res.status}`);
-      const result = await res.json();
-      setSectionId(result.id);
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sections/about"] });
-      addMessage("About section created successfully", "success");
-      setPreviewMode(false);
-      setPreviewData(null);
-    },
-    onError: (error: any) => {
-      addMessage(`Failed to create: ${error.message}`, "error");
-      setPreviewMode(false);
-      setPreviewData(null);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      if (!sectionId) return await createMutation.mutateAsync(data);
-      const res = await fetch(`/api/sections/${sectionId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(`Failed to update: ${res.status}`);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sections/about"] });
-      addMessage("About section updated successfully", "success");
-      setPreviewMode(false);
-      setPreviewData(null);
-    },
-    onError: (error: any) => {
-      addMessage(`Failed to update: ${error.message}`, "error");
-      setPreviewMode(false);
-      setPreviewData(null);
-    },
-  });
-
-  // --- RESET FORM TO DEFAULT VALUES ---
   const restoreDefaults = () => {
     setAboutData({
       name: "about",
       title: "About Us",
-      subtitle: "Building futures through quality education and holistic development since 1946",
+      subtitle:
+        "Building futures through quality education and holistic development since 1946",
       paragraphs: fallbackParagraphs,
       images: fallbackImages,
       stats: fallbackStats,
     });
-    addMessage("Form reset to default values", "success");
+    toast({ title: "Defaults Restored", description: "Form reset to defaults" });
   };
 
-  // --- FORM SUBMIT HANDLER ---
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSave = async () => {
     try {
-      const data = insertSectionSchema.parse({
-        name: "about",
-        title: aboutData.title,
-        subtitle: aboutData.subtitle,
-        paragraphs: aboutData.paragraphs.filter((p: string) => p.trim()),
-        images: aboutData.images.filter((i: string) => i.trim()),
-        stats: aboutData.stats.filter((s: any) => s.label.trim() && s.value.trim()),
+      const payload = {
+        ...aboutData,
+        images: aboutData.images
+          .filter((i) => i.url) // only non-empty
+          .map((i) => ({
+            id: i.id || "",      // required by schema
+            url: i.url,
+          })),
+      };
+
+      const res = await fetch("/api/sections/about", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-      setPreviewData(data);
-      setPreviewMode(true);
-    } catch {
-      addMessage("About section validation failed", "error");
+
+
+      if (res.ok) {
+        toast({ title: "Saved", description: "About section updated successfully" });
+      } else {
+        const err = await res.json();
+        toast({ title: "Error", description: err.error || "Failed to save" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Network error while saving" });
     }
   };
 
-  const handlePreviewConfirm = () => {
-    if (previewData) updateMutation.mutate(previewData);
-    else addMessage("No preview data to save", "error");
-  };
 
-
-  // --- UI RENDERING ---
-
-  // LOGIN PAGE
-  if (!loggedIn) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold text-foreground mb-6 text-center">Admin Login</h2>
-          <form onSubmit={handleLogin}>
-            <Input
-              name="username"
-              value={form.username}
-              onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
-              placeholder="Username"
-              className="mb-4"
-              required
-            />
-            <Input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              placeholder="Password"
-              className="mb-4"
-              required
-            />
-            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-            <Button type="submit" className="w-full">Login</Button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // PREVIEW MODE
-  if (previewMode && previewData) {
-    return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="container mx-auto">
-          <h1 className="text-3xl font-bold mb-4">Preview About Section</h1>
-          <AboutSection section={previewData} />
-        </div>
-        <div className="fixed bottom-4 right-4 flex gap-2">
-          <Button onClick={handlePreviewConfirm} className="bg-green-600 hover:bg-green-700">
-            OK
-          </Button>
-          <Button onClick={() => setPreviewMode(false)} variant="outline">
-            Cancel
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // EDIT MODE
-  // --- UI RENDERING ---
   return (
-    <TooltipProvider>
-      <div className="min-h-screen bg-background flex">
-        <div className="flex-1 p-4">
-          <div className="container mx-auto max-w-2xl">
-            {/* Back Button */}
-            <Button
-              variant="outline"
-              className="mb-4"
-              onClick={() => (window.location.href = "/admin")}
-            >
-              ← Back to Dashboard
-            </Button>
+    <div className="p-6 space-y-6">
+      {!previewMode ? (
+        <>
+          <h1 className="text-2xl font-bold">Admin: About Section</h1>
 
-            <h1 className="text-3xl font-bold mb-4">Edit About Section</h1>
-
-            {/* Notifications */}
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`p-2 rounded mb-2 ${
-                  msg.type === "success"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                {msg.text}
-              </div>
-            ))}
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <Card>
+            <CardContent className="space-y-4">
               <Input
-                required
-                placeholder="Title"
                 value={aboutData.title}
-                onChange={(e) => setAboutData({ ...aboutData, title: e.target.value })}
+                onChange={(e) => handleChange("title", e.target.value)}
+                placeholder="Title"
               />
               <Input
-                required
-                placeholder="Subtitle"
                 value={aboutData.subtitle}
-                onChange={(e) => setAboutData({ ...aboutData, subtitle: e.target.value })}
+                onChange={(e) => handleChange("subtitle", e.target.value)}
+                placeholder="Subtitle"
               />
-              {aboutData.paragraphs.map((p: string, i: number) => (
+
+              {aboutData.paragraphs.map((p, i) => (
                 <Textarea
-                  required
                   key={i}
-                  placeholder={`Paragraph ${i + 1}`}
                   value={p}
                   onChange={(e) => {
                     const updated = [...aboutData.paragraphs];
                     updated[i] = e.target.value;
                     setAboutData({ ...aboutData, paragraphs: updated });
                   }}
+                  placeholder={`Paragraph ${i + 1}`}
                 />
               ))}
-              {aboutData.images.map((img: string, i: number) => (
-                <Input
-                  required
-                  key={i}
-                  placeholder={`Image URL ${i + 1}`}
-                  value={img}
-                  onChange={(e) => {
-                    const updated = [...aboutData.images];
-                    updated[i] = e.target.value;
-                    setAboutData({ ...aboutData, images: updated });
-                  }}
-                />
-              ))}
-              {aboutData.stats.map((s: any, i: number) => (
+
+              {/* Images */}
+              <div className="space-y-4">
+                {aboutData.images.map((img, i) => (
+                  <div key={i} className="space-y-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleImageModeToggle(i)}
+                    >
+                      Switch to {img.mode === "url" ? "Upload" : "URL"}
+                    </Button>
+
+                    {img.mode === "url" ? (
+                      <Input
+                        placeholder={`Image URL ${i + 1}`}
+                        value={img.url}
+                        onChange={(e) =>
+                          handleImageUrlChange(i, e.target.value)
+                        }
+                      />
+                    ) : (
+                      <Input
+                        type="file"
+                        accept="image/*,video/*"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handleFileUpload(e.target.files[0], i);
+                          }
+                        }}
+                      />
+                    )}
+
+                    {img.url && (
+                      <div className="flex items-center space-x-2">
+                        <img
+                          src={img.url}
+                          alt={`Preview ${i + 1}`}
+                          className="h-24 w-24 object-cover rounded"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={() => handleRemoveImage(i)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Stats */}
+              {aboutData.stats.map((stat, i) => (
                 <div key={i} className="grid grid-cols-3 gap-2">
                   <Input
-                    required
-                    placeholder="Label"
-                    value={s.label}
+                    value={stat.label}
                     onChange={(e) => {
                       const updated = [...aboutData.stats];
                       updated[i].label = e.target.value;
                       setAboutData({ ...aboutData, stats: updated });
                     }}
+                    placeholder="Label"
                   />
                   <Input
-                    required
-                    placeholder="Value"
-                    value={s.value}
+                    value={stat.value}
                     onChange={(e) => {
                       const updated = [...aboutData.stats];
                       updated[i].value = e.target.value;
                       setAboutData({ ...aboutData, stats: updated });
                     }}
+                    placeholder="Value"
                   />
                   <Input
-                    required
-                    placeholder="Description"
-                    value={s.description}
+                    value={stat.description}
                     onChange={(e) => {
                       const updated = [...aboutData.stats];
                       updated[i].description = e.target.value;
                       setAboutData({ ...aboutData, stats: updated });
                     }}
+                    placeholder="Description"
                   />
                 </div>
               ))}
-              <Button type="submit" className="w-full">
-                Preview Changes
-              </Button>
-            </form>
 
-            {/* Restore Defaults Button */}
-            <Button
-              variant="outline"
-              onClick={restoreDefaults}
-              className="mt-4"
-            >
-              Restore Defaults
+              <div className="flex space-x-4">
+                <Button onClick={restoreDefaults}>Restore Defaults</Button>
+                <Button
+                  onClick={() => {
+                    setPreviewMode(true);
+                  }}
+                >
+                  Preview
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <div>
+          <AboutSection
+            section={{
+              ...aboutData,
+              images: aboutData.images.filter((i) => i.url).map((i) => ({ id: i.id || '', url: i.url })), // still object[]
+
+            }}
+          />
+          <div className="flex space-x-4">
+            <Button onClick={() => setPreviewMode(false)}>Back to Edit</Button>
+            <Button onClick={handleSave} variant="default">
+              Save
             </Button>
           </div>
         </div>
-      </div>
-    </TooltipProvider>
+      )}
+    </div>
   );
 }

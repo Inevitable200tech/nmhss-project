@@ -5,14 +5,20 @@ import {
   insertContactMessageSchema,
   insertEventSchema,
   insertNewsSchema,
-  insertSectionSchema,
+  insertSectionSchema
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import { SectionModel } from "@shared/schema";
 
+// Store uploads in memory buffer
+
+import { MediaModel } from "@shared/schema";
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "brocookedhard";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+export const upload = multer({ storage: multer.memoryStorage() });
 
 // Auth middleware
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -220,22 +226,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update section (admin only)
   app.put("/api/sections/:id", async (req, res) => {
     try {
+      console.log("Updating section with ID:", req.params.id);
+      console.log("Request body:", req.body);
+      
       const sectionData = insertSectionSchema.parse(req.body);
       const updated = await storage.updateSection(req.params.id, sectionData);
       if (!updated) return res.status(404).json({ error: "Section not found" });
       res.json(updated);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Validation failed", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to update section" });
-      }
+      console.error(error);
     }
   });
+
+
+  // Upload file (image or video)
+
+  app.post("/api/media", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const media = new MediaModel({
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+        data: req.file.buffer,
+        type: req.file.mimetype.startsWith("image/") ? "image" : "video",
+      });
+
+      await media.save();
+
+      res.json({
+        id: media._id,
+        filename: media.filename,
+        type: media.type,
+        url: `/api/media/${media._id}`,
+      });
+    } catch (err) {
+      res.status(500).json({ message: (err as Error).message });
+    }
+  });
+
+  // Get media by id
+  app.get("/api/media/:id", async (req, res) => {
+    try {
+      const media = await MediaModel.findById(req.params.id);
+      if (!media) return res.status(404).json({ message: "File not found" });
+
+      res.set("Content-Type", media.contentType);
+      res.send(media.data);
+    } catch (err) {
+      res.status(500).json({ message: (err as Error).message });
+    }
+  });
+
+  // Delete media by id
+  app.delete("/api/media/:id", async (req, res) => {
+    try {
+      const media = await MediaModel.findByIdAndDelete(req.params.id);
+      if (!media) return res.status(404).json({ message: "File not found" });
+
+      res.json({ message: "File deleted successfully" });
+    } catch (err) {
+      res.status(500).json({ message: (err as Error).message });
+    }
+  });
+
+
 
   const httpServer = createServer(app);
   return httpServer;
 }
+
+
