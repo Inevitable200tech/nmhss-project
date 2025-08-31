@@ -78,7 +78,7 @@ app.use((req, res, next) => {
     log("Static file serving setup complete.");
   }
 
-  const port = 2541;
+  const port = 5000;
   log(`Starting server on port ${port}…`);
   server.listen({
     port,
