@@ -230,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Updating section with ID:", req.params.id);
       console.log("Request body:", req.body);
-      
+
       const sectionData = insertSectionSchema.parse(req.body);
       const updated = await storage.updateSection(req.params.id, sectionData);
       if (!updated) return res.status(404).json({ error: "Section not found" });
@@ -285,12 +285,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete media by id
   app.delete("/api/media/:id", async (req, res) => {
     try {
-      const media = await MediaModel.findByIdAndDelete(req.params.id);
-      if (!media) return res.status(404).json({ message: "File not found" });
+      const file = await MediaModel.findByIdAndDelete(req.params.id);
+      if (!file) return res.status(404).json({ message: "File not found" });
 
-      res.json({ message: "File deleted successfully" });
+      // 🔄 Remove orphan references from all sections
+      await SectionModel.updateMany(
+        { "images.id": req.params.id },
+        { $pull: { images: { id: req.params.id } } }
+      );
+
+      res.json({ message: "Deleted" });
     } catch (err) {
-      res.status(500).json({ message: (err as Error).message });
+      res.status(500).json({ message: "Failed to delete media" });
     }
   });
 
