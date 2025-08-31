@@ -50,6 +50,7 @@ app.use((req, res, next) => {
   try {
     await mongoose.connect(mongoUrl);
     log(`Connected to MongoDB at ${mongoUrl}`);
+
   } catch (err) {
     log(`Failed to connect to MongoDB: ${(err instanceof Error ? err.message : String(err))}`);
     log("Exiting process due to MongoDB connection failure.");

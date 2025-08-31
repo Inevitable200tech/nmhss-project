@@ -9,23 +9,6 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
-import multer from "multer";
-import { GridFsStorage } from "multer-gridfs-storage";
-
-// Create the storage engine using GridFsStorage
-const storageEngine = new GridFsStorage({
-  url: process.env.MONGODB_URI || 'mongodb://localhost:27017/myDatabase', // Ensure the MongoDB URI is set
-  file: (req, file) => {
-    return {
-      bucketName: 'images', // Define the bucket name
-      filename: `${Date.now()}-${file.originalname}`, // Name the file uniquely
-    };
-  }
-});
-
-// Define the upload middleware
-const upload = multer({ storage: storageEngine });
-
 
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "brocookedhard";
@@ -61,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Token is valid" });
   });
 
-  // Public contact form
+  // Contact form submission
   app.post("/api/contact", async (req, res) => {
     try {
       const contactData = insertContactMessageSchema.parse(req.body);
@@ -76,45 +59,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public GET routes
+  // Get events
   app.get("/api/events", async (req, res) => {
     try {
       const events = await storage.getEvents();
       res.json(events);
-    } catch {
+    } catch (error) {
       res.status(500).json({ error: "Failed to fetch events" });
     }
   });
 
+
+  // Get news
   app.get("/api/news", async (req, res) => {
     try {
       const news = await storage.getNews();
       res.json(news);
-    } catch {
+    } catch (error) {
       res.status(500).json({ error: "Failed to fetch news" });
     }
   });
 
-  app.get("/api/sections", async (req, res) => {
-    try {
-      const name = req.query.name as string;
-      const sections = await storage.getSections(name);
-      if (name && sections.length === 0) {
-        res.status(404).json({ error: `No section found with name: ${name}` });
-      } else {
-        res.json(sections);
-      }
-    } catch {
-      res.status(500).json({ error: "Failed to fetch sections" });
-    }
-  });
 
-  // -------------------
-  // Admin-only routes
-  // -------------------
 
-  // Events
-  app.post("/api/events", requireAuth, async (req, res) => {
+  // Create event (admin only)
+  app.post("/api/events", async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(eventData);
@@ -128,7 +97,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/events/:id", requireAuth, async (req, res) => {
+  app.delete("/api/events/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteEvent(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Event not found" });
+      res.json({ success: true, id: req.params.id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete event" });
+    }
+  });
+
+  // Update event (admin only)
+  app.put("/api/events/:id", async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const updated = await storage.updateEvent(req.params.id, eventData);
@@ -143,18 +123,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/events/:id", requireAuth, async (req, res) => {
-    try {
-      const deleted = await storage.deleteEvent(req.params.id);
-      if (!deleted) return res.status(404).json({ error: "Event not found" });
-      res.json({ success: true, id: req.params.id });
-    } catch {
-      res.status(500).json({ error: "Failed to delete event" });
-    }
-  });
-
-  // News
-  app.post("/api/news", requireAuth, async (req, res) => {
+  // Create news (admin only)
+  app.post("/api/news", async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -162,9 +132,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .union([z.string(), z.null()])
             .optional()
             .transform((val) => (val ? new Date(val) : null))
-            .refine((date) => !date || date > new Date(), {
-              message: "Expiry date must be in the future",
-            }),
+            .refine(
+              (date) => !date || date > new Date(),
+              { message: "Expiry date must be in the future" }
+            ),
         })
         .parse(req.body);
 
@@ -179,7 +150,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/news/:id", requireAuth, async (req, res) => {
+
+  // Update news (admin only)
+  app.put("/api/news/:id", async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -187,9 +160,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .union([z.string(), z.null()])
             .optional()
             .transform((val) => (val ? new Date(val) : null))
-            .refine((date) => !date || date > new Date(), {
-              message: "Expiry date must be in the future",
-            }),
+            .refine(
+              (date) => !date || date > new Date(),
+              { message: "Expiry date must be in the future" }
+            ),
         })
         .parse(req.body);
 
@@ -205,81 +179,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/news/:id", requireAuth, async (req, res) => {
+  // Delete news (admin only)
+  app.delete("/api/news/:id", async (req, res) => {
     try {
       const deleted = await storage.deleteNews(req.params.id);
       if (!deleted) return res.status(404).json({ error: "News not found" });
       res.json({ success: true, id: req.params.id });
-    } catch {
+    } catch (error) {
       res.status(500).json({ error: "Failed to delete news" });
     }
   });
 
-
-
-  // Define the upload 
-
-  app.post("/api/sections", upload.array("images"), async (req, res) => {
+  // Get sections (public)
+  app.get("/api/sections", async (req, res) => {
     try {
-      const formData = req.body; // form data containing other fields
-      const files = req.files; // the uploaded files
-      const images = formData.images || []; // Images can be URL or files
-
-      // Process the images: If a file is present, store it using GridFS
-      const processedImages = images.map((image: string | Express.Multer.File) => {
-        if (typeof image === 'string') {
-          // Handle image URLs
-          return image;
-        } else if (image && image.filename) {
-          // Handle uploaded images using GridFS
-          return `${process.env.MONGODB_URI}/images/${image.filename}`;
-        } else {
-          return null;
-        }
-      }).filter(Boolean);
-
-      const newSection = await storage.createSection({
-        ...formData,
-        images: processedImages,
-      });
-
-      res.status(201).json(newSection);
-    } catch (error: unknown) {
-      // Explicitly cast error to Error type
-      if (error instanceof Error) {
-        console.error("Error creating section:", error.message);
-        res.status(500).json({ error: 'Failed to create section', details: error.message });
+      const name = req.query.name as string;
+      const sections = await storage.getSections(name);
+      if (name && sections.length === 0) {
+        res.status(404).json({ error: `No section found with name: ${name}` });
       } else {
-        // If error is not an instance of Error, handle it here
-        console.error("Unknown error:", error);
-        res.status(500).json({ error: 'Failed to create section', details: 'An unknown error occurred' });
+        res.json(sections);
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch sections" });
+    }
+  });
+
+  // Create section (admin only)
+  app.post("/api/sections", async (req, res) => {
+    try {
+      const sectionData = insertSectionSchema.parse(req.body);
+      const section = await storage.createSection(sectionData);
+      res.json(section);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create section" });
       }
     }
   });
 
-
-
-
-  app.put("/api/sections/:id", requireAuth, upload.single("image"), async (req, res) => {
+  // Update section (admin only)
+  app.put("/api/sections/:id", async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
-
-      // Handle image URL or uploaded image
-      let imageUrl = sectionData.images?.[0];
-      if (req.file) {
-        imageUrl = `${process.env.MONGODB_URI}/images/${req.file.filename}`;
-      }
-
-      const updatedSection = await storage.updateSection(req.params.id, {
-        ...sectionData,
-        images: imageUrl ? [imageUrl] : [],
-      });
-
-      if (!updatedSection) {
-        return res.status(404).json({ error: "Section not found" });
-      }
-
-      res.json(updatedSection);
+      const updated = await storage.updateSection(req.params.id, sectionData);
+      if (!updated) return res.status(404).json({ error: "Section not found" });
+      res.json(updated);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Validation failed", details: error.errors });
@@ -288,7 +235,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
-
 
   const httpServer = createServer(app);
   return httpServer;
