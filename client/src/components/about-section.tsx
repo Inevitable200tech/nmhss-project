@@ -41,15 +41,11 @@ export default function AboutSection({ section: propSection }: { section?: Clien
     "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
   ];
 
-  const images = section.images && section.images.length > 0 
-    ? section.images.map(img => img.includes("http") ? img : `${process.env.IMAGE_URL_PREFIX}/${img}`) // Check if URL or GridFS
-    : fallbackImages;
-
+  const images = section.images && section.images.length > 0 ? section.images.slice(0, 2) : fallbackImages;
   const paragraphs = section.paragraphs && section.paragraphs.length > 0 ? section.paragraphs : [
     "Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.",
     "As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.",
   ];
-
   const stats = section.stats && section.stats.length > 0 ? section.stats : [
     { label: "Classrooms", value: "30", description: "Well-equipped learning spaces" },
     { label: "Library Books", value: "2.5K", description: "Extensive collection of resources" },
