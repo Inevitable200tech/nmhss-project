@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,23 +7,31 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { insertSectionSchema } from "@shared/schema";
 import AboutSection from "@/components/about-section";
 
+// --- Type for image inputs ---
+type ImageInput = {
+  url?: string;
+  file?: File;
+  preview?: string;
+  mode: "url" | "upload"; // 👈 toggle between modes
+};
+
 export default function AboutAdminPage() {
-  // --- STATE MANAGEMENT ---
   const [loggedIn, setLoggedIn] = useState(false);
-  const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [error, setError] = useState("");
+  const [token] = useState(localStorage.getItem("adminToken") || "");
   const [messages, setMessages] = useState<{
     id: number;
     text: string;
     type: "success" | "error";
   }[]>([]);
-  const [aboutData, setAboutData] = useState<any>({
+  const [aboutData, setAboutData] = useState({
     name: "about",
     title: "",
     subtitle: "",
     paragraphs: ["", ""],
-    images: ["", ""],
+    images: [
+      { mode: "url" } as ImageInput,
+      { mode: "url" } as ImageInput,
+    ],
     stats: [
       { label: "", value: "", description: "" },
       { label: "", value: "", description: "" },
@@ -36,7 +44,7 @@ export default function AboutAdminPage() {
   const [sectionId, setSectionId] = useState("");
   const queryClient = useQueryClient();
 
-  // Fallback values
+  // --- Fallback Values ---
   const fallbackImages = [
     "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
     "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
@@ -64,267 +72,158 @@ export default function AboutAdminPage() {
   useQuery({
     queryKey: ["/api/sections/about"],
     queryFn: async () => {
-      try {
-        const res = await fetch("/api/sections?name=about");
-        console.log("Fetching About Section: ", res); // Log the response
-        if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-        const sections = await res.json();
-        console.log("Fetched Sections: ", sections); // Log fetched sections
-
-        const section = Array.isArray(sections)
-          ? sections.find((s: any) => s.name === "about")
-          : sections;
-        if (section) {
-          console.log("About Section Found: ", section); // Log found section
-          setSectionId(section._id || section.id);
-          setAboutData({
-            name: "about",
-            title: section.title || "",
-            subtitle: section.subtitle || "",
-            paragraphs: section.paragraphs || fallbackParagraphs,
-            images: section.images || fallbackImages,
-            stats: section.stats || fallbackStats,
-          });
-        }
-        return section;
-      } catch (error) {
-        console.error("Error fetching About Section: ", error); // Log error
+      const res = await fetch("/api/sections?name=about");
+      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+      const sections = await res.json();
+      const section = Array.isArray(sections)
+        ? sections.find((s: any) => s.name === "about")
+        : sections;
+      if (section) {
+        setSectionId(section._id || section.id);
+        setAboutData({
+          name: "about",
+          title: section.title || "",
+          subtitle: section.subtitle || "",
+          paragraphs: section.paragraphs || ["", ""],
+          images: (section.images || ["", ""]).map((i: string) => ({ url: i, mode: "url" })),
+          stats: section.stats || [],
+        });
       }
+      return section;
     },
     enabled: loggedIn,
   });
 
-  // --- IMAGE URL OR UPLOAD TOGGLE LOGIC ---
-  const [isImageUrl1, setIsImageUrl1] = useState(false);  // Image 1 URL toggle
-  const [isImageUploaded1, setIsImageUploaded1] = useState(false);  // Image 1 upload toggle
-  const [isImageUrl2, setIsImageUrl2] = useState(false);  // Image 2 URL toggle
-  const [isImageUploaded2, setIsImageUploaded2] = useState(false);  // Image 2 upload toggle
-  const [imagePreview1, setImagePreview1] = useState(""); // Preview for Image 1
-  const [imagePreview2, setImagePreview2] = useState(""); // Preview for Image 2
-
-  // Handle image toggles, URL change, and file uploads
-  // --- IMAGE URL OR UPLOAD TOGGLE LOGIC ---
-  const toggleImageSource1 = () => {
-    console.log("Toggling Image Source 1. Current State: ", isImageUrl1); // Log the current state before toggling
-    setIsImageUrl1(!isImageUrl1);
-    setIsImageUploaded1(false);
-    setImagePreview1("");
+  // --- Image handlers ---
+  const toggleImageMode = (index: number) => {
+    const updated = [...aboutData.images];
+    updated[index] = { mode: updated[index].mode === "url" ? "upload" : "url" };
+    setAboutData({ ...aboutData, images: updated });
   };
 
-  const toggleImageSource2 = () => {
-    console.log("Toggling Image Source 2. Current State: ", isImageUrl2); // Log the current state before toggling
-    setIsImageUrl2(!isImageUrl2);
-    setIsImageUploaded2(false);
-    setImagePreview2("");
+  const handleImageUrlChange = (index: number, value: string) => {
+    const updated = [...aboutData.images];
+    updated[index] = { ...updated[index], url: value, mode: "url" };
+    setAboutData({ ...aboutData, images: updated });
   };
 
-  // Image URL Change Handlers with Logging
-  const handleImageUrlChange1 = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("Image 1 URL Change: ", e.target.value); // Log URL change for Image 1
-    const updatedImages = [...aboutData.images];
-    updatedImages[0] = e.target.value;
-    setAboutData({ ...aboutData, images: updatedImages });
+  const handleFileUpload = (index: number, file: File | null) => {
+    if (!file) return;
+    const preview = URL.createObjectURL(file);
+    const updated = [...aboutData.images];
+    updated[index] = { file, preview, mode: "upload" };
+    setAboutData({ ...aboutData, images: updated });
   };
 
-  const handleImageUrlChange2 = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("Image 2 URL Change: ", e.target.value); // Log URL change for Image 2
-    const updatedImages = [...aboutData.images];
-    updatedImages[1] = e.target.value;
-    setAboutData({ ...aboutData, images: updatedImages });
+  const handleRemoveImage = (index: number) => {
+    const updated = [...aboutData.images];
+    updated[index] = { mode: "url" };
+    setAboutData({ ...aboutData, images: updated });
   };
 
-
-
-
-  // File Upload Handlers with Logging
-  const handleFileUpload1 = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files ? e.target.files[0] : null;
-    if (file) {
-      console.log("Image 1 Uploaded: ", file.name); // Log the uploaded file name
-      setIsImageUploaded1(true);
-      setImagePreview1(URL.createObjectURL(file));
-      const updatedImages = [...aboutData.images];
-      updatedImages[0] = file.name;
-      setAboutData({ ...aboutData, images: updatedImages });
-    }
-  };
-
-  const handleFileUpload2 = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files ? e.target.files[0] : null;
-    if (file) {
-      console.log("Image 2 Uploaded: ", file.name); // Log the uploaded file name
-      setIsImageUploaded2(true);
-      setImagePreview2(URL.createObjectURL(file));
-      const updatedImages = [...aboutData.images];
-      updatedImages[1] = file.name;
-      setAboutData({ ...aboutData, images: updatedImages });
-    }
-  };
-
-  // Remove Image Handlers with Logging
-  const handleRemoveImage1 = () => {
-    console.log("Removing Image 1"); // Log the removal of Image 1
-    setIsImageUploaded1(false);
-    setImagePreview1("");
-    const updatedImages = [...aboutData.images];
-    updatedImages[0] = "";
-    setAboutData({ ...aboutData, images: updatedImages });
-  };
-
-  const handleRemoveImage2 = () => {
-    console.log("Removing Image 2"); // Log the removal of Image 2
-    setIsImageUploaded2(false);
-    setImagePreview2("");
-    const updatedImages = [...aboutData.images];
-    updatedImages[1] = "";
-    setAboutData({ ...aboutData, images: updatedImages });
-  };
-
-  // Restore Defaults with Logging
+  // --- RESET FORM TO DEFAULT VALUES ---
   const restoreDefaults = () => {
-    console.log("Restoring Defaults"); // Log when defaults are restored
     setAboutData({
       name: "about",
       title: "About Us",
-      subtitle: "Building futures through quality education and holistic development since 1946",
+      subtitle:
+        "Building futures through quality education and holistic development since 1946",
       paragraphs: fallbackParagraphs,
-      images: fallbackImages,
+      images: fallbackImages.map((url) => ({ url, mode: "url" })), // 👈 wrap as ImageInput
       stats: fallbackStats,
     });
-    setIsImageUrl1(true);
-    setIsImageUploaded1(false);
-    setIsImageUrl2(true);
-    setIsImageUploaded2(false);
-    setImagePreview1("");
-    setImagePreview2("");
-    setPreviewData(null);
-    setPreviewMode(false);
-    addMessage("Form reset to default values with fallback image URLs", "success");
+    addMessage("Form reset to default values", "success");
   };
+
 
   // --- CREATE/UPDATE MUTATION ---
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      console.log("Creating About Section with data: ", data); // Log the data being sent to create
+    mutationFn: async (formData: FormData) => {
       const res = await fetch("/api/sections", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
       if (!res.ok) throw new Error(`Failed to create: ${res.status}`);
-      console.log("Section Created Successfully: ", res); // Log the successful creation response
       return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sections/about"] });
-      addMessage("About section created successfully", "success");
-      setPreviewMode(false);
-      setPreviewData(null);
-    },
-    onError: (error: any) => {
-      console.error("Error creating About section: ", error); // Log any errors during creation
-      addMessage(`Failed to create: ${error.message}`, "error");
       setPreviewMode(false);
       setPreviewData(null);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      console.log("Updating About Section with data: ", data); // Log the data being sent to update
-      if (!sectionId) return await createMutation.mutateAsync(data);
+    mutationFn: async (formData: FormData) => {
+      if (!sectionId) return await createMutation.mutateAsync(formData);
       const res = await fetch(`/api/sections/${sectionId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
       if (!res.ok) throw new Error(`Failed to update: ${res.status}`);
-      console.log("Section Updated Successfully: ", res); // Log the successful update response
       return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sections/about"] });
-      addMessage("About section updated successfully", "success");
-      setPreviewMode(false);
-      setPreviewData(null);
-    },
-    onError: (error: any) => {
-      console.error("Error updating About section: ", error); // Log any errors during update
-      console.log(`Failed to update: ${error.message}`, "error");
       setPreviewMode(false);
       setPreviewData(null);
     },
   });
 
-  // Submit Handler with Logging
+  // --- Submit Handler ---
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     const formData = new FormData();
     formData.append("name", "about");
     formData.append("title", aboutData.title);
     formData.append("subtitle", aboutData.subtitle);
-    aboutData.paragraphs.forEach((paragraph: string | Blob, i: any) => formData.append(`paragraphs[${i}]`, paragraph));
-    aboutData.stats.forEach((stat: { label: string | Blob; value: string | Blob; description: string | Blob; }, i: any) => {
-      formData.append(`stats[${i}][label]`, stat.label);
-      formData.append(`stats[${i}][value]`, stat.value);
-      formData.append(`stats[${i}][description]`, stat.description);
+
+    aboutData.paragraphs.forEach((p, i) => formData.append(`paragraphs[${i}]`, p));
+    aboutData.stats.forEach((s, i) => {
+      formData.append(`stats[${i}][label]`, s.label);
+      formData.append(`stats[${i}][value]`, s.value);
+      formData.append(`stats[${i}][description]`, s.description);
     });
 
-    // Handle images (either uploaded or URL)
-    aboutData.images.forEach((image: string | Blob, i: any) => {
-      if (image && !isImageUrl1 && !isImageUrl2) {
-        formData.append(`images[${i}]`, image); // Assuming image is a file object
-      } else {
-        formData.append(`images[${i}]`, image); // Assuming image is a URL
+    aboutData.images.forEach((img, i) => {
+      if (img.mode === "upload" && img.file) {
+        formData.append("images", img.file);
+      } else if (img.mode === "url" && img.url) {
+        formData.append(`images[${i}]`, img.url);
       }
     });
 
-    console.log("FormData to send:", formData);
-
-    // Proceed with the submission
     updateMutation.mutate(formData);
   };
 
-
-  // Handle Preview Confirmation with Logging
-  const handlePreviewConfirm = () => {
-    if (previewData) {
-      console.log("Preview confirmed, updating section with data: ", previewData); // Log preview confirmation
-      updateMutation.mutate(previewData);
-    } else {
-      addMessage("No preview data to save", "error");
-    }
-  };
-
-
+  // --- Preview Submit ---
   const handlePreviewSubmit = () => {
-    // Validate the data before showing the preview
     try {
+      const previewImages = aboutData.images.map((img) => {
+        if (img.mode === "upload" && img.preview) return img.preview;
+        if (img.mode === "url" && img.url) return img.url;
+        return "";
+      }).filter(Boolean);
+
       const data = insertSectionSchema.parse({
         name: "about",
         title: aboutData.title,
         subtitle: aboutData.subtitle,
-        paragraphs: aboutData.paragraphs.filter((p: string) => p.trim()),
-        images: aboutData.images.filter((i: string) => i.trim()),  // Ensure image URLs or filenames are valid
-        stats: aboutData.stats.filter((s: any) => s.label.trim() && s.value.trim()),  // Ensure stats are valid
+        paragraphs: aboutData.paragraphs.filter((p) => p.trim()),
+        images: previewImages,
+        stats: aboutData.stats.filter((s) => s.label.trim() && s.value.trim()),
       });
 
-      // Set the preview data and enable preview mode
       setPreviewData(data);
-      setPreviewMode(true);  // Show preview
-    } catch (error) {
-      addMessage("About section validation failed", "error");  // Show error if validation fails
+      setPreviewMode(true);
+    } catch {
+      console.error("Validation failed");
     }
   };
 
-  // PREVIEW MODE
+  // --- Preview Mode ---
   if (previewMode && previewData) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -333,7 +232,7 @@ export default function AboutAdminPage() {
           <AboutSection section={previewData} />
         </div>
         <div className="fixed bottom-4 right-4 flex gap-2">
-          <Button onClick={handlePreviewConfirm} className="bg-green-600 hover:bg-green-700">
+          <Button onClick={() => handleSubmit(new Event("submit") as any)} className="bg-green-600 hover:bg-green-700">
             OK
           </Button>
           <Button onClick={() => setPreviewMode(false)} variant="outline">
@@ -360,20 +259,12 @@ export default function AboutAdminPage() {
 
             <h1 className="text-3xl font-bold mb-4">Edit About Section</h1>
 
-            {/* Notifications */}
             {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`p-2 rounded mb-2 ${msg.type === "success"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-                  }`}
-              >
+              <div key={msg.id} className={`p-2 rounded mb-2 ${msg.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
                 {msg.text}
               </div>
             ))}
 
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
                 required
@@ -387,9 +278,9 @@ export default function AboutAdminPage() {
                 value={aboutData.subtitle}
                 onChange={(e) => setAboutData({ ...aboutData, subtitle: e.target.value })}
               />
-              {aboutData.paragraphs.map((p: string, i: number) => (
+
+              {aboutData.paragraphs.map((p, i) => (
                 <Textarea
-                  required
                   key={i}
                   placeholder={`Paragraph ${i + 1}`}
                   value={p}
@@ -401,73 +292,41 @@ export default function AboutAdminPage() {
                 />
               ))}
 
-              {/* Image 1 URL or File Upload Option */}
-              <div className="flex gap-4">
-                <Button onClick={toggleImageSource1} variant="outline">
-                  {isImageUrl1 ? "Switch to Image Upload" : "Switch to Image URL"}
-                </Button>
-
-                {isImageUrl1 ? (
-                  <Input
-                    type="url"
-                    value={aboutData.images[0]}
-                    onChange={handleImageUrlChange1}
-                    placeholder="Enter Image 1 URL"
-                  />
-                ) : (
-                  <div>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload1}
-                    />
-                    {imagePreview1 && <img src={imagePreview1} alt="Preview 1" />}
+              {/* Images */}
+              {aboutData.images.map((img, i) => (
+                <div key={i} className="space-y-2 border p-2 rounded">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Image {i + 1}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => toggleImageMode(i)}>
+                      Switch to {img.mode === "url" ? "Upload" : "URL"}
+                    </Button>
                   </div>
-                )}
 
-                {aboutData.images[0] && (
-                  <Button variant="outline" onClick={handleRemoveImage1}>
-                    Remove Image 1
-                  </Button>
-                )}
-              </div>
-
-              {/* Image 2 URL or File Upload Option */}
-              <div className="flex gap-4">
-                <Button onClick={toggleImageSource2} variant="outline">
-                  {isImageUrl2 ? "Switch to Image Upload" : "Switch to Image URL"}
-                </Button>
-
-                {isImageUrl2 ? (
-                  <Input
-                    type="url"
-                    value={aboutData.images[1]}
-                    onChange={handleImageUrlChange2}
-                    placeholder="Enter Image 2 URL"
-                  />
-                ) : (
-                  <div>
+                  {img.mode === "url" ? (
                     <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload2}
+                      type="url"
+                      value={img.url || ""}
+                      onChange={(e) => handleImageUrlChange(i, e.target.value)}
+                      placeholder={`Enter Image ${i + 1} URL`}
                     />
-                    {imagePreview2 && <img src={imagePreview2} alt="Preview 2" />}
-                  </div>
-                )}
+                  ) : (
+                    <Input type="file" accept="image/*" onChange={(e) => handleFileUpload(i, e.target.files?.[0] || null)} />
+                  )}
 
-                {aboutData.images[1] && (
-                  <Button variant="outline" onClick={handleRemoveImage2}>
-                    Remove Image 2
-                  </Button>
-                )}
-              </div>
+                  {img.preview && (
+                    <img src={img.preview} alt={`Preview ${i + 1}`} className="w-24 h-24 object-cover" />
+                  )}
+
+                  {(img.url || img.file) && (
+                    <Button variant="outline" onClick={() => handleRemoveImage(i)}>Remove</Button>
+                  )}
+                </div>
+              ))}
 
               {/* Stats */}
-              {aboutData.stats.map((s: any, i: number) => (
+              {aboutData.stats.map((s, i) => (
                 <div key={i} className="grid grid-cols-3 gap-2">
                   <Input
-                    required
                     placeholder="Label"
                     value={s.label}
                     onChange={(e) => {
@@ -477,7 +336,6 @@ export default function AboutAdminPage() {
                     }}
                   />
                   <Input
-                    required
                     placeholder="Value"
                     value={s.value}
                     onChange={(e) => {
@@ -487,7 +345,6 @@ export default function AboutAdminPage() {
                     }}
                   />
                   <Input
-                    required
                     placeholder="Description"
                     value={s.description}
                     onChange={(e) => {
@@ -499,19 +356,14 @@ export default function AboutAdminPage() {
                 </div>
               ))}
 
-              <Button type="submit" className="w-full" onClick={handlePreviewSubmit}>
+              <Button type="button" className="w-full" onClick={handlePreviewSubmit}>
                 Preview Changes
               </Button>
-            </form>
+              <Button type="button" variant="outline" className="w-full" onClick={restoreDefaults}>
+                Restore Defaults
+              </Button>
 
-            {/* Restore Defaults Button */}
-            <Button
-              variant="outline"
-              onClick={restoreDefaults}
-              className="mt-4"
-            >
-              Restore Defaults
-            </Button>
+            </form>
           </div>
         </div>
       </div>
