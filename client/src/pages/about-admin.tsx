@@ -36,7 +36,7 @@ export default function AboutAdminPage() {
   const [sectionId, setSectionId] = useState("");
   const queryClient = useQueryClient();
 
-  // --- Fallback Values ---
+  // Fallback values
   const fallbackImages = [
     "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
     "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
@@ -60,83 +60,152 @@ export default function AboutAdminPage() {
     }, 5000);
   };
 
-  // --- AUTHENTICATION CHECK ---
-  useEffect(() => {
-    if (token) {
-      fetch("/api/admin/verify", { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => {
-          if (res.ok) setLoggedIn(true);
-          else {
-            setToken("");
-            localStorage.removeItem("adminToken");
-            setLoggedIn(false);
-          }
-        })
-        .catch(() => {
-          setToken("");
-          localStorage.removeItem("adminToken");
-          setLoggedIn(false);
-        });
-    }
-  }, [token]);
-
-  
-
-  // --- LOGIN HANDLER ---
-  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setToken(data.token);
-        setLoggedIn(true);
-        localStorage.setItem("adminToken", data.token);
-        addMessage("Logged in successfully", "success");
-      } else {
-        setError(data.message);
-        addMessage(data.message, "error");
-      }
-    } catch {
-      setError("Login failed");
-      addMessage("Login failed", "error");
-    }
-  };
-
   // --- FETCH ABOUT SECTION ---
   useQuery({
     queryKey: ["/api/sections/about"],
     queryFn: async () => {
-      const res = await fetch("/api/sections?name=about");
-      if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-      const sections = await res.json();
-      const section = Array.isArray(sections)
-        ? sections.find((s: any) => s.name === "about")
-        : sections;
-      if (section) {
-        setSectionId(section._id || section.id);
-        setAboutData({
-          name: "about",
-          title: section.title || "",
-          subtitle: section.subtitle || "",
-          paragraphs: section.paragraphs || fallbackParagraphs,
-          images: section.images || fallbackImages,
-          stats: section.stats || fallbackStats,
-        });
+      try {
+        const res = await fetch("/api/sections?name=about");
+        console.log("Fetching About Section: ", res); // Log the response
+        if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+        const sections = await res.json();
+        console.log("Fetched Sections: ", sections); // Log fetched sections
+
+        const section = Array.isArray(sections)
+          ? sections.find((s: any) => s.name === "about")
+          : sections;
+        if (section) {
+          console.log("About Section Found: ", section); // Log found section
+          setSectionId(section._id || section.id);
+          setAboutData({
+            name: "about",
+            title: section.title || "",
+            subtitle: section.subtitle || "",
+            paragraphs: section.paragraphs || fallbackParagraphs,
+            images: section.images || fallbackImages,
+            stats: section.stats || fallbackStats,
+          });
+        }
+        return section;
+      } catch (error) {
+        console.error("Error fetching About Section: ", error); // Log error
       }
-      return section;
     },
     enabled: loggedIn,
   });
 
-  // --- CREATE / UPDATE MUTATIONS ---
+  // --- IMAGE URL OR UPLOAD TOGGLE LOGIC ---
+  const [isImageUrl1, setIsImageUrl1] = useState(false);  // Image 1 URL toggle
+  const [isImageUploaded1, setIsImageUploaded1] = useState(false);  // Image 1 upload toggle
+  const [isImageUrl2, setIsImageUrl2] = useState(false);  // Image 2 URL toggle
+  const [isImageUploaded2, setIsImageUploaded2] = useState(false);  // Image 2 upload toggle
+  const [imagePreview1, setImagePreview1] = useState(""); // Preview for Image 1
+  const [imagePreview2, setImagePreview2] = useState(""); // Preview for Image 2
+
+  // Handle image toggles, URL change, and file uploads
+  // --- IMAGE URL OR UPLOAD TOGGLE LOGIC ---
+  const toggleImageSource1 = () => {
+    console.log("Toggling Image Source 1. Current State: ", isImageUrl1); // Log the current state before toggling
+    setIsImageUrl1(!isImageUrl1);
+    setIsImageUploaded1(false);
+    setImagePreview1("");
+  };
+
+  const toggleImageSource2 = () => {
+    console.log("Toggling Image Source 2. Current State: ", isImageUrl2); // Log the current state before toggling
+    setIsImageUrl2(!isImageUrl2);
+    setIsImageUploaded2(false);
+    setImagePreview2("");
+  };
+
+  // Image URL Change Handlers with Logging
+  const handleImageUrlChange1 = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("Image 1 URL Change: ", e.target.value); // Log URL change for Image 1
+    const updatedImages = [...aboutData.images];
+    updatedImages[0] = e.target.value;
+    setAboutData({ ...aboutData, images: updatedImages });
+  };
+
+  const handleImageUrlChange2 = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("Image 2 URL Change: ", e.target.value); // Log URL change for Image 2
+    const updatedImages = [...aboutData.images];
+    updatedImages[1] = e.target.value;
+    setAboutData({ ...aboutData, images: updatedImages });
+  };
+
+
+
+
+  // File Upload Handlers with Logging
+  const handleFileUpload1 = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files ? e.target.files[0] : null;
+    if (file) {
+      console.log("Image 1 Uploaded: ", file.name); // Log the uploaded file name
+      setIsImageUploaded1(true);
+      setImagePreview1(URL.createObjectURL(file));
+      const updatedImages = [...aboutData.images];
+      updatedImages[0] = file.name;
+      setAboutData({ ...aboutData, images: updatedImages });
+    }
+  };
+
+  const handleFileUpload2 = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files ? e.target.files[0] : null;
+    if (file) {
+      console.log("Image 2 Uploaded: ", file.name); // Log the uploaded file name
+      setIsImageUploaded2(true);
+      setImagePreview2(URL.createObjectURL(file));
+      const updatedImages = [...aboutData.images];
+      updatedImages[1] = file.name;
+      setAboutData({ ...aboutData, images: updatedImages });
+    }
+  };
+
+  // Remove Image Handlers with Logging
+  const handleRemoveImage1 = () => {
+    console.log("Removing Image 1"); // Log the removal of Image 1
+    setIsImageUploaded1(false);
+    setImagePreview1("");
+    const updatedImages = [...aboutData.images];
+    updatedImages[0] = "";
+    setAboutData({ ...aboutData, images: updatedImages });
+  };
+
+  const handleRemoveImage2 = () => {
+    console.log("Removing Image 2"); // Log the removal of Image 2
+    setIsImageUploaded2(false);
+    setImagePreview2("");
+    const updatedImages = [...aboutData.images];
+    updatedImages[1] = "";
+    setAboutData({ ...aboutData, images: updatedImages });
+  };
+
+  // Restore Defaults with Logging
+  const restoreDefaults = () => {
+    console.log("Restoring Defaults"); // Log when defaults are restored
+    setAboutData({
+      name: "about",
+      title: "About Us",
+      subtitle: "Building futures through quality education and holistic development since 1946",
+      paragraphs: fallbackParagraphs,
+      images: fallbackImages,
+      stats: fallbackStats,
+    });
+    setIsImageUrl1(true);
+    setIsImageUploaded1(false);
+    setIsImageUrl2(true);
+    setIsImageUploaded2(false);
+    setImagePreview1("");
+    setImagePreview2("");
+    setPreviewData(null);
+    setPreviewMode(false);
+    addMessage("Form reset to default values with fallback image URLs", "success");
+  };
+
+  // --- CREATE/UPDATE MUTATION ---
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("Creating About Section with data: ", data); // Log the data being sent to create
       const res = await fetch("/api/sections", {
         method: "POST",
         headers: {
@@ -146,9 +215,8 @@ export default function AboutAdminPage() {
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`Failed to create: ${res.status}`);
-      const result = await res.json();
-      setSectionId(result.id);
-      return result;
+      console.log("Section Created Successfully: ", res); // Log the successful creation response
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sections/about"] });
@@ -157,6 +225,7 @@ export default function AboutAdminPage() {
       setPreviewData(null);
     },
     onError: (error: any) => {
+      console.error("Error creating About section: ", error); // Log any errors during creation
       addMessage(`Failed to create: ${error.message}`, "error");
       setPreviewMode(false);
       setPreviewData(null);
@@ -165,6 +234,7 @@ export default function AboutAdminPage() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("Updating About Section with data: ", data); // Log the data being sent to update
       if (!sectionId) return await createMutation.mutateAsync(data);
       const res = await fetch(`/api/sections/${sectionId}`, {
         method: "PUT",
@@ -175,6 +245,7 @@ export default function AboutAdminPage() {
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`Failed to update: ${res.status}`);
+      console.log("Section Updated Successfully: ", res); // Log the successful update response
       return await res.json();
     },
     onSuccess: () => {
@@ -184,83 +255,74 @@ export default function AboutAdminPage() {
       setPreviewData(null);
     },
     onError: (error: any) => {
-      addMessage(`Failed to update: ${error.message}`, "error");
+      console.error("Error updating About section: ", error); // Log any errors during update
+      console.log(`Failed to update: ${error.message}`, "error");
       setPreviewMode(false);
       setPreviewData(null);
     },
   });
 
-  // --- RESET FORM TO DEFAULT VALUES ---
-  const restoreDefaults = () => {
-    setAboutData({
-      name: "about",
-      title: "About Us",
-      subtitle: "Building futures through quality education and holistic development since 1946",
-      paragraphs: fallbackParagraphs,
-      images: fallbackImages,
-      stats: fallbackStats,
-    });
-    addMessage("Form reset to default values", "success");
-  };
-
-  // --- FORM SUBMIT HANDLER ---
+  // Submit Handler with Logging
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const formData = new FormData();
+    formData.append("name", "about");
+    formData.append("title", aboutData.title);
+    formData.append("subtitle", aboutData.subtitle);
+    aboutData.paragraphs.forEach((paragraph: string | Blob, i: any) => formData.append(`paragraphs[${i}]`, paragraph));
+    aboutData.stats.forEach((stat: { label: string | Blob; value: string | Blob; description: string | Blob; }, i: any) => {
+      formData.append(`stats[${i}][label]`, stat.label);
+      formData.append(`stats[${i}][value]`, stat.value);
+      formData.append(`stats[${i}][description]`, stat.description);
+    });
+
+    // Handle images (either uploaded or URL)
+    aboutData.images.forEach((image: string | Blob, i: any) => {
+      if (image && !isImageUrl1 && !isImageUrl2) {
+        formData.append(`images[${i}]`, image); // Assuming image is a file object
+      } else {
+        formData.append(`images[${i}]`, image); // Assuming image is a URL
+      }
+    });
+
+    console.log("FormData to send:", formData);
+
+    // Proceed with the submission
+    updateMutation.mutate(formData);
+  };
+
+
+  // Handle Preview Confirmation with Logging
+  const handlePreviewConfirm = () => {
+    if (previewData) {
+      console.log("Preview confirmed, updating section with data: ", previewData); // Log preview confirmation
+      updateMutation.mutate(previewData);
+    } else {
+      addMessage("No preview data to save", "error");
+    }
+  };
+
+
+  const handlePreviewSubmit = () => {
+    // Validate the data before showing the preview
     try {
       const data = insertSectionSchema.parse({
         name: "about",
         title: aboutData.title,
         subtitle: aboutData.subtitle,
         paragraphs: aboutData.paragraphs.filter((p: string) => p.trim()),
-        images: aboutData.images.filter((i: string) => i.trim()),
-        stats: aboutData.stats.filter((s: any) => s.label.trim() && s.value.trim()),
+        images: aboutData.images.filter((i: string) => i.trim()),  // Ensure image URLs or filenames are valid
+        stats: aboutData.stats.filter((s: any) => s.label.trim() && s.value.trim()),  // Ensure stats are valid
       });
+
+      // Set the preview data and enable preview mode
       setPreviewData(data);
-      setPreviewMode(true);
-    } catch {
-      addMessage("About section validation failed", "error");
+      setPreviewMode(true);  // Show preview
+    } catch (error) {
+      addMessage("About section validation failed", "error");  // Show error if validation fails
     }
   };
-
-  const handlePreviewConfirm = () => {
-    if (previewData) updateMutation.mutate(previewData);
-    else addMessage("No preview data to save", "error");
-  };
-
-
-  // --- UI RENDERING ---
-
-  // LOGIN PAGE
-  if (!loggedIn) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold text-foreground mb-6 text-center">Admin Login</h2>
-          <form onSubmit={handleLogin}>
-            <Input
-              name="username"
-              value={form.username}
-              onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
-              placeholder="Username"
-              className="mb-4"
-              required
-            />
-            <Input
-              type="password"
-              name="password"
-              value={form.password}
-              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              placeholder="Password"
-              className="mb-4"
-              required
-            />
-            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-            <Button type="submit" className="w-full">Login</Button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   // PREVIEW MODE
   if (previewMode && previewData) {
@@ -282,14 +344,12 @@ export default function AboutAdminPage() {
     );
   }
 
-  // EDIT MODE
   // --- UI RENDERING ---
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-background flex">
         <div className="flex-1 p-4">
           <div className="container mx-auto max-w-2xl">
-            {/* Back Button */}
             <Button
               variant="outline"
               className="mb-4"
@@ -304,11 +364,10 @@ export default function AboutAdminPage() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`p-2 rounded mb-2 ${
-                  msg.type === "success"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
+                className={`p-2 rounded mb-2 ${msg.type === "success"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+                  }`}
               >
                 {msg.text}
               </div>
@@ -341,19 +400,70 @@ export default function AboutAdminPage() {
                   }}
                 />
               ))}
-              {aboutData.images.map((img: string, i: number) => (
-                <Input
-                  required
-                  key={i}
-                  placeholder={`Image URL ${i + 1}`}
-                  value={img}
-                  onChange={(e) => {
-                    const updated = [...aboutData.images];
-                    updated[i] = e.target.value;
-                    setAboutData({ ...aboutData, images: updated });
-                  }}
-                />
-              ))}
+
+              {/* Image 1 URL or File Upload Option */}
+              <div className="flex gap-4">
+                <Button onClick={toggleImageSource1} variant="outline">
+                  {isImageUrl1 ? "Switch to Image Upload" : "Switch to Image URL"}
+                </Button>
+
+                {isImageUrl1 ? (
+                  <Input
+                    type="url"
+                    value={aboutData.images[0]}
+                    onChange={handleImageUrlChange1}
+                    placeholder="Enter Image 1 URL"
+                  />
+                ) : (
+                  <div>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload1}
+                    />
+                    {imagePreview1 && <img src={imagePreview1} alt="Preview 1" />}
+                  </div>
+                )}
+
+                {aboutData.images[0] && (
+                  <Button variant="outline" onClick={handleRemoveImage1}>
+                    Remove Image 1
+                  </Button>
+                )}
+              </div>
+
+              {/* Image 2 URL or File Upload Option */}
+              <div className="flex gap-4">
+                <Button onClick={toggleImageSource2} variant="outline">
+                  {isImageUrl2 ? "Switch to Image Upload" : "Switch to Image URL"}
+                </Button>
+
+                {isImageUrl2 ? (
+                  <Input
+                    type="url"
+                    value={aboutData.images[1]}
+                    onChange={handleImageUrlChange2}
+                    placeholder="Enter Image 2 URL"
+                  />
+                ) : (
+                  <div>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload2}
+                    />
+                    {imagePreview2 && <img src={imagePreview2} alt="Preview 2" />}
+                  </div>
+                )}
+
+                {aboutData.images[1] && (
+                  <Button variant="outline" onClick={handleRemoveImage2}>
+                    Remove Image 2
+                  </Button>
+                )}
+              </div>
+
+              {/* Stats */}
               {aboutData.stats.map((s: any, i: number) => (
                 <div key={i} className="grid grid-cols-3 gap-2">
                   <Input
@@ -388,7 +498,8 @@ export default function AboutAdminPage() {
                   />
                 </div>
               ))}
-              <Button type="submit" className="w-full">
+
+              <Button type="submit" className="w-full" onClick={handlePreviewSubmit}>
                 Preview Changes
               </Button>
             </form>

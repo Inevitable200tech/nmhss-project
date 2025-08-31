@@ -9,6 +9,23 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import { GridFsStorage } from "multer-gridfs-storage";
+
+// Create the storage engine using GridFsStorage
+const storageEngine = new GridFsStorage({
+  url: process.env.MONGODB_URI || 'mongodb://localhost:27017/myDatabase', // Ensure the MongoDB URI is set
+  file: (req, file) => {
+    return {
+      bucketName: 'images', // Define the bucket name
+      filename: `${Date.now()}-${file.originalname}`, // Name the file uniquely
+    };
+  }
+});
+
+// Define the upload middleware
+const upload = multer({ storage: storageEngine });
+
 
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "brocookedhard";
@@ -198,27 +215,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sections
-  app.post("/api/sections", requireAuth, async (req, res) => {
+
+
+  // Define the upload 
+
+  app.post("/api/sections", upload.array("images"), async (req, res) => {
     try {
-      const sectionData = insertSectionSchema.parse(req.body);
-      const section = await storage.createSection(sectionData);
-      res.json(section);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Validation failed", details: error.errors });
+      const formData = req.body; // form data containing other fields
+      const files = req.files; // the uploaded files
+      const images = formData.images || []; // Images can be URL or files
+
+      // Process the images: If a file is present, store it using GridFS
+      const processedImages = images.map((image: string | Express.Multer.File) => {
+        if (typeof image === 'string') {
+          // Handle image URLs
+          return image;
+        } else if (image && image.filename) {
+          // Handle uploaded images using GridFS
+          return `${process.env.MONGODB_URI}/images/${image.filename}`;
+        } else {
+          return null;
+        }
+      }).filter(Boolean);
+
+      const newSection = await storage.createSection({
+        ...formData,
+        images: processedImages,
+      });
+
+      res.status(201).json(newSection);
+    } catch (error: unknown) {
+      // Explicitly cast error to Error type
+      if (error instanceof Error) {
+        console.error("Error creating section:", error.message);
+        res.status(500).json({ error: 'Failed to create section', details: error.message });
       } else {
-        res.status(500).json({ error: "Failed to create section" });
+        // If error is not an instance of Error, handle it here
+        console.error("Unknown error:", error);
+        res.status(500).json({ error: 'Failed to create section', details: 'An unknown error occurred' });
       }
     }
   });
 
-  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+
+
+
+  app.put("/api/sections/:id", requireAuth, upload.single("image"), async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
-      const updated = await storage.updateSection(req.params.id, sectionData);
-      if (!updated) return res.status(404).json({ error: "Section not found" });
-      res.json(updated);
+
+      // Handle image URL or uploaded image
+      let imageUrl = sectionData.images?.[0];
+      if (req.file) {
+        imageUrl = `${process.env.MONGODB_URI}/images/${req.file.filename}`;
+      }
+
+      const updatedSection = await storage.updateSection(req.params.id, {
+        ...sectionData,
+        images: imageUrl ? [imageUrl] : [],
+      });
+
+      if (!updatedSection) {
+        return res.status(404).json({ error: "Section not found" });
+      }
+
+      res.json(updatedSection);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Validation failed", details: error.errors });
@@ -227,6 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+
 
   const httpServer = createServer(app);
   return httpServer;

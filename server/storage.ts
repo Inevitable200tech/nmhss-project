@@ -1,4 +1,11 @@
 import mongoose, { Schema, model, Document, Model } from "mongoose";
+import multer from "multer";
+import { GridFsStorage } from "multer-gridfs-storage";
+import dotenv from "dotenv";
+dotenv.config({ path: "cert.env" }); // Adjust the path if your .env is elsewhere
+
+
+// Existing schemas
 import {
   type User,
   type InsertUser,
@@ -17,19 +24,17 @@ import {
   sectionSchema,
 } from "@shared/schema";
 
-// Define models
-const UserModel: Model<User> =
-  mongoose.models.User || model<User>("User", userSchema);
-const ContactMessageModel: Model<ContactMessage> =
-  mongoose.models.ContactMessage ||
-  model<ContactMessage>("ContactMessage", contactMessageSchema);
-const EventModel: Model<Event> =
-  mongoose.models.Event || model<Event>("Event", eventSchema);
-const NewsModel: Model<News> =
-  mongoose.models.News || model<News>("News", newsSchema);
-const SectionModel: Model<Section> =
-  mongoose.models.Section || model<Section>("Section", sectionSchema);
+const imageUploadUrl = process.env.MONGO_URL || 'your_default_url'; // default fallback URL
 
+
+// Define models for User, ContactMessage, Event, News, and Section
+const UserModel: Model<User> = mongoose.models.User || model<User>("User", userSchema);
+const ContactMessageModel: Model<ContactMessage> = mongoose.models.ContactMessage || model<ContactMessage>("ContactMessage", contactMessageSchema);
+const EventModel: Model<Event> = mongoose.models.Event || model<Event>("Event", eventSchema);
+const NewsModel: Model<News> = mongoose.models.News || model<News>("News", newsSchema);
+const SectionModel: Model<Section> = mongoose.models.Section || model<Section>("Section", sectionSchema);
+
+// MongoStorage interface definition
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -49,6 +54,38 @@ export interface IStorage {
 }
 
 export class MongoStorage implements IStorage {
+  // GridFS Storage setup for file uploads (image or document uploads)
+  private fileStorage: any;
+
+  constructor() {
+    // GridFSStorage setup with dynamic bucket selection
+    this.fileStorage = new GridFsStorage({
+      url: imageUploadUrl, // Adjust this URL as needed
+      file: (req: any, file: any) => {
+        // Determine the bucket name based on the file type (images or other)
+        const bucketName = this.getBucketName(file);
+        return {
+          bucketName: bucketName,
+          filename: file.originalname,
+        };
+      },
+    });
+  }
+
+  // Determine the bucket name dynamically (images or files)
+  private getBucketName(file: any): string {
+    if (file.mimetype.includes("image")) {
+      return "images"; // Use "images" bucket for images
+    }
+    return "files"; // Use "files" bucket for other types of files
+  }
+
+  // Middleware for uploading a file
+  getMulterUpload() {
+    return multer({ storage: this.fileStorage });
+  }
+
+  // Existing methods from the MongoStorage interface
   async getUser(id: string): Promise<User | undefined> {
     const doc = await UserModel.findById(id).lean().exec();
     if (!doc) return undefined;
@@ -148,22 +185,22 @@ export class MongoStorage implements IStorage {
   }
 
   async getNews(): Promise<News[]> {
-  const now = new Date();
-  const docs = await NewsModel.find({
-    $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }],
-  })
-    .sort({ createdAt: -1 })
-    .lean()
-    .exec();
+    const now = new Date();
+    const docs = await NewsModel.find({
+      $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gt: now } }],
+    })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
 
-  return docs.map(
-    (doc) =>
-      ({
-        ...doc,
-        id: doc._id.toString(),
-      }) as News
-  );
-}
+    return docs.map(
+      (doc) =>
+        ({
+          ...doc,
+          id: doc._id.toString(),
+        }) as News
+    );
+  }
 
 
 
@@ -212,34 +249,34 @@ export class MongoStorage implements IStorage {
     return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as Section[];
   }
 
+  // Inside MongoStorage class
   async createSection(insertSection: InsertSection): Promise<Section> {
-    const doc = await SectionModel.create(insertSection);
-    const plainDoc = doc.toObject() as {
-      _id: mongoose.Types.ObjectId;
-      name: string;
-      title: string;
-      subtitle?: string;
-      paragraphs?: string[];
-      images?: string[];
-      stats?: { label: string; value: string; description?: string }[];
-      profiles?: {
-        name: string;
-        role: string;
-        description: string;
-        image?: string;
-      }[];
-    };
+    // Check if images are defined and handle accordingly
+    const images = insertSection.images?.map((image: string | Blob) => {
+      if (typeof image === 'string') {
+        // If it's a URL, just store the URL
+        return image;
+      } else {
+        // For file uploads, generate a unique ObjectId (Placeholder for GridFS file reference)
+        return new mongoose.Types.ObjectId();
+      }
+    }) || [];  // Default to an empty array if images is undefined
+
+    // Create the section in the database
+    const doc = await SectionModel.create({
+      ...insertSection,
+      images,  // Saving either URLs or file references
+    });
+
+    // Return the created document, converting it to the Section type
     return {
-      id: plainDoc._id.toString(),
-      name: plainDoc.name,
-      title: plainDoc.title,
-      subtitle: plainDoc.subtitle,
-      paragraphs: plainDoc.paragraphs,
-      images: plainDoc.images,
-      stats: plainDoc.stats,
-      profiles: plainDoc.profiles,
-    } as Section;
+      ...doc.toObject(),
+      id: (doc._id as mongoose.Types.ObjectId).toString() // Ensure _id is correctly cast to a string
+    } as unknown as Section;
   }
+
+
+
 
   async updateSection(
     id: string,
@@ -253,7 +290,7 @@ export class MongoStorage implements IStorage {
     if (!doc) return null;
     return { ...doc, id: doc._id.toString() } as Section;
   }
-  
+
 }
 
 export const storage = new MongoStorage();

@@ -110,10 +110,24 @@ export const sectionSchema = new Schema<Section>({
   title: { type: String, required: true },
   subtitle: { type: String },
   paragraphs: [{ type: String }],
-  images: [{ type: String }],
-  stats: [{ label: String, value: String, description: { type: String, required: false } }],
-  profiles: [{ name: String, role: String, description: String, image: { type: String, required: false } }],
+  images: [{ type: String }], // We keep this as an array of strings to store image URL or GridFS reference
+  stats: [
+    {
+      label: { type: String },
+      value: { type: String },
+      description: { type: String, required: false },
+    },
+  ],
+  profiles: [
+    {
+      name: { type: String },
+      role: { type: String },
+      description: { type: String },
+      image: { type: String, required: false }, // Optional image URL or GridFS reference
+    },
+  ],
 }, { timestamps: false });
+
 
 export const insertUserSchema = z.object({
   username: z.string(),
@@ -155,9 +169,22 @@ export const insertSectionSchema = z.object({
   title: z.string(),
   subtitle: z.string().optional(),
   paragraphs: z.array(z.string()).optional(),
-  images: z.array(z.string()).optional(),
-  stats: z.array(z.object({ label: z.string(), value: z.string(), description: z.string().optional() })).optional(),
-  profiles: z.array(z.object({ name: z.string(), role: z.string(), description: z.string(), image: z.string().optional() })).optional(),
+  images: z.array(z.string()).optional(),  // Allows both URLs or references (MongoDB ObjectId)
+  stats: z.array(
+    z.object({
+      label: z.string(),
+      value: z.string(),
+      description: z.string().optional(),
+    })
+  ).optional(),
+  profiles: z.array(
+    z.object({
+      name: z.string(),
+      role: z.string(),
+      description: z.string(),
+      image: z.string().optional(),  // Optional image field for profiles, can be a URL or reference
+    })
+  ).optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
