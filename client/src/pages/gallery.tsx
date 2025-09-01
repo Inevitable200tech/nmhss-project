@@ -5,10 +5,25 @@ import Navigation from "../components/navigation";
 import Footer from "../components/footer";
 import type { Section } from "@shared/schema";
 
-export default function GalleryPage() {
-  // Move hooks to the top level to ensure consistent rendering
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
+const fallbackVideos = [
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+];
+
+// For now always use fallback videos (no backend binding yet)
+const videos: string[] = fallbackVideos;
+
+
+
+
+export default function GalleryPage() {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [mediaType, setMediaType] = useState<"images" | "videos">("images");
+
+  const showMedia = (index: number) => {
+    setSelectedIndex(index);
+  };
   const { data: section, isLoading } = useQuery<Section>({
     queryKey: ["/api/sections/gallery"],
     queryFn: async () => {
@@ -30,19 +45,14 @@ export default function GalleryPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedIndex]);
 
-  // Early return after all hooks are defined
   if (isLoading) return <div>Loading...</div>;
 
   const fallbackImages = [
-    "https://images.unsplash.com/photo-1497864149931-3e41b53db656?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1509062522246-3755977927d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1570545880377-36ab74c3fb03?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1577896851231-70ef188820f9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1509062522246-3755977927d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1570545880377-36ab74c3fb03?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
+    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
   ];
 
   const images = section?.images && section.images.length > 0 ? section.images : fallbackImages;
@@ -57,20 +67,13 @@ export default function GalleryPage() {
 
   const timelineItems = section?.stats && section.stats.length > 0 ? section.stats : fallbackTimeline;
 
-  const showImage = (index: number) => {
-    setSelectedIndex(index);
-  };
-
-  const closeLightbox = () => {
-    setSelectedIndex(null);
-  };
-
+  const showImage = (index: number) => setSelectedIndex(index);
+  const closeLightbox = () => setSelectedIndex(null);
   const showNext = () => {
     if (selectedIndex !== null && selectedIndex < images.length - 1) {
       setSelectedIndex(selectedIndex + 1);
     }
   };
-
   const showPrev = () => {
     if (selectedIndex !== null && selectedIndex > 0) {
       setSelectedIndex(selectedIndex - 1);
@@ -80,23 +83,14 @@ export default function GalleryPage() {
   return (
     <>
       <Navigation />
-      <section id="gallery" className="py-20 bg-background">
+      <section id="gallery" className="py-20 bg-background mt-16">
         <div className="container mx-auto px-4 lg:px-8">
           {/* Section Header */}
           <div className="text-center mb-16">
-            <h2
-              className="text-4xl md:text-5xl font-bold text-foreground mb-4"
-              data-aos="fade-up"
-              data-testid="gallery-title"
-            >
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
               {section?.title || "Photo Gallery & Timeline"}
             </h2>
-            <p
-              className="text-xl text-muted-foreground max-w-2xl mx-auto"
-              data-aos="fade-up"
-              data-aos-delay="200"
-              data-testid="gallery-subtitle"
-            >
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               {section?.subtitle || "Explore our school's history through timeline and captured moments"}
             </p>
           </div>
@@ -110,8 +104,6 @@ export default function GalleryPage() {
                 <div
                   key={index}
                   className={`flex ${index % 2 === 0 ? "flex-row" : "flex-row-reverse"} mb-8 items-center justify-between`}
-                  data-aos="fade-up"
-                  data-aos-delay={index * 100}
                 >
                   <div className={`w-5/12 ${index % 2 === 0 ? "text-right pr-8" : "text-left pl-8"}`}>
                     <h4 className="text-xl font-semibold text-foreground">{item.label}</h4>
@@ -130,44 +122,72 @@ export default function GalleryPage() {
             </div>
           </div>
 
-          {/* Image Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {images.map((img, index) => (
-              <div
-                key={index}
-                className="relative overflow-hidden rounded-xl shadow-lg hover-lift group cursor-pointer"
-                onClick={() => showImage(index)}
-                data-aos="fade-up"
-                data-aos-delay={index * 100}
-                data-testid={`gallery-image-${index}`}
-              >
-                <img
-                  src={img}
-                  alt={`Gallery image ${index + 1}`}
-                  className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity duration-300 flex items-center justify-center">
-                  <p className="text-white text-lg font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                    View
-                  </p>
-                </div>
-              </div>
-            ))}
+          {/* Media Type Toggle */}
+          <div className="flex justify-center mb-8 space-x-4">
+            <button
+              onClick={() => setMediaType("images")}
+              className={`px-6 py-2 rounded-full font-medium transition ${mediaType === "images" ? "bg-primary text-white" : "bg-white/20 text-foreground"
+                }`}
+            >
+              Images
+            </button>
+            <button
+              onClick={() => setMediaType("videos")}
+              className={`px-6 py-2 rounded-full font-medium transition ${mediaType === "videos" ? "bg-primary text-white" : "bg-white/20 text-foreground"
+                }`}
+            >
+              Videos
+            </button>
           </div>
+
+          {/* Media Grid with Glassmorphism */}
+          <div className="relative rounded-3xl p-6 bg-white/10 backdrop-blur-lg shadow-xl border border-white/20 overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute w-24 h-24 bg-white/20 rounded-full top-10 left-10 blur-2xl opacity-30"></div>
+              <div className="absolute w-32 h-32 bg-white/10 rounded-full bottom-10 right-10 blur-3xl opacity-40"></div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+              {(mediaType === "images" ? images : videos).map((src, index) => (
+                <div
+                  key={index}
+                  className="relative overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition-shadow group cursor-pointer"
+                  onClick={() => showMedia(index)}
+                >
+                  {mediaType === "images" ? (
+                    <img
+                      src={src}
+                      alt={`Media ${index + 1}`}
+                      className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                  ) : (
+                    <video
+                      src={src}
+                      className="w-full h-64 object-cover"
+                      muted
+                      loop
+                      playsInline
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                    <p className="text-white text-lg font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                      View
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
+
       </section>
 
       {/* Lightbox Modal */}
       {selectedIndex !== null && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
-          onClick={closeLightbox}
-        >
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50" onClick={closeLightbox}>
           <div className="relative max-w-4xl max-h-[90vh] w-full p-4" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="absolute top-4 right-4 text-white hover:text-gray-300"
-              onClick={closeLightbox}
-            >
+            <button className="absolute -top-10 right-4 text-white hover:text-gray-300" onClick={closeLightbox}>
               <X className="w-8 h-8" />
             </button>
             <button
@@ -180,15 +200,25 @@ export default function GalleryPage() {
             <button
               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 disabled:opacity-50"
               onClick={showNext}
-              disabled={selectedIndex === images.length - 1}
+              disabled={selectedIndex === (mediaType === "images" ? images : videos).length - 1}
             >
               <ArrowRight className="w-12 h-12" />
             </button>
-            <img
-              src={images[selectedIndex]}
-              alt={`Enlarged image ${selectedIndex + 1}`}
-              className="w-full h-auto max-h-[80vh] object-contain"
-            />
+
+            {mediaType === "images" ? (
+              <img
+                src={images[selectedIndex]}
+                alt={`Enlarged image ${selectedIndex + 1}`}
+                className="w-full h-auto max-h-[80vh] object-contain"
+              />
+            ) : (
+              <video
+                src={videos[selectedIndex]}
+                controls
+                autoPlay
+                className="w-full h-auto max-h-[80vh] object-contain"
+              />
+            )}
           </div>
         </div>
       )}
@@ -197,3 +227,5 @@ export default function GalleryPage() {
     </>
   );
 }
+
+
