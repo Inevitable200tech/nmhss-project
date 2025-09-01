@@ -210,7 +210,6 @@ export default function GalleryPage() {
           </div>
         </div>
       )}
-
       <Footer />
     </>
   );

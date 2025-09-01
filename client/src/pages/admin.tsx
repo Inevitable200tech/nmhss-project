@@ -135,6 +135,13 @@ export default function AdminPage() {
               </Button>
             </a>
           </li>
+          <li>
+            <a href="/admin-gallery">
+              <Button variant="outline" className="w-full text-left">
+                Manage Gallery
+              </Button>
+            </a>
+          </li>
         </ul>
         <Button variant="outline" className="w-full mt-4" onClick={handleLogout}>
           Logout
