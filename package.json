@@ -4,10 +4,9 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "node dist/index.js",
-    "check": "npm install -g typescript tsx"
+    "build": "cross-env NODE_ENV=production vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "cross-env NODE_ENV=production node dist/index.js",
+    "dev": "cross-env NODE_ENV=development vite"
   },
   "dependencies": {
     "@babel/helpers": "^7.28.3",
@@ -104,6 +103,7 @@
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
+    "cross-env": "^10.0.0",
     "esbuild": "^0.25.9",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.17",
