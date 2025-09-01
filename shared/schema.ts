@@ -187,22 +187,54 @@ export const insertSectionSchema = z.object({
     .optional(),
 });
 
+// Replace the Media interface and schema in schema.ts
 export interface Media extends Document {
+  id: string;
   filename: string;
   contentType: string;
-  data: Buffer;
   type: "image" | "video";
   uploadedAt: Date;
 }
 
-
 const mediaSchema = new Schema<Media>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
   filename: { type: String, required: true },
   contentType: { type: String, required: true },
-  data: { type: Buffer, required: true },
   type: { type: String, enum: ["image", "video"], required: true },
   uploadedAt: { type: Date, default: Date.now },
 });
+
+// Add to schema.ts
+export interface GalleryImage extends Document {
+  id: string;
+  mediaId: string;
+  url: string;
+  uploadedAt: Date;
+}
+
+export interface GalleryVideo extends Document {
+  id: string;
+  mediaId: string;
+  url: string;
+  uploadedAt: Date;
+}
+
+export const galleryImageSchema = new Schema<GalleryImage>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
+  mediaId: { type: String, required: true },
+  url: { type: String, required: true },
+  uploadedAt: { type: Date, required: true },
+});
+
+export const galleryVideoSchema = new Schema<GalleryVideo>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
+  mediaId: { type: String, required: true },
+  url: { type: String, required: true },
+  uploadedAt: { type: Date, required: true },
+});
+
+export const GalleryImageModel = mongoose.model<GalleryImage>("GalleryImage", galleryImageSchema);
+export const GalleryVideoModel = mongoose.model<GalleryVideo>("GalleryVideo", galleryVideoSchema);
 
 export const MediaModel = mongoose.model<Media>("Media", mediaSchema);
 export type InsertUser = z.infer<typeof insertUserSchema>;

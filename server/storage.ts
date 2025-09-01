@@ -17,6 +17,11 @@ import {
   eventSchema,
   newsSchema,
   SectionSchema,
+  GalleryImage,
+  GalleryVideo,
+  GalleryImageModel,
+  GalleryVideoModel,
+  MediaModel
 } from "@shared/schema";
 
 export const upload = multer({ storage: multer.memoryStorage() });
@@ -50,6 +55,12 @@ export interface IStorage {
   getSections(name?: string): Promise<Section[]>;
   createSection(section: InsertSection): Promise<Section>;
   updateSection(id: string, data: InsertSection): Promise<Section | null>;
+  getGalleryImages(): Promise<GalleryImage[]>;
+  createGalleryImage(mediaId: string, url: string, uploadedAt: Date): Promise<GalleryImage>;
+  deleteGalleryImage(id: string): Promise<GalleryImage | null>;
+  getGalleryVideos(): Promise<GalleryVideo[]>;
+  createGalleryVideo(mediaId: string, url: string, uploadedAt: Date): Promise<GalleryVideo>;
+  deleteGalleryVideo(id: string): Promise<GalleryVideo | null>;
 }
 
 export class MongoStorage implements IStorage {
@@ -246,16 +257,71 @@ export class MongoStorage implements IStorage {
   }
 
   async updateSection(name: string, data: InsertSection): Promise<Section | null> {
-  const doc = await SectionModel.findOneAndUpdate({ name }, data, {
-    new: true,
-    upsert: true, // create if not exists
-  })
-    .lean()
-    .exec();
-  if (!doc) return null;
-  return { ...doc, id: doc._id.toString() } as Section;
-}
+    const doc = await SectionModel.findOneAndUpdate({ name }, data, {
+      new: true,
+      upsert: true, // create if not exists
+    })
+      .lean()
+      .exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as Section;
+  }
 
+  async getGalleryImages(): Promise<GalleryImage[]> {
+    const docs = await GalleryImageModel.find().sort({ uploadedAt: -1 }).lean().exec();
+    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as GalleryImage[];
+  }
+
+  async createGalleryImage(mediaId: string, url: string, uploadedAt: Date): Promise<GalleryImage> {
+    const doc = await GalleryImageModel.create({ mediaId, url, uploadedAt });
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      mediaId: string;
+      url: string;
+      uploadedAt: Date;
+    };
+    return {
+      id: plainDoc._id.toString(),
+      mediaId: plainDoc.mediaId,
+      url: plainDoc.url,
+      uploadedAt: plainDoc.uploadedAt,
+    } as GalleryImage;
+  }
+
+  async deleteGalleryImage(id: string): Promise<GalleryImage | null> {
+    const doc = await GalleryImageModel.findByIdAndDelete(id).lean().exec();
+    if (!doc) return null;
+    await MediaModel.findByIdAndDelete(doc.mediaId);
+    return { ...doc, id: doc._id.toString() } as GalleryImage;
+  }
+
+  async getGalleryVideos(): Promise<GalleryVideo[]> {
+    const docs = await GalleryVideoModel.find().sort({ uploadedAt: -1 }).lean().exec();
+    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as GalleryVideo[];
+  }
+
+  async createGalleryVideo(mediaId: string, url: string, uploadedAt: Date): Promise<GalleryVideo> {
+    const doc = await GalleryVideoModel.create({ mediaId, url, uploadedAt });
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      mediaId: string;
+      url: string;
+      uploadedAt: Date;
+    };
+    return {
+      id: plainDoc._id.toString(),
+      mediaId: plainDoc.mediaId,
+      url: plainDoc.url,
+      uploadedAt: plainDoc.uploadedAt,
+    } as GalleryVideo;
+  }
+
+  async deleteGalleryVideo(id: string): Promise<GalleryVideo | null> {
+    const doc = await GalleryVideoModel.findByIdAndDelete(id).lean().exec();
+    if (!doc) return null;
+    await MediaModel.findByIdAndDelete(doc.mediaId);
+    return { ...doc, id: doc._id.toString() } as GalleryVideo;
+  }
 
 }
 

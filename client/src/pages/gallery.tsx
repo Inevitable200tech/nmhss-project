@@ -1,36 +1,41 @@
+// Replace entire content of gallery.tsx
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { ArrowLeft, ArrowRight, X, Calendar } from "lucide-react";
 import Navigation from "../components/navigation";
 import Footer from "../components/footer";
-import type { Section } from "@shared/schema";
-
 
 const fallbackVideos = [
   "https://www.w3schools.com/html/mov_bbb.mp4",
   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
 ];
 
-// For now always use fallback videos (no backend binding yet)
-const videos: string[] = fallbackVideos;
+const fallbackImages = [
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+];
 
-
-
+const fallbackTimeline = [
+  { value: "1946", label: "School Founded", description: "Established in Thirunavaya as a beacon of education." },
+  { value: "1970", label: "First Expansion", description: "Added higher secondary classes." },
+  { value: "2000", label: "Modern Facilities", description: "Introduced computer laboratory and library expansion." },
+  { value: "2010", label: "Academic Excellence Award", description: "Received state-level recognition for outstanding performance." },
+  { value: "2020", label: "Digital Transformation", description: "Implemented online learning during the pandemic." },
+];
 
 export default function GalleryPage() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [mediaType, setMediaType] = useState<"images" | "videos">("images");
 
-  const showMedia = (index: number) => {
-    setSelectedIndex(index);
-  };
-  const { data: section, isLoading } = useQuery<Section>({
-    queryKey: ["/api/sections/gallery"],
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/gallery"],
     queryFn: async () => {
-      const res = await fetch("/api/sections?name=gallery");
-      if (!res.ok) throw new Error("Failed to fetch gallery section");
-      const sections = await res.json();
-      return sections[0];
+      const res = await fetch("/api/gallery");
+      if (!res.ok) throw new Error("Failed to fetch gallery data");
+      return res.json();
     },
   });
 
@@ -47,30 +52,14 @@ export default function GalleryPage() {
 
   if (isLoading) return <div>Loading...</div>;
 
-  const fallbackImages = [
-    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
-    "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
-  ];
+  const images = data?.images?.length > 0 ? data.images.map((img: { url: string }) => img.url) : fallbackImages;
+  const videos = data?.videos?.length > 0 ? data.videos.map((vid: { url: string }) => vid.url) : fallbackVideos;
+  const timelineItems = data?.stats?.length > 0 ? data.stats : fallbackTimeline;
 
-  const images = section?.images && section.images.length > 0 ? section.images : fallbackImages;
-
-  const fallbackTimeline = [
-    { value: "1946", label: "School Founded", description: "Established in Thirunavaya as a beacon of education." },
-    { value: "1970", label: "First Expansion", description: "Added higher secondary classes." },
-    { value: "2000", label: "Modern Facilities", description: "Introduced computer laboratory and library expansion." },
-    { value: "2010", label: "Academic Excellence Award", description: "Received state-level recognition for outstanding performance." },
-    { value: "2020", label: "Digital Transformation", description: "Implemented online learning during the pandemic." },
-  ];
-
-  const timelineItems = section?.stats && section.stats.length > 0 ? section.stats : fallbackTimeline;
-
-  const showImage = (index: number) => setSelectedIndex(index);
+  const showMedia = (index: number) => setSelectedIndex(index);
   const closeLightbox = () => setSelectedIndex(null);
   const showNext = () => {
-    if (selectedIndex !== null && selectedIndex < images.length - 1) {
+    if (selectedIndex !== null && selectedIndex < (mediaType === "images" ? images : videos).length - 1) {
       setSelectedIndex(selectedIndex + 1);
     }
   };
@@ -88,10 +77,10 @@ export default function GalleryPage() {
           {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              {section?.title || "Photo Gallery & Timeline"}
+              {data?.title || "Photo Gallery & Timeline"}
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              {section?.subtitle || "Explore our school's history through timeline and captured moments"}
+              {data?.subtitle || "Explore our school's history through timeline and captured moments"}
             </p>
           </div>
 
@@ -100,7 +89,7 @@ export default function GalleryPage() {
             <h3 className="text-3xl font-bold text-foreground mb-8 text-center">School Timeline</h3>
             <div className="relative max-w-4xl mx-auto">
               <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-primary"></div>
-              {timelineItems.map((item, index) => (
+              {timelineItems.map((item: { value: string; label: string; description: string }, index: number) => (
                 <div
                   key={index}
                   className={`flex ${index % 2 === 0 ? "flex-row" : "flex-row-reverse"} mb-8 items-center justify-between`}
@@ -126,15 +115,17 @@ export default function GalleryPage() {
           <div className="flex justify-center mb-8 space-x-4">
             <button
               onClick={() => setMediaType("images")}
-              className={`px-6 py-2 rounded-full font-medium transition ${mediaType === "images" ? "bg-primary text-white" : "bg-white/20 text-foreground"
-                }`}
+              className={`px-6 py-2 rounded-full font-medium transition ${
+                mediaType === "images" ? "bg-primary text-white" : "bg-white/20 text-foreground"
+              }`}
             >
               Images
             </button>
             <button
               onClick={() => setMediaType("videos")}
-              className={`px-6 py-2 rounded-full font-medium transition ${mediaType === "videos" ? "bg-primary text-white" : "bg-white/20 text-foreground"
-                }`}
+              className={`px-6 py-2 rounded-full font-medium transition ${
+                mediaType === "videos" ? "bg-primary text-white" : "bg-white/20 text-foreground"
+              }`}
             >
               Videos
             </button>
@@ -148,7 +139,7 @@ export default function GalleryPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-              {(mediaType === "images" ? images : videos).map((src, index) => (
+              {(mediaType === "images" ? images : videos).map((src: string, index: number) => (
                 <div
                   key={index}
                   className="relative overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition-shadow group cursor-pointer"
@@ -178,9 +169,7 @@ export default function GalleryPage() {
               ))}
             </div>
           </div>
-
         </div>
-
       </section>
 
       {/* Lightbox Modal */}
@@ -204,7 +193,6 @@ export default function GalleryPage() {
             >
               <ArrowRight className="w-12 h-12" />
             </button>
-
             {mediaType === "images" ? (
               <img
                 src={images[selectedIndex]}
@@ -227,5 +215,3 @@ export default function GalleryPage() {
     </>
   );
 }
-
-

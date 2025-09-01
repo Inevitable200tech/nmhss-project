@@ -14,6 +14,7 @@ import AboutAdminPage from "@/pages/about-admin";
 import AdminEvents from "@/pages/admin-events";
 import AdminNews from "@/pages/admin-news";
 import GallerySection from "@/pages/gallery";
+import AdminGalleryPage from "@/pages/admin-gallery";
 // Use named import for ProtectedRoute
 import { ProtectedRoute } from "@/components/ProtectedRoute"; // Corrected import
 
@@ -27,6 +28,7 @@ function Router() {
       {/* Protected admin routes */}
       <ProtectedRoute>
         <div>
+          <Route path="/admin-gallery" component={AdminGalleryPage} />
           <Route path="/about-admin" component={AboutAdminPage} />
           <Route path="/admin-events" component={AdminEvents} />
           <Route path="/admin-news" component={AdminNews} />
