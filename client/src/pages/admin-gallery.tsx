@@ -17,6 +17,8 @@ export default function AdminGalleryPage() {
   const [videoDate, setVideoDate] = useState<string>("");
   const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
   const [isVideoUploading, setIsVideoUploading] = useState<boolean>(false);
+  const [imageUploadProgress, setImageUploadProgress] = useState<number>(0);
+  const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -42,22 +44,49 @@ export default function AdminGalleryPage() {
     const formData = new FormData();
     formData.append("file", newImage);
     formData.append("uploadedAt", new Date(imageDate).toISOString());
+
+    setIsImageUploading(true);
+    setImageUploadProgress(0);
+
     try {
-      const res = await fetch("/api/gallery/images", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setImages((prev) => [...prev, { id: data.id, url: data.url, uploadedAt: new Date(data.uploadedAt) }]);
-        setNewImage(null);
-        setImageDate("");
-        toast({ title: "Success", description: "Image uploaded successfully" });
-      } else {
-        toast({ title: "Error", description: data.error || "Failed to upload image" });
-      }
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/gallery/images", true);
+      xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("token")}`);
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          setImageUploadProgress(Math.round(percentComplete));
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          setImages((prev) => [...prev, { id: data.id, url: data.url, uploadedAt: new Date(data.uploadedAt) }]);
+          setNewImage(null);
+          setImageDate("");
+          setImageUploadProgress(0);
+          setIsImageUploading(false);
+          toast({ title: "Success", description: "Image uploaded successfully" });
+        } else {
+          const data = JSON.parse(xhr.responseText);
+          setIsImageUploading(false);
+          setImageUploadProgress(0);
+          toast({ title: "Error", description: data.error || "Failed to upload image" });
+        }
+      };
+
+      xhr.onerror = () => {
+        setIsImageUploading(false);
+        setImageUploadProgress(0);
+        toast({ title: "Error", description: "Upload failed" });
+      };
+
+      xhr.send(formData);
     } catch {
+      setIsImageUploading(false);
+      setImageUploadProgress(0);
       toast({ title: "Error", description: "Upload failed" });
     }
   };
@@ -174,6 +203,7 @@ export default function AdminGalleryPage() {
             type="file"
             accept="image/*"
             onChange={(e) => setNewImage(e.target.files?.[0] || null)}
+            disabled={isImageUploading}
             className="border-gray-600 dark:border-gray-600 focus:border-blue-400 dark:focus:border-blue-400 text-gray-100 dark:text-gray-100 bg-gray-700 dark:bg-gray-700"
           />
           <div className="relative">
@@ -182,14 +212,24 @@ export default function AdminGalleryPage() {
               type="date"
               value={imageDate}
               onChange={(e) => setImageDate(e.target.value)}
+              disabled={isImageUploading}
               className="pl-10 border-gray-600 dark:border-gray-600 focus:border-blue-400 dark:focus:border-blue-400 text-gray-100 dark:text-gray-100 bg-gray-700 dark:bg-gray-700"
             />
           </div>
+
+          {isImageUploading && (
+            <div className="space-y-2">
+              <Progress value={imageUploadProgress} className="w-full bg-gray-600 dark:bg-gray-600" />
+              <p className="text-sm text-gray-400 dark:text-gray-400">Uploading: {imageUploadProgress}%</p>
+            </div>
+          )}
+
           <Button
             onClick={handleImageUpload}
+            disabled={isImageUploading}
             className="bg-blue-500 hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600 text-white dark:text-white"
           >
-            Upload Image
+            {isImageUploading ? "Uploading..." : "Upload Image"}
           </Button>
         </CardContent>
       </Card>

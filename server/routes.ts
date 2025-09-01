@@ -33,6 +33,7 @@ mongoose.connection.once("open", () => {
   }
   gridFSBucket = new GridFSBucket(mongoose.connection.db as Db, {
     bucketName: "media",
+    chunkSizeBytes: 1024 * 1024 *2, // 255KB chunk size
   });
 });
 
