@@ -70,8 +70,9 @@ Thanks to these amazing people:
    ```bash
    git clone https://github.com/Inevitable200tech/nmhss-project.git
    cd nmhss-project
-   npm install 
-   npm install -D typescript tsx
-   npm install dotenv mongoose multer jsonwebtoken 
-   npm run build
-   npx tsx server/index.ts
+   npm install --force
+   npm install -g typescript tsx --force
+   npm run build (for production, for development skip this step)
+   npx tsx server/index.ts or run "npm run dev"
+   npm run start (again for production and do it after running the build command,skip for developement)
+  
