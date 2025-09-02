@@ -21,7 +21,9 @@ import {
   GalleryVideo,
   GalleryImageModel,
   GalleryVideoModel,
-  MediaModel
+  MediaModel,
+  HeroVideo,
+  HeroVideoModel
 } from "@shared/schema";
 
 export const upload = multer({ storage: multer.memoryStorage() });
@@ -61,6 +63,10 @@ export interface IStorage {
   getGalleryVideos(): Promise<GalleryVideo[]>;
   createGalleryVideo(mediaId: string, url: string, uploadedAt: Date): Promise<GalleryVideo>;
   deleteGalleryVideo(id: string): Promise<GalleryVideo | null>;
+  getHeroVideo(): Promise<HeroVideo | null>;
+  createHeroVideo(mediaId: string, url: string, uploadedAt: Date): Promise<HeroVideo>;
+  deleteHeroVideo(id: string): Promise<HeroVideo | null>;
+
 }
 
 export class MongoStorage implements IStorage {
@@ -322,6 +328,43 @@ export class MongoStorage implements IStorage {
     await MediaModel.findByIdAndDelete(doc.mediaId);
     return { ...doc, id: doc._id.toString() } as GalleryVideo;
   }
+
+  async getHeroVideo(): Promise<HeroVideo | null> {
+    const doc = await HeroVideoModel.findOne().sort({ uploadedAt: -1 }).lean().exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as HeroVideo;
+  }
+
+  async createHeroVideo(mediaId: string, url: string, uploadedAt: Date): Promise<HeroVideo> {
+    // Only one hero video allowed at a time → remove existing
+    await HeroVideoModel.deleteMany({});
+
+    const doc = await HeroVideoModel.create({ mediaId, url, uploadedAt });
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      mediaId: string;
+      url: string;
+      uploadedAt: Date;
+    };
+
+    return {
+      id: plainDoc._id.toString(),
+      mediaId: plainDoc.mediaId,
+      url: plainDoc.url,
+      uploadedAt: plainDoc.uploadedAt,
+    } as HeroVideo;
+  }
+
+  async deleteHeroVideo(id: string): Promise<HeroVideo | null> {
+    const doc = await HeroVideoModel.findByIdAndDelete(id).lean().exec();
+    if (!doc) return null;
+
+    // also delete associated media file
+    await MediaModel.findByIdAndDelete(doc.mediaId);
+
+    return { ...doc, id: doc._id.toString() } as HeroVideo;
+  }
+
 
 }
 

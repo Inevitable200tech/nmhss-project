@@ -1,7 +1,59 @@
+import { useEffect, useState } from "react";
 import { ArrowDown } from "lucide-react";
-import heroVideo from "@assets/hero-section.mp4"; // replace with your actual video path
+import heroVideoFallback from "@assets/hero-section.mp4"; // fallback video
+
+type HeroVideo = { id: string; mediaId: string; url: string; uploadedAt: Date };
+
+// Cache variable (lives across component mounts)
+let cachedHeroVideoUrl: string | null = null;
 
 export default function HeroSection() {
+  const [videoUrl, setVideoUrl] = useState<string | null>(cachedHeroVideoUrl);
+
+  useEffect(() => {
+    if (cachedHeroVideoUrl) return; // Already cached → no need to fetch
+
+    const fetchHeroVideo = async () => {
+      try {
+        const res = await fetch("/api/hero-video");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.video && data.video.url) {
+            cachedHeroVideoUrl = data.video.url;
+            setVideoUrl(data.video.url);
+          } else {
+            cachedHeroVideoUrl = heroVideoFallback;
+            setVideoUrl(heroVideoFallback);
+          }
+        } else {
+          cachedHeroVideoUrl = heroVideoFallback;
+          setVideoUrl(heroVideoFallback);
+        }
+      } catch {
+        cachedHeroVideoUrl = heroVideoFallback;
+        setVideoUrl(heroVideoFallback);
+      }
+    };
+
+    fetchHeroVideo();
+  }, []);
+
+  // Preload video once we know the URL
+  useEffect(() => {
+    if (videoUrl) {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "fetch";
+      link.href = videoUrl;
+      link.crossOrigin = "anonymous";
+      link.fetchPriority ="high";
+      document.head.appendChild(link);
+      return () => {
+        document.head.removeChild(link);
+      };
+    }
+  }, [videoUrl]);
+
   const handleScrollDown = () => {
     const aboutSection = document.querySelector("#about");
     if (aboutSection) {
@@ -13,16 +65,19 @@ export default function HeroSection() {
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center">
       {/* Background video */}
-      <video
-        className="absolute inset-0 w-full h-full object-cover"
-        src={heroVideo}
-        autoPlay
-        muted
-        loop
-        playsInline
-      />
+      {videoUrl && (
+        <video
+          className="absolute inset-0 w-full h-full object-cover"
+          src={videoUrl}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+        />
+      )}
 
-      {/* Overlay for better contrast */}
+      {/* Overlay */}
       <div className="absolute inset-0 bg-black/50 dark:bg-black/60" />
 
       {/* Foreground content */}

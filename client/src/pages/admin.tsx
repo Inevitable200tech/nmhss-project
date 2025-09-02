@@ -142,6 +142,13 @@ export default function AdminPage() {
               </Button>
             </a>
           </li>
+          <li>
+            <a href="/admin-intro">
+              <Button variant="outline" className="w-full text-left">
+                Manage Introsection Video
+              </Button>
+            </a>
+          </li>
         </ul>
         <Button variant="outline" className="w-full mt-4" onClick={handleLogout}>
           Logout

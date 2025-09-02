@@ -33,7 +33,7 @@ mongoose.connection.once("open", () => {
   }
   gridFSBucket = new GridFSBucket(mongoose.connection.db as Db, {
     bucketName: "media",
-    chunkSizeBytes: 1024 * 1024 *2, // 255KB chunk size
+    chunkSizeBytes: 1024 * 1024 * 2, // 255KB chunk size
   });
 });
 
@@ -262,19 +262,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!gridFSBucket) {
         return res.status(503).json({ message: "Database connection not ready" });
       }
-      const file = await gridFSBucket
+
+      const files = await gridFSBucket
         .find({ _id: new mongoose.Types.ObjectId(req.params.id) })
         .toArray();
-      if (!file[0]) return res.status(404).json({ message: "File not found" });
 
-      res.set("Content-Type", file[0].contentType);
-      const readStream = gridFSBucket.openDownloadStream(new mongoose.Types.ObjectId(req.params.id));
-      readStream.pipe(res);
+      if (!files[0]) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      const file = files[0];
+      const fileSize = file.length;
+      const range = req.headers.range;
+
+      // Add caching for faster reloads
+      res.set("Cache-Control", "public, max-age=31536000, immutable");
+
+      if (range) {
+        // Example: "bytes=0-"
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+
+        res.writeHead(206, {
+          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunkSize,
+          "Content-Type": file.contentType,
+        });
+
+        gridFSBucket
+          .openDownloadStream(new mongoose.Types.ObjectId(req.params.id), { start, end: end + 1 })
+          .pipe(res);
+      } else {
+        res.writeHead(200, {
+          "Content-Length": fileSize,
+          "Content-Type": file.contentType,
+        });
+        gridFSBucket.openDownloadStream(new mongoose.Types.ObjectId(req.params.id)).pipe(res);
+      }
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: (err as Error).message });
     }
   });
+
 
   // Replace the GET /api/gallery route
   app.get("/api/gallery", async (req, res) => {
@@ -493,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
- // DELETE /api/media/:id
+  // DELETE /api/media/:id
   app.delete("/api/media/:id", async (req, res) => {
     try {
       if (!gridFSBucket) {
@@ -515,6 +548,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete media" });
     }
   });
+
+  // ---------------- HERO VIDEO ROUTES ----------------
+
+  // Get hero video (public)
+  app.get("/api/hero-video", async (req, res) => {
+    try {
+      const video = await storage.getHeroVideo();
+      res.json({ video });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch hero video" });
+    }
+  });
+
+  // Create/replace hero video (admin only)
+  app.post("/api/hero-video", requireAuth, async (req, res) => {
+    const schema = z.object({
+      mediaId: z.string().min(1, "mediaId is required"),
+      url: z.string().min(1, "URL is required"), // ✅ allow relative paths
+    });
+
+    const { mediaId, url } = schema.parse(req.body);
+
+    const video = await storage.createHeroVideo(mediaId, url, new Date());
+
+    res.json(video);
+  });
+
+
+  // Delete hero video (admin only)
+  app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteHeroVideo(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Video not found" });
+
+      // also delete associated GridFS media
+      if (gridFSBucket) {
+        await gridFSBucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+      }
+
+      res.json({ success: true, id: req.params.id });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to delete hero video" });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;

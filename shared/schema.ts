@@ -236,6 +236,24 @@ export const galleryVideoSchema = new Schema<GalleryVideo>({
 export const GalleryImageModel = mongoose.model<GalleryImage>("GalleryImage", galleryImageSchema);
 export const GalleryVideoModel = mongoose.model<GalleryVideo>("GalleryVideo", galleryVideoSchema);
 
+
+// ---------------- HERO VIDEO ----------------
+export interface HeroVideo extends Document {
+  id: string;
+  mediaId: string;   // ✅ link to Media collection
+  url: string;       // e.g. "/api/media/:id"
+  uploadedAt: Date;
+}
+
+export const heroVideoSchema = new Schema<HeroVideo>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
+  mediaId: { type: String, required: true },    // ✅ must store media id
+  url: { type: String, required: true },
+  uploadedAt: { type: Date, default: Date.now },
+});
+
+export const HeroVideoModel = mongoose.model<HeroVideo>("HeroVideo", heroVideoSchema);
+
 export const MediaModel = mongoose.model<Media>("Media", mediaSchema);
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
