@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
 import AboutSection from "@/components/about-section";
 
 type ImageInput = {
@@ -47,6 +48,11 @@ const fallbackStats = [
   { label: "Courses", value: "3", description: "Separate facilities for all" },
 ];
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
+
 export default function AboutAdminPage() {
   const [aboutData, setAboutData] = useState<AboutData>({
     name: "about",
@@ -79,7 +85,7 @@ export default function AboutAdminPage() {
           setAboutData({ ...section, images });
         }
       } catch {
-        toast({ title: "Error", description: "Failed to load About section" });
+        toast({ title: "Warning ⚠", description: "No Field Data Found, Using Default Values" });
       }
     };
     loadSection();
@@ -179,85 +185,118 @@ export default function AboutAdminPage() {
       {!previewMode ? (
         <>
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold">Admin: About Section</h1>
+            <h1 className="text-3xl font-bold">Edit About Us Section</h1>
             <Button variant="outline" onClick={() => (window.location.href = "/admin")}>
               Back to Dashboard
             </Button>
           </div>
-
-          {/* General Info */}
-          <Card>
-            <CardHeader><CardTitle>General Information</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <Input required value={aboutData.title} onChange={(e) => handleChange("title", e.target.value)} placeholder="Title" />
-              <Input required value={aboutData.subtitle} onChange={(e) => handleChange("subtitle", e.target.value)} placeholder="Subtitle" />
-              {aboutData.paragraphs.map((p, i) => (
-                <Textarea key={i} value={p} onChange={(e) => {
-                  const updated = [...aboutData.paragraphs];
-                  updated[i] = e.target.value;
-                  setAboutData({ ...aboutData, paragraphs: updated });
-                }} placeholder={`Paragraph ${i + 1}`} />
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Images */}
-          <Card>
-            <CardHeader><CardTitle>Images</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {aboutData.images.map((img, i) => (
-                <div key={i} className="space-y-2 border rounded-lg p-3 shadow-sm">
-                  <div className="flex justify-between">
-                    <Button type="button" variant="outline" size="sm" onClick={() => handleImageModeToggle(i)}>
-                      {img.mode === "url" ? "Switch to Upload" : "Switch to URL"}
-                    </Button>
-                    {img.url && !fallbackImages.some(f => f.url === img.url) && (
-                      <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveImage(i)}>
-                        Remove
+          <motion.div
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            {/* General Info */}
+            <Card className="bg-white/10 dark:bg-gray-900/40 backdrop-blur-md border border-white/20 shadow-lg rounded-2xl">
+              <CardHeader><CardTitle>General Information</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <Input className="bg-gray-800/70 border border-gray-600 text-gray-100 
+           placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required value={aboutData.title} onChange={(e) => handleChange("title", e.target.value)} placeholder="Title" />
+                <Input className="bg-gray-800/70 border border-gray-600 text-gray-100 
+           placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  required value={aboutData.subtitle} onChange={(e) => handleChange("subtitle", e.target.value)} placeholder="Subtitle" />
+                {aboutData.paragraphs.map((p, i) => (
+                  <Textarea className="bg-gray-800/70 border border-gray-600 text-gray-100 
+           placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    key={i} value={p} onChange={(e) => {
+                      const updated = [...aboutData.paragraphs];
+                      updated[i] = e.target.value;
+                      setAboutData({ ...aboutData, paragraphs: updated });
+                    }} placeholder={`Paragraph ${i + 1}`} />
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            {/* Images */}
+            <Card className="bg-white/10 dark:bg-gray-900/40 backdrop-blur-md border border-white/20 shadow-lg rounded-2xl">
+              <CardHeader><CardTitle>Images</CardTitle></CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {aboutData.images.map((img, i) => (
+                  <div key={i} className="space-y-2 border rounded-lg p-3 shadow-sm">
+                    <div className="flex justify-between">
+                      <Button type="button" variant="outline" size="sm" onClick={() => handleImageModeToggle(i)}>
+                        {img.mode === "url" ? "Switch to Upload" : "Switch to URL"}
                       </Button>
+                      {img.url && !fallbackImages.some(f => f.url === img.url) && (
+                        <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveImage(i)}>
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    {img.mode === "url" ? (
+                      <Input className="bg-gray-800/70 border border-gray-600 text-gray-100 
+           placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        placeholder={`Image URL ${i + 1}`} value={img.url} onChange={(e) => handleImageUrlChange(i, e.target.value)} />
+                    ) : (
+                      <Input className="bg-gray-800/70 border border-gray-600 text-gray-100 
+           placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        type="file" accept="image/*" onChange={(e) => {
+                          if (e.target.files?.[0]) handleFileSelect(e.target.files[0], i);
+                        }} />
+                    )}
+                    {img.url && (
+                      <img src={img.url} alt={`Preview ${i + 1}`} className="w-full h-40 object-cover rounded-md border" />
                     )}
                   </div>
-                  {img.mode === "url" ? (
-                    <Input placeholder={`Image URL ${i + 1}`} value={img.url} onChange={(e) => handleImageUrlChange(i, e.target.value)} />
-                  ) : (
-                    <Input type="file" accept="image/*" onChange={(e) => {
-                      if (e.target.files?.[0]) handleFileSelect(e.target.files[0], i);
-                    }} />
-                  )}
-                  {img.url && (
-                    <img src={img.url} alt={`Preview ${i + 1}`} className="w-full h-40 object-cover rounded-md border" />
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Stats */}
-          <Card>
-            <CardHeader><CardTitle>Statistics</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {aboutData.stats.map((stat, i) => (
-                <div key={i} className="grid grid-cols-3 gap-2">
-                  <Input required value={stat.label} onChange={(e) => {
-                    const updated = [...aboutData.stats];
-                    updated[i].label = e.target.value;
-                    setAboutData({ ...aboutData, stats: updated });
-                  }} placeholder="Label" />
-                  <Input required value={stat.value} onChange={(e) => {
-                    const updated = [...aboutData.stats];
-                    updated[i].value = e.target.value;
-                    setAboutData({ ...aboutData, stats: updated });
-                  }} placeholder="Value" />
-                  <Input required value={stat.description} onChange={(e) => {
-                    const updated = [...aboutData.stats];
-                    updated[i].description = e.target.value;
-                    setAboutData({ ...aboutData, stats: updated });
-                  }} placeholder="Description" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            {/* Stats */}
+            <Card className="bg-white/10 dark:bg-gray-900/40 backdrop-blur-md border border-white/20 shadow-lg rounded-2xl">
+              <CardHeader><CardTitle>Statistics</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {aboutData.stats.map((stat, i) => (
+                  <div key={i} className="grid grid-cols-3 gap-2">
+                    <Input className="bg-gray-800/70 border border-gray-600 text-gray-100 
+           placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      required value={stat.label} onChange={(e) => {
+                        const updated = [...aboutData.stats];
+                        updated[i].label = e.target.value;
+                        setAboutData({ ...aboutData, stats: updated });
+                      }} placeholder="Label" />
+                    <Input className="bg-gray-800/70 border border-gray-600 text-gray-100 
+           placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      required value={stat.value} onChange={(e) => {
+                        const updated = [...aboutData.stats];
+                        updated[i].value = e.target.value;
+                        setAboutData({ ...aboutData, stats: updated });
+                      }} placeholder="Value" />
+                    <Input className="bg-gray-800/70 border border-gray-600 text-gray-100 
+           placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      required value={stat.description} onChange={(e) => {
+                        const updated = [...aboutData.stats];
+                        updated[i].description = e.target.value;
+                        setAboutData({ ...aboutData, stats: updated });
+                      }} placeholder="Description" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
           {/* Actions */}
           <div className="flex space-x-4">
             <Button onClick={handleSave} variant="default">Save</Button>

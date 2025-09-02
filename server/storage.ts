@@ -23,7 +23,10 @@ import {
   GalleryVideoModel,
   MediaModel,
   HeroVideo,
-  HeroVideoModel
+  HeroVideoModel,
+  FacultySection,
+  FacultySectionModel,
+  FacultySectionInput
 } from "@shared/schema";
 
 export const upload = multer({ storage: multer.memoryStorage() });
@@ -66,7 +69,9 @@ export interface IStorage {
   getHeroVideo(): Promise<HeroVideo | null>;
   createHeroVideo(mediaId: string, url: string, uploadedAt: Date): Promise<HeroVideo>;
   deleteHeroVideo(id: string): Promise<HeroVideo | null>;
-
+  getFacultySection(): Promise<FacultySection | null>;
+  createOrUpdateFacultySection(data: FacultySection): Promise<FacultySection>;
+  deleteFacultySection(): Promise<FacultySection | null>;
 }
 
 export class MongoStorage implements IStorage {
@@ -363,6 +368,29 @@ export class MongoStorage implements IStorage {
     await MediaModel.findByIdAndDelete(doc.mediaId);
 
     return { ...doc, id: doc._id.toString() } as HeroVideo;
+  }
+
+  async getFacultySection(): Promise<FacultySection | null> {
+    const doc = await FacultySectionModel.findOne().lean().exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as FacultySection;
+  }
+
+  async createOrUpdateFacultySection(data: FacultySectionInput): Promise<FacultySection> {
+    const doc = await FacultySectionModel.findOneAndUpdate(
+      {},
+      data,
+      { new: true, upsert: true }
+    ).lean().exec();
+
+    return { ...doc, id: doc._id.toString() } as FacultySection;
+  }
+
+
+  async deleteFacultySection(): Promise<FacultySection | null> {
+    const doc = await FacultySectionModel.findOneAndDelete().lean().exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as FacultySection;
   }
 
 

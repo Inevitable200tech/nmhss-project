@@ -6,7 +6,8 @@ import {
   insertEventSchema,
   insertNewsSchema,
   insertSectionSchema,
-  Media
+  
+
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
@@ -594,6 +595,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get faculty section (public)
+  app.get("/api/faculty", async (req, res) => {
+    try {
+      const section = await storage.getFacultySection();
+      if (!section) {
+        return res.status(404).json({ error: "Faculty section not found" });
+      }
+      res.json(section);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch faculty section" });
+    }
+  });
+
+  // Create or update faculty section (admin only)
+  app.post("/api/faculty", async (req, res) => {
+    try {
+      // validate with zod
+      const schema = z.object({
+        title: z.string(),
+        subtitle: z.string(),
+        stats: z.array(
+          z.object({
+            label: z.string(),
+            value: z.string(),
+            description: z.string(),
+          })
+        ).length(3),
+        profiles: z.array(
+          z.object({
+            name: z.string(),
+            role: z.string(),
+            description: z.string(),
+            mediaId: z.string().optional(),
+            imageUrl: z.string().optional(),
+          })
+        ).length(3),
+      });
+
+      const data = schema.parse(req.body);
+      const updated = await storage.createOrUpdateFacultySection(data);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        console.error(error);
+        res.status(500).json({ error: "Failed to save faculty section" });
+      }
+    }
+  });
+
+  // Delete faculty section (admin only)
+  app.delete("/api/faculty", async (req, res) => {
+    try {
+      const deleted = await storage.deleteFacultySection();
+      if (!deleted) {
+        return res.status(404).json({ error: "Faculty section not found" });
+      }
+      res.json({ success: true, id: deleted.id });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to delete faculty section" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

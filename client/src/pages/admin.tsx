@@ -149,6 +149,13 @@ export default function AdminPage() {
               </Button>
             </a>
           </li>
+          <li>
+            <a href="/admin-faculty">
+              <Button variant="outline" className="w-full text-left">
+                Edit Faculty Section
+              </Button>
+            </a>
+          </li>
         </ul>
         <Button variant="outline" className="w-full mt-4" onClick={handleLogout}>
           Logout
