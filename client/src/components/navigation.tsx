@@ -38,9 +38,9 @@ export default function Navigation() {
             />
           </div>
           <div className="mr-8">
-              <h1 className="font-bold text-lg text-foreground">Navamukunda HSS</h1>
-              <p className="text-xs text-muted-foreground">Thirunavaya</p>
-            </div>
+            <h1 className="font-bold text-lg text-foreground">Navamukunda HSS</h1>
+            <p className="text-xs text-muted-foreground">Thirunavaya</p>
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
@@ -98,13 +98,13 @@ export default function Navigation() {
             <a
               href="#contact"
               onClick={(e) => handleLinkClick(e, "#contact")}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-md"
+              className="text-foreground hover:text-primary transition-colors"
             >
               Contact
             </a>
             <a
               href="/admin"
-              className="text-foreground hover:text-primary transition-colors"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-md"
             >
               Admin
             </a>
