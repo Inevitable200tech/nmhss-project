@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import heroImage from "@assets/logo.png"; // replace with your actual video path 
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -25,17 +26,21 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="fixed top-0 w-full z-50 glass-effect border-b border-border">
+    <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-white/70 dark:bg-gray-900/70 border-b border-white/20 dark:border-gray-700/20 shadow-lg">
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
             <img
-              src="/attached_assets/logo.png"
+              src={heroImage}
               alt="Navamukunda HSS Logo"
-              className="h-10 w-auto object-contain"
+              className="h-10 w-auto object-contain drop-shadow-md"
             />
           </div>
+          <div className="mr-8">
+              <h1 className="font-bold text-lg text-foreground">Navamukunda HSS</h1>
+              <p className="text-xs text-muted-foreground">Thirunavaya</p>
+            </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
@@ -93,7 +98,7 @@ export default function Navigation() {
             <a
               href="#contact"
               onClick={(e) => handleLinkClick(e, "#contact")}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-md"
             >
               Contact
             </a>
@@ -112,12 +117,12 @@ export default function Navigation() {
             </div>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2"
+              className="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
             >
               {isMobileMenuOpen ? (
-                <X className="w-6 h-6" />
+                <X className="w-6 h-6 text-foreground" />
               ) : (
-                <Menu className="w-6 h-6" />
+                <Menu className="w-6 h-6 text-foreground" />
               )}
             </button>
           </div>
@@ -125,7 +130,7 @@ export default function Navigation() {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-border">
+          <div className="md:hidden border-t border-white/20 dark:border-gray-700/20 backdrop-blur-md bg-white/70 dark:bg-gray-900/70 shadow-md rounded-b-xl">
             <div className="px-2 pt-2 pb-3 space-y-1">
               <a
                 href="#home"
