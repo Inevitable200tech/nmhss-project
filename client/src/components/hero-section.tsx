@@ -1,5 +1,5 @@
 import { ArrowDown } from "lucide-react";
-import heroImage from "@assets/499053104_24787122164303992_2693804571686322495_n_1756376018184.jpg";
+import heroVideo from "@assets/hero-section.mp4"; // replace with your actual video path
 
 export default function HeroSection() {
   const handleScrollDown = () => {
@@ -12,10 +12,14 @@ export default function HeroSection() {
 
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center">
-      {/* Background image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroImage})` }}
+      {/* Background video */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover"
+        src={heroVideo}
+        autoPlay
+        muted
+        loop
+        playsInline
       />
 
       {/* Overlay for better contrast */}
