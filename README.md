@@ -32,7 +32,7 @@ Built with the latest web technologies, the website is **fast, user-friendly, an
 - **Backend:**  
   - Node.js with Express.js *(if dynamic features are required)*  
   - MongoDB *(for storing student & school data)*
-  - 
+    
 
 - **Used Languages:**  
   - HTML / CSS / Javascript / Node.js / Git / Javascript / Typescript / Tailwind CSS
