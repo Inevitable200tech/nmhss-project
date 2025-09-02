@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight, X, Calendar } from "lucide-react";
 import Navigation from "../components/navigation";
 import Footer from "../components/footer";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const fallbackVideos = [
   "https://www.w3schools.com/html/mov_bbb.mp4",
@@ -38,6 +37,56 @@ export default function GalleryPage() {
       return res.json();
     },
   });
+  
+  function LazyVideo({ src, className }: { src: string; className?: string }) {
+    const ref = useRef<HTMLVideoElement | null>(null);
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+      if (!src) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            setIsVisible(true);
+
+            // ✅ Add preload hint for high priority
+            const link = document.createElement("link");
+            link.rel = "preload";
+            link.as = "video";
+            link.href = src;
+            document.head.appendChild(link);
+
+            // ✅ Force browser to start loading immediately
+            if (ref.current) {
+              ref.current.load();
+            }
+
+            observer.disconnect();
+          }
+        },
+        { threshold: 0.1 }
+      );
+
+      if (ref.current) observer.observe(ref.current);
+
+      return () => {
+        if (ref.current) observer.unobserve(ref.current);
+      };
+    }, [src]);
+
+    return (
+      <video
+        ref={ref}
+        src={isVisible ? src : undefined}
+        className={className}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+      />
+    );
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -143,21 +192,19 @@ export default function GalleryPage() {
             <div className="inline-flex rounded-full bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-black/5 dark:border-white/10 p-1 shadow">
               <button
                 onClick={() => setMediaType("images")}
-                className={`px-6 py-2 rounded-full font-medium transition ${
-                  mediaType === "images"
-                    ? "bg-blue-600 text-white shadow"
-                    : "text-gray-800 dark:text-gray-100 hover:bg-black/5 dark:hover:bg-white/10"
-                }`}
+                className={`px-6 py-2 rounded-full font-medium transition ${mediaType === "images"
+                  ? "bg-blue-600 text-white shadow"
+                  : "text-gray-800 dark:text-gray-100 hover:bg-black/5 dark:hover:bg-white/10"
+                  }`}
               >
                 Images
               </button>
               <button
                 onClick={() => setMediaType("videos")}
-                className={`px-6 py-2 rounded-full font-medium transition ${
-                  mediaType === "videos"
-                    ? "bg-blue-600 text-white shadow"
-                    : "text-gray-800 dark:text-gray-100 hover:bg-black/5 dark:hover:bg-white/10"
-                }`}
+                className={`px-6 py-2 rounded-full font-medium transition ${mediaType === "videos"
+                  ? "bg-blue-600 text-white shadow"
+                  : "text-gray-800 dark:text-gray-100 hover:bg-black/5 dark:hover:bg-white/10"
+                  }`}
               >
                 Videos
               </button>
@@ -191,6 +238,7 @@ export default function GalleryPage() {
                               src={item.url}
                               alt={`Media ${idx + 1}`}
                               className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
+                              loading={idx > 1 ? "lazy" : "eager"} // ✅ only first 2 images eager
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
                               <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
@@ -233,13 +281,9 @@ export default function GalleryPage() {
                           className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition-transform duration-300 hover:scale-[1.02] group cursor-pointer"
                           onClick={() => showMedia(videos.findIndex((vid: any) => (typeof vid === "string" ? vid : vid.url) === item.url))}
                         >
-                          <video
+                          <LazyVideo
                             src={item.url}
                             className="w-full h-64 object-cover"
-                            muted
-                            loop
-                            playsInline
-                            preload="metadata"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
                             <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
@@ -257,13 +301,9 @@ export default function GalleryPage() {
                       className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition-transform duration-300 hover:scale-[1.02] group cursor-pointer"
                       onClick={() => showMedia(index)}
                     >
-                      <video
+                      <LazyVideo
                         src={typeof item === "string" ? item : item.url}
                         className="w-full h-64 object-cover"
-                        muted
-                        loop
-                        playsInline
-                        preload="metadata"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
                         <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
@@ -305,6 +345,7 @@ export default function GalleryPage() {
                 src={typeof images[selectedIndex] === "string" ? (images[selectedIndex] as string) : (images[selectedIndex] as any).url}
                 alt={`Enlarged image ${selectedIndex + 1}`}
                 className="w-full h-auto max-h-[80vh] object-contain"
+
               />
             ) : (
               <video
