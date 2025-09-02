@@ -10,6 +10,7 @@ type ImageInput = {
   url: string;
   id?: string;
   mode: "url" | "upload";
+  file?: File;
 };
 
 type AboutData = {
@@ -22,8 +23,8 @@ type AboutData = {
 };
 
 const fallbackParagraphs = [
-  "This is the default about section paragraph one.",
-  "This is the default about section paragraph two.",
+  "Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.",
+  "As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.",
 ];
 
 const fallbackImages: ImageInput[] = [
@@ -40,10 +41,10 @@ const fallbackImages: ImageInput[] = [
 ];
 
 const fallbackStats = [
-  { label: "Students", value: "0", description: "Number of students" },
-  { label: "Teachers", value: "0", description: "Number of teachers" },
-  { label: "Alumni", value: "0", description: "Number of alumni" },
-  { label: "Courses", value: "0", description: "Number of courses" },
+  { label: "Students", value: "2.5K", description: "Well-equipped learning spaces" },
+  { label: "Teachers", value: "60", description: "Extensive collection of resources" },
+  { label: "Labs", value: "6", description: "Modern computer laboratory" },
+  { label: "Courses", value: "3", description: "Separate facilities for all" },
 ];
 
 export default function AboutAdminPage() {
@@ -67,7 +68,9 @@ export default function AboutAdminPage() {
         const section = sections[0];
         if (section) {
           let images = (section.images || []).map((img: any) =>
-            typeof img === "string" ? { id: "", url: img, mode: "url" } : { id: img.id, url: img.url, mode: "url" }
+            typeof img === "string"
+              ? { id: "", url: img, mode: "url" }
+              : { id: img.id, url: img.url, mode: "url" }
           );
           while (images.length < 2) {
             images.push(fallbackImages[images.length]);
@@ -91,6 +94,7 @@ export default function AboutAdminPage() {
     updated[index].mode = updated[index].mode === "url" ? "upload" : "url";
     updated[index].url = "";
     updated[index].id = undefined;
+    updated[index].file = undefined;
     setAboutData({ ...aboutData, images: updated });
   };
 
@@ -98,35 +102,37 @@ export default function AboutAdminPage() {
     const updated = [...aboutData.images];
     updated[index].url = value;
     updated[index].id = undefined;
+    updated[index].file = undefined;
     setAboutData({ ...aboutData, images: updated });
   };
 
-  const handleFileUpload = async (file: File, index: number) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await fetch("/api/media", { method: "POST", body: formData });
-      const data = await res.json();
-      if (res.ok) {
-        const updated = [...aboutData.images];
-        updated[index] = { url: data.url, id: data.id, mode: "upload" };
-        setAboutData({ ...aboutData, images: updated });
-        toast({ title: "Success", description: "File uploaded successfully" });
-      } else toast({ title: "Error", description: data.message });
-    } catch {
-      toast({ title: "Error", description: "Upload failed" });
-    }
+  const handleFileSelect = (file: File, index: number) => {
+    const blobUrl = URL.createObjectURL(file);
+    const updated = [...aboutData.images];
+    updated[index] = { url: blobUrl, file, mode: "upload" };
+    setAboutData({ ...aboutData, images: updated });
   };
 
-  const handleRemoveImage = async (index: number) => {
-    const img = aboutData.images[index];
-    if (img.id) {
+  const uploadIfNeeded = async (img: ImageInput) => {
+    if (img.mode === "upload" && img.file && img.url.startsWith("blob:")) {
+      const formData = new FormData();
+      formData.append("file", img.file);
       try {
-        await fetch(`/api/media/${img.id}`, { method: "DELETE" });
+        const res = await fetch("/api/media", { method: "POST", body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          return { url: data.url, id: data.id, mode: "upload" };
+        } else {
+          toast({ title: "Error", description: data.message });
+        }
       } catch {
-        toast({ title: "Error", description: "Failed to delete media" });
+        toast({ title: "Error", description: "Upload failed" });
       }
     }
+    return { url: img.url, id: img.id, mode: img.mode };
+  };
+
+  const handleRemoveImage = (index: number) => {
     const updated = [...aboutData.images];
     updated[index] = { url: "", mode: "url" };
     setAboutData({ ...aboutData, images: updated });
@@ -134,9 +140,10 @@ export default function AboutAdminPage() {
 
   const handleSave = async () => {
     try {
+      const uploadedImages = await Promise.all(aboutData.images.map(uploadIfNeeded));
       const payload = {
         ...aboutData,
-        images: aboutData.images.filter((i) => i.url).map((i) => ({ id: i.id || "", url: i.url })),
+        images: uploadedImages.filter((i) => i.url).map((i) => ({ id: i.id || "", url: i.url })),
       };
       const res = await fetch("/api/sections/about", {
         method: "PUT",
@@ -145,7 +152,7 @@ export default function AboutAdminPage() {
       });
       if (res.ok) {
         toast({ title: "Saved", description: "About section updated successfully" });
-        setPreviewMode(false); // ✅ exit preview on save
+        setPreviewMode(false);
       } else {
         const err = await res.json();
         toast({ title: "Error", description: err.error || "Failed to save" });
@@ -153,6 +160,18 @@ export default function AboutAdminPage() {
     } catch {
       toast({ title: "Error", description: "Network error while saving" });
     }
+  };
+
+  const handleRestoreDefaults = () => {
+    setAboutData({
+      name: "about",
+      title: "About Us",
+      subtitle: "Building futures through quality education and holistic development since 1946",
+      paragraphs: fallbackParagraphs,
+      images: fallbackImages,
+      stats: fallbackStats,
+    });
+    toast({ title: "Restored", description: "All fields reset to default values" });
   };
 
   return (
@@ -170,8 +189,8 @@ export default function AboutAdminPage() {
           <Card>
             <CardHeader><CardTitle>General Information</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <Input value={aboutData.title} onChange={(e) => handleChange("title", e.target.value)} placeholder="Title" />
-              <Input value={aboutData.subtitle} onChange={(e) => handleChange("subtitle", e.target.value)} placeholder="Subtitle" />
+              <Input required value={aboutData.title} onChange={(e) => handleChange("title", e.target.value)} placeholder="Title" />
+              <Input required value={aboutData.subtitle} onChange={(e) => handleChange("subtitle", e.target.value)} placeholder="Subtitle" />
               {aboutData.paragraphs.map((p, i) => (
                 <Textarea key={i} value={p} onChange={(e) => {
                   const updated = [...aboutData.paragraphs];
@@ -201,8 +220,8 @@ export default function AboutAdminPage() {
                   {img.mode === "url" ? (
                     <Input placeholder={`Image URL ${i + 1}`} value={img.url} onChange={(e) => handleImageUrlChange(i, e.target.value)} />
                   ) : (
-                    <Input type="file" accept="image/*,video/*" onChange={(e) => {
-                      if (e.target.files?.[0]) handleFileUpload(e.target.files[0], i);
+                    <Input type="file" accept="image/*" onChange={(e) => {
+                      if (e.target.files?.[0]) handleFileSelect(e.target.files[0], i);
                     }} />
                   )}
                   {img.url && (
@@ -219,17 +238,17 @@ export default function AboutAdminPage() {
             <CardContent className="space-y-3">
               {aboutData.stats.map((stat, i) => (
                 <div key={i} className="grid grid-cols-3 gap-2">
-                  <Input value={stat.label} onChange={(e) => {
+                  <Input required value={stat.label} onChange={(e) => {
                     const updated = [...aboutData.stats];
                     updated[i].label = e.target.value;
                     setAboutData({ ...aboutData, stats: updated });
                   }} placeholder="Label" />
-                  <Input value={stat.value} onChange={(e) => {
+                  <Input required value={stat.value} onChange={(e) => {
                     const updated = [...aboutData.stats];
                     updated[i].value = e.target.value;
                     setAboutData({ ...aboutData, stats: updated });
                   }} placeholder="Value" />
-                  <Input value={stat.description} onChange={(e) => {
+                  <Input required value={stat.description} onChange={(e) => {
                     const updated = [...aboutData.stats];
                     updated[i].description = e.target.value;
                     setAboutData({ ...aboutData, stats: updated });
@@ -243,6 +262,7 @@ export default function AboutAdminPage() {
           <div className="flex space-x-4">
             <Button onClick={handleSave} variant="default">Save</Button>
             <Button onClick={() => setPreviewMode(true)} variant="outline">Preview</Button>
+            <Button onClick={handleRestoreDefaults} variant="destructive">Restore Defaults</Button>
           </div>
         </>
       ) : (
