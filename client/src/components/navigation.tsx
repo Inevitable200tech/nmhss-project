@@ -48,8 +48,8 @@ export default function Navigation() {
               <ThemeToggle />
             </div>
             <a
-              href="#home"
-              onClick={(e) => handleLinkClick(e, "#home")}
+              href="/"
+              onClick={(e) => handleLinkClick(e, "/")}
               className="text-foreground hover:text-primary transition-colors"
             >
               Home
