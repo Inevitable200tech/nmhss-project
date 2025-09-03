@@ -14,6 +14,7 @@ import AboutAdminPage from "@/pages/about-admin";
 import AdminEvents from "@/pages/admin-events";
 import AdminNews from "@/pages/admin-news";
 import GallerySection from "@/pages/gallery";
+import AboutDevelopers from "@/pages/about-developers";
 import AdminGalleryPage from "@/pages/admin-gallery";
 import AdminIntroPage from "@/pages/admin-intro";
 import AdminFaculty from "@/pages/admin-faculty";
@@ -25,6 +26,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/gallery" component={GallerySection} />
+      <Route path="/about-us" component={AboutDevelopers} />
       <Route path="/admin" component={AdminPage} />
 
       {/* Protected admin routes */}
