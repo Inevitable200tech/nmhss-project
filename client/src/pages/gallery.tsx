@@ -53,8 +53,11 @@ export default function GalleryPage() {
             // ✅ Add preload hint for high priority
             const link = document.createElement("link");
             link.rel = "preload";
-            link.as = "video";
+            link.as = "fetch";
             link.href = src;
+            link.crossOrigin = "anonymous";
+            link.type = "video/mp4";
+            link.fetchPriority = "high";
             document.head.appendChild(link);
 
             // ✅ Force browser to start loading immediately
