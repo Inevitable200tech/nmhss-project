@@ -51,7 +51,7 @@ export default function AdminGalleryPage() {
     try {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/gallery/images", true);
-      xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("token")}`);
+      xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("adminToken")}`);
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -106,7 +106,7 @@ export default function AdminGalleryPage() {
     try {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/gallery/videos", true);
-      xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("token")}`);
+      xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("adminToken")}`);
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -150,7 +150,7 @@ export default function AdminGalleryPage() {
     try {
       const res = await fetch(`/api/gallery/images/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
       });
       if (res.ok) {
         setImages((prev) => prev.filter((img) => img.id !== id));
@@ -167,7 +167,7 @@ export default function AdminGalleryPage() {
     try {
       const res = await fetch(`/api/gallery/videos/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
       });
       if (res.ok) {
         setVideos((prev) => prev.filter((vid) => vid.id !== id));

@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, Document, Model } from "mongoose";
+import mongoose, { model, Model } from "mongoose";
 import multer from "multer";
 
 import {
@@ -235,26 +235,28 @@ export class MongoStorage implements IStorage {
   async getSections(name?: string): Promise<Section[]> {
     const query = name ? { name } : {};
     const docs = await SectionModel.find(query).lean().exec();
-    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as Section[];
+    return docs.map((doc) => ({
+      ...doc,
+      id: doc._id.toString(),
+      images: doc.images as
+        | { mediaId?: string; url: string; mode: "upload" | "url" }[]
+        | undefined,
+    })) as Section[];
   }
 
   async createSection(insertSection: InsertSection): Promise<Section> {
     const doc = await SectionModel.create(insertSection);
+
     const plainDoc = doc.toObject() as {
       _id: mongoose.Types.ObjectId;
       name: string;
       title: string;
       subtitle?: string;
       paragraphs?: string[];
-      images?: string[];
-      stats?: { label: string; value: string; description?: string }[];
-      profiles?: {
-        name: string;
-        role: string;
-        description: string;
-        image?: string;
-      }[];
+      images?: { mediaId?: string; url: string; mode: "upload" | "url" }[];
+      stats?: { label: string; value: string; description: string }[];
     };
+
     return {
       id: plainDoc._id.toString(),
       name: plainDoc.name,
@@ -263,20 +265,29 @@ export class MongoStorage implements IStorage {
       paragraphs: plainDoc.paragraphs,
       images: plainDoc.images,
       stats: plainDoc.stats,
-      profiles: plainDoc.profiles,
     } as Section;
   }
 
   async updateSection(name: string, data: InsertSection): Promise<Section | null> {
+    // Directly update (frontend enforces delete-before-replace)
     const doc = await SectionModel.findOneAndUpdate({ name }, data, {
       new: true,
-      upsert: true, // create if not exists
+      upsert: true,
     })
       .lean()
       .exec();
+
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as Section;
+
+    return {
+      ...doc,
+      id: doc._id.toString(),
+      images: doc.images as
+        | { mediaId?: string; url: string; mode: "upload" | "url" }[]
+        | undefined,
+    } as Section;
   }
+
 
   async getGalleryImages(): Promise<GalleryImage[]> {
     const docs = await GalleryImageModel.find().sort({ uploadedAt: -1 }).lean().exec();

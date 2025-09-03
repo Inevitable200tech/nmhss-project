@@ -144,42 +144,46 @@ export interface Section extends Document {
   title: string;
   subtitle?: string;
   paragraphs?: string[];
-  images?: string[];
-  stats?: { label: string; value: string; description?: string }[];
-  profiles?: { name: string; role: string; description: string; image?: string }[];
+  images?: { 
+    mediaId?: string; 
+    url: string; 
+    mode: "upload" | "url";   // ✅ added mode
+  }[];
+  stats?: { label: string; value: string; description: string }[];
 }
 
 export const SectionSchema = new Schema({
   name: { type: String, required: true, unique: true },
-  title: String,
-  subtitle: String,
+  title: { type: String, required: true },
+  subtitle: { type: String },
   paragraphs: [String],
-  // instead of plain strings, store objects with id + url
   images: [
     {
-      id: { type: String, required: true },   // Media _id
-      url: { type: String, required: true },  // "/api/media/:id" or external URL
+      mediaId: { type: String }, 
+      url: { type: String, required: true },
+      mode: { type: String, enum: ["upload", "url"], required: true }, // ✅ enforce mode
     },
   ],
   stats: [
     {
-      label: String,
-      value: String,
-      description: String,
+      label: { type: String, required: true },
+      value: { type: String, required: true },
+      description: { type: String, required: true },
     },
   ],
 });
 
 export const insertSectionSchema = z.object({
   name: z.string(),
-  title: z.string().optional(),
+  title: z.string(),
   subtitle: z.string().optional(),
   paragraphs: z.array(z.string()).optional(),
   images: z
     .array(
       z.object({
-        id: z.string(),
+        mediaId: z.string().optional(),
         url: z.string(),
+        mode: z.enum(["upload", "url"]),   // ✅ required in zod
       })
     )
     .optional(),
@@ -193,6 +197,7 @@ export const insertSectionSchema = z.object({
     )
     .optional(),
 });
+
 
 // ---------------- MEDIA MANAGEMENT ----------------
 

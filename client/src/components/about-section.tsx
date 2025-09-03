@@ -9,19 +9,17 @@ type ClientSection = {
   paragraphs?: string[];
   images?: { id: string; url: string }[];
   stats?: { label: string; value: string; description?: string }[];
-  profiles?: { name: string; role: string; description: string; image?: string }[];
 };
 
 export default function AboutSection({ section: propSection }: { section?: ClientSection }) {
   const { data: fetchedSection, isLoading } = useQuery<Section>({
     queryKey: ["/api/sections/about"],
     queryFn: async () => {
-      const res = await fetch("/api/sections?name=about");
+      const res = await fetch("/api/sections/about"); // ✅ correct endpoint
       if (!res.ok) throw new Error("Failed to fetch about section");
-      const sections = await res.json();
-      return sections[0]; // Assuming unique name
+      return await res.json(); // ✅ backend already returns single section
     },
-    enabled: !propSection, // Only fetch if no prop is provided
+    enabled: !propSection,
   });
 
   const section: ClientSection = propSection || {
@@ -29,30 +27,44 @@ export default function AboutSection({ section: propSection }: { section?: Clien
     title: fetchedSection?.title || "",
     subtitle: fetchedSection?.subtitle || "",
     paragraphs: fetchedSection?.paragraphs || [],
-    images: (fetchedSection?.images
-      ?.map((img: any) => (typeof img === 'string' ? { id: '', url: img } : img))
-      || []) as { id: string; url: string }[], stats: fetchedSection?.stats || [],
-    profiles: fetchedSection?.profiles || [],
+    images:
+      fetchedSection?.images?.map((img: any, i: number) => ({
+        id: img.mediaId ?? `server-${i}`, // map DB format → ClientSection
+        url: img.url,
+      })) || [],
+    stats: fetchedSection?.stats || [],
   };
 
   if (isLoading && !propSection) return <div>Loading...</div>;
 
   const fallbackImages = [
-    { id: "fallback1", url: "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" },
-    { id: "fallback2", url: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" },
+    {
+      id: "fallback1",
+      url: "https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
+    },
+    {
+      id: "fallback2",
+      url: "https://images.unsplash.com/photo-1580582932707-520aed937b7b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400",
+    },
   ];
 
   const images = section.images && section.images.length > 0 ? section.images.slice(0, 2) : fallbackImages;
-  const paragraphs = section.paragraphs && section.paragraphs.length > 0 ? section.paragraphs : [
-    "Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.",
-    "As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.",
-  ];
-  const stats = section.stats && section.stats.length > 0 ? section.stats : [
-    { label: "Classrooms", value: "30", description: "Well-equipped learning spaces" },
-    { label: "Library Books", value: "2.5K", description: "Extensive collection of resources" },
-    { label: "Computers", value: "25", description: "Modern computer laboratory" },
-    { label: "Restrooms", value: "40", description: "Separate facilities for all" },
-  ];
+  const paragraphs =
+    section.paragraphs && section.paragraphs.length > 0
+      ? section.paragraphs
+      : [
+          "Established in 1946, Navamukunda Higher Secondary School Thirunavaya has been a beacon of educational excellence in the rural landscape of Malappuram district, Kerala. For over seven decades, we have been committed to nurturing young minds and shaping the leaders of tomorrow.",
+          "As a privately aided co-educational institution, we serve students from grades 5 to 12, providing quality education in Malayalam medium. Our school is strategically located in the TIRUR block, easily accessible by all-weather roads.",
+        ];
+  const stats =
+    section.stats && section.stats.length > 0
+      ? section.stats
+      : [
+          { label: "Classrooms", value: "30", description: "Well-equipped learning spaces" },
+          { label: "Library Books", value: "2.5K", description: "Extensive collection of resources" },
+          { label: "Computers", value: "25", description: "Modern computer laboratory" },
+          { label: "Restrooms", value: "40", description: "Separate facilities for all" },
+        ];
 
   return (
     <section id="about" className="py-20 bg-background">
@@ -72,7 +84,8 @@ export default function AboutSection({ section: propSection }: { section?: Clien
             data-aos-delay="200"
             data-testid="about-subtitle"
           >
-            {section.subtitle || "Building futures through quality education and holistic development since 1946"}
+            {section.subtitle ||
+              "Building futures through quality education and holistic development since 1946"}
           </p>
         </div>
 
@@ -118,7 +131,8 @@ export default function AboutSection({ section: propSection }: { section?: Clien
             </div>
             <h3 className="text-2xl font-bold text-foreground mb-4">Our Vision</h3>
             <p className="text-muted-foreground">
-              To be a center of educational excellence that empowers students with knowledge, values, and skills to become responsible global citizens and leaders of tomorrow.
+              To be a center of educational excellence that empowers students with knowledge, values,
+              and skills to become responsible global citizens and leaders of tomorrow.
             </p>
           </div>
           <div
@@ -132,7 +146,8 @@ export default function AboutSection({ section: propSection }: { section?: Clien
             </div>
             <h3 className="text-2xl font-bold text-foreground mb-4">Our Mission</h3>
             <p className="text-muted-foreground">
-              To provide quality education that nurtures intellectual curiosity, promotes cultural values, and develops character while ensuring holistic development of every student.
+              To provide quality education that nurtures intellectual curiosity, promotes cultural
+              values, and develops character while ensuring holistic development of every student.
             </p>
           </div>
           <div
@@ -146,20 +161,26 @@ export default function AboutSection({ section: propSection }: { section?: Clien
             </div>
             <h3 className="text-2xl font-bold text-foreground mb-4">Our Values</h3>
             <p className="text-muted-foreground">
-              Integrity, excellence, inclusivity, and innovation guide our educational approach, fostering an environment where every student can thrive and reach their full potential.
+              Integrity, excellence, inclusivity, and innovation guide our educational approach,
+              fostering an environment where every student can thrive and reach their full potential.
             </p>
           </div>
         </div>
 
         {/* Facilities Overview */}
-        <div className="bg-muted p-8 md:p-12 rounded-2xl" data-aos="zoom-in" data-testid="facilities-section">
+        <div
+          className="bg-muted p-8 md:p-12 rounded-2xl"
+          data-aos="zoom-in"
+          data-testid="facilities-section"
+        >
           <h3 className="text-3xl font-bold text-foreground mb-8 text-center">School Facilities</h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, index) => (
               <div key={index} className="text-center" data-testid={`facility-${stat.label.toLowerCase()}`}>
                 <div
-                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${index % 2 === 0 ? "bg-primary" : "bg-secondary"
-                    }`}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    index % 2 === 0 ? "bg-primary" : "bg-secondary"
+                  }`}
                 >
                   <span className="text-2xl font-bold text-primary-foreground">{stat.value}</span>
                 </div>

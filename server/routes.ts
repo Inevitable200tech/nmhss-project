@@ -6,18 +6,12 @@ import {
   insertEventSchema,
   insertNewsSchema,
   insertSectionSchema,
-  
-
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import multer from "multer";
 import { SectionModel } from "@shared/schema";
 import { Db, GridFSBucket } from "mongodb";
-
-
-// Store uploads in memory buffer
-
 import { MediaModel } from "@shared/schema";
 import mongoose from "mongoose";
 import { Readable } from "stream";
@@ -34,7 +28,7 @@ mongoose.connection.once("open", () => {
   }
   gridFSBucket = new GridFSBucket(mongoose.connection.db as Db, {
     bucketName: "media",
-    chunkSizeBytes: 1024 * 1024 * 2, // 255KB chunk size
+    chunkSizeBytes: 1024 * 1024 * 2, // 2MB chunk size
   });
 });
 
@@ -84,6 +78,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  //------------------- EVENTS ROUTES ----------------
+
   // Get events
   app.get("/api/events", async (req, res) => {
     try {
@@ -94,21 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-  // Get news
-  app.get("/api/news", async (req, res) => {
-    try {
-      const news = await storage.getNews();
-      res.json(news);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch news" });
-    }
-  });
-
-
-
   // Create event (admin only)
-  app.post("/api/events", async (req, res) => {
+  app.post("/api/events", requireAuth, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(eventData);
@@ -122,7 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/events/:id", async (req, res) => {
+  app.delete("/api/events/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteEvent(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Event not found" });
@@ -133,7 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update event (admin only)
-  app.put("/api/events/:id", async (req, res) => {
+  app.put("/api/events/:id", requireAuth, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const updated = await storage.updateEvent(req.params.id, eventData);
@@ -148,8 +132,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  //------------------- NEWS ROUTES ----------------
+
+  // Get news
+  app.get("/api/news", async (req, res) => {
+    try {
+      const news = await storage.getNews();
+      res.json(news);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch news" });
+    }
+  });
+
   // Create news (admin only)
-  app.post("/api/news", async (req, res) => {
+  app.post("/api/news", requireAuth, async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -177,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Update news (admin only)
-  app.put("/api/news/:id", async (req, res) => {
+  app.put("/api/news/:id", requireAuth, async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -205,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete news (admin only)
-  app.delete("/api/news/:id", async (req, res) => {
+  app.delete("/api/news/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteNews(req.params.id);
       if (!deleted) return res.status(404).json({ error: "News not found" });
@@ -215,23 +211,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ---------------- SECTION ROUTES ----------------
+
   // Get sections (public)
-  app.get("/api/sections", async (req, res) => {
+  app.get("/api/sections/:name", async (req, res) => {
     try {
-      const name = req.query.name as string;
+      const name = req.params.name;
       const sections = await storage.getSections(name);
-      if (name && sections.length === 0) {
+      if (sections.length === 0) {
         res.status(404).json({ error: `No section found with name: ${name}` });
       } else {
-        res.json(sections);
+        res.json(sections[0]); // return single section
       }
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch sections" });
+      res.status(500).json({ error: "Failed to fetch section" });
     }
   });
 
+
   // Create section (admin only)
-  app.post("/api/sections", async (req, res) => {
+  app.post("/api/sections", requireAuth, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const section = await storage.createSection(sectionData);
@@ -245,7 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/sections/:id", async (req, res) => {
+  app.put("/api/sections/:id", requireAuth, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const updated = await storage.updateSection(req.params.id, sectionData);
@@ -256,59 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-  // Replace the GET /api/media/:id route
-  app.get("/api/media/:id", async (req, res) => {
-    try {
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
-      }
-
-      const files = await gridFSBucket
-        .find({ _id: new mongoose.Types.ObjectId(req.params.id) })
-        .toArray();
-
-      if (!files[0]) {
-        return res.status(404).json({ message: "File not found" });
-      }
-
-      const file = files[0];
-      const fileSize = file.length;
-      const range = req.headers.range;
-
-      // Add caching for faster reloads
-      res.set("Cache-Control", "public, max-age=31536000, immutable");
-
-      if (range) {
-        // Example: "bytes=0-"
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunkSize = end - start + 1;
-
-        res.writeHead(206, {
-          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-          "Accept-Ranges": "bytes",
-          "Content-Length": chunkSize,
-          "Content-Type": file.contentType,
-        });
-
-        gridFSBucket
-          .openDownloadStream(new mongoose.Types.ObjectId(req.params.id), { start, end: end + 1 })
-          .pipe(res);
-      } else {
-        res.writeHead(200, {
-          "Content-Length": fileSize,
-          "Content-Type": file.contentType,
-        });
-        gridFSBucket.openDownloadStream(new mongoose.Types.ObjectId(req.params.id)).pipe(res);
-      }
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: (err as Error).message });
-    }
-  });
-
+  //---------------- GALLERY ROUTES ----------------
 
   // Replace the GET /api/gallery route
   app.get("/api/gallery", async (req, res) => {
@@ -335,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/gallery/images
-  app.post("/api/gallery/images", upload.single("file"), async (req, res) => {
+  app.post("/api/gallery/images", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       if (!gridFSBucket) {
@@ -390,7 +337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // POST /api/gallery/videos
-  app.post("/api/gallery/videos", upload.single("file"), async (req, res) => {
+  app.post("/api/gallery/videos", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
       if (!gridFSBucket) {
@@ -444,7 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/gallery/images/:id
-  app.delete("/api/gallery/images/:id", async (req, res) => {
+  app.delete("/api/gallery/images/:id", requireAuth, async (req, res) => {
     try {
       if (!gridFSBucket) {
         return res.status(503).json({ message: "Database connection not ready" });
@@ -461,7 +408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/gallery/videos/:id
-  app.delete("/api/gallery/videos/:id", async (req, res) => {
+  app.delete("/api/gallery/videos/:id", requireAuth, async (req, res) => {
     try {
       if (!gridFSBucket) {
         return res.status(503).json({ message: "Database connection not ready" });
@@ -477,8 +424,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ---------------- MEDIA ROUTES ----------------
+
+  // Replace the GET /api/media/:id route
+  app.get("/api/media/:id", async (req, res) => {
+    try {
+      if (!gridFSBucket) {
+        return res.status(503).json({ message: "Database connection not ready" });
+      }
+
+      const files = await gridFSBucket
+        .find({ _id: new mongoose.Types.ObjectId(req.params.id) })
+        .toArray();
+
+      if (!files[0]) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      const file = files[0];
+      const fileSize = file.length;
+      const range = req.headers.range;
+
+      // Add caching for faster reloads
+      res.set("Cache-Control", "public, max-age=31536000, immutable");
+
+      if (range) {
+        // Example: "bytes=0-"
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+
+        res.writeHead(206, {
+          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunkSize,
+          "Content-Type": file.contentType,
+        });
+
+        gridFSBucket
+          .openDownloadStream(new mongoose.Types.ObjectId(req.params.id), { start, end: end + 1 })
+          .pipe(res);
+      } else {
+        res.writeHead(200, {
+          "Content-Length": fileSize,
+          "Content-Type": file.contentType,
+        });
+        gridFSBucket.openDownloadStream(new mongoose.Types.ObjectId(req.params.id)).pipe(res);
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: (err as Error).message });
+    }
+  });
+
   // POST /api/media
-  app.post("/api/media", upload.single("file"), async (req, res) => {
+  app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       if (!gridFSBucket) {
@@ -528,7 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/media/:id
-  app.delete("/api/media/:id", async (req, res) => {
+  app.delete("/api/media/:id", requireAuth, async (req, res) => {
     try {
       if (!gridFSBucket) {
         return res.status(503).json({ message: "Database connection not ready" });
@@ -539,11 +540,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!file[0]) return res.status(404).json({ message: "File not found" });
       await gridFSBucket.delete(new mongoose.Types.ObjectId(req.params.id));
       await MediaModel.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
+
       await SectionModel.updateMany(
-        { "images.id": req.params.id },
-        { $pull: { images: { id: req.params.id } } }
+        { "images.mediaId": req.params.id },
+        { $pull: { images: { mediaId: req.params.id } } }
       );
+
+
       res.json({ message: "Deleted" });
+      console.log("Deleted media and references:", req.params.id);
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Failed to delete media" });
@@ -595,6 +600,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ---------------- FACULTY SECTION ROUTES ----------------
+
   // Get faculty section (public)
   app.get("/api/faculty", async (req, res) => {
     try {
@@ -610,7 +617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create or update faculty section (admin only)
-  app.post("/api/faculty", async (req, res) => {
+  app.post("/api/faculty", requireAuth, async (req, res) => {
     try {
       // validate with zod
       const schema = z.object({
@@ -648,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete faculty section (admin only)
-  app.delete("/api/faculty", async (req, res) => {
+  app.delete("/api/faculty", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteFacultySection();
       if (!deleted) {
