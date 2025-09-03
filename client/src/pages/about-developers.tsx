@@ -2,7 +2,8 @@ import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
 import { Github as GithubIcon } from "lucide-react";
 import { motion } from "framer-motion";
-import { Canvas } from "@react-three/fiber";
+import { Stage, Graphics, useTick } from "@pixi/react-legacy";
+import React, { useState } from "react";
 
 const developers = [
   {
@@ -21,19 +22,46 @@ const developers = [
   },
 ];
 
+// 🔄 Spinning square background shape
+const SpinningShape: React.FC<{ width: number; height: number }> = ({
+  width,
+  height,
+}) => {
+  const [angle, setAngle] = useState(0);
+
+  useTick((delta: number) => {
+    setAngle((prev) => prev + 0.01 * delta);
+  });
+
+  return (
+    <Graphics
+      draw={(g) => {
+        g.clear();
+        g.beginFill(0xff00aa, 0.6);
+        g.drawRect(-60, -60, 120, 120);
+        g.endFill();
+        g.rotation = angle;
+        g.x = width / 2;
+        g.y = height / 2;
+      }}
+    />
+  );
+};
+
 export default function AboutDevelopers() {
+  const [canvasSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
-      {/* === Minimal 3D Background === */}
+      {/* === PIXI Background === */}
       <div className="absolute inset-0 -z-10">
-        <Canvas>
-          <ambientLight intensity={0.5} />
-          <directionalLight position={[3, 3, 3]} />
-          <mesh rotation={[0.4, 0.2, 0]}>
-            <boxGeometry args={[2, 2, 2]} />
-            <meshStandardMaterial color="hotpink" />
-          </mesh>
-        </Canvas>
+        <Stage
+          width={canvasSize.w}
+          height={canvasSize.h}
+          options={{ backgroundAlpha: 0 }}
+        >
+          <SpinningShape width={canvasSize.w} height={canvasSize.h} />
+        </Stage>
       </div>
 
       <Navigation />
