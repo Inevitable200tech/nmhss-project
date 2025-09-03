@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, ArrowRight, X, Calendar } from "lucide-react";
+import { ArrowLeft, ArrowRight, X, Calendar, Loader2 } from "lucide-react";
 import Navigation from "../components/navigation";
 import Footer from "../components/footer";
+
 
 const fallbackVideos = [
   "https://www.w3schools.com/html/mov_bbb.mp4",
@@ -37,7 +38,7 @@ export default function GalleryPage() {
       return res.json();
     },
   });
-  
+
   function LazyVideo({ src, className }: { src: string; className?: string }) {
     const ref = useRef<HTMLVideoElement | null>(null);
     const [isVisible, setIsVisible] = useState(false);
@@ -58,7 +59,7 @@ export default function GalleryPage() {
             link.type = "video/mp4";
             link.fetchPriority = "high";
             link.as = "video";
-          
+
             document.head.appendChild(link);
 
             // ✅ Force browser to start loading immediately
@@ -87,7 +88,7 @@ export default function GalleryPage() {
         muted
         loop
         playsInline
-        preload ="auto" // ✅ Hint to preload video
+        preload="auto" // ✅ Hint to preload video
       />
     );
   }
@@ -103,7 +104,12 @@ export default function GalleryPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedIndex]);
 
-  if (isLoading) return <div className="text-gray-100 dark:text-gray-100 text-center py-20">Loading...</div>;
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-screen">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <span className="ml-2 text-muted-foreground">Please Wait...</span>
+    </div>
+  );
 
   // Group images and videos by date (DD-MM-YYYY) if database has data
   const groupByDate = (items: { url: string; uploadedAt: Date }[]) => {
@@ -357,7 +363,7 @@ export default function GalleryPage() {
                 controls
                 autoPlay
                 className="w-full h-auto max-h-[80vh] object-contain"
-                preload ="auto" // ✅ preload video for lightbox
+                preload="auto" // ✅ preload video for lightbox
               />
             )}
           </div>

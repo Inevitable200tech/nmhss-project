@@ -1,20 +1,50 @@
 // src/components/ProtectedRoute.tsx
-
 import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 
-// This component checks if the user is logged in before rendering the protected route
 export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const [location, setLocation] = useLocation();
-  const token = localStorage.getItem("adminToken");
+  const [, setLocation] = useLocation();
+  const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // If the user is not logged in, redirect them to the login page
     if (!token) {
-      setLocation("/admin"); // Redirect to login page if not logged in
+      setIsVerified(false);
+      setLocation("/admin"); // redirect if no token
+      return;
     }
+
+    fetch("/api/admin/verify", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          setToken("");
+          localStorage.removeItem("adminToken");
+          setIsVerified(false);
+          setLocation("/admin");
+        } else {
+          setIsVerified(true);
+        }
+      })
+      .catch(() => {
+        setToken("");
+        localStorage.removeItem("adminToken");
+        setIsVerified(false);
+        setLocation("/admin");
+      });
   }, [token, setLocation]);
 
-  // If the user is logged in, render the protected route
-  return token ? children : null;
+  // While verifying, show spinner
+  if (isVerified === null) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Checking authentication...</span>
+      </div>
+    );
+  }
+
+  return isVerified ? children : null;
 };

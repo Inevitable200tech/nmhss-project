@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-
 type ImageItem = { url: string; mediaId?: string; file?: File; mode: "upload" | "url" };
 type StatItem = { label: string; value: string; description: string };
 type AboutSectionDTO = {
@@ -62,9 +61,9 @@ const emptyAbout: AboutSectionDTO = {
 
 export default function AboutAdmin() {
 
-  const token = localStorage.getItem("adminToken");
   const [aboutData, setAboutData] = useState<AboutSectionDTO>(emptyAbout);
   const [previewMode, setPreviewMode] = useState(false);
+  const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
 
   // Fetch section
   const { data: serverData, refetch } = useQuery({
