@@ -52,12 +52,13 @@ export default function GalleryPage() {
 
             // ✅ Add preload hint for high priority
             const link = document.createElement("link");
-            link.rel = "preload";
-            link.as = "fetch";
+            link.rel = "preload"
             link.href = src;
             link.crossOrigin = "anonymous";
             link.type = "video/mp4";
             link.fetchPriority = "high";
+            link.as = "video";
+          
             document.head.appendChild(link);
 
             // ✅ Force browser to start loading immediately
@@ -86,7 +87,7 @@ export default function GalleryPage() {
         muted
         loop
         playsInline
-        preload="metadata"
+        preload ="auto" // ✅ Hint to preload video
       />
     );
   }
@@ -356,6 +357,7 @@ export default function GalleryPage() {
                 controls
                 autoPlay
                 className="w-full h-auto max-h-[80vh] object-contain"
+                preload ="auto" // ✅ preload video for lightbox
               />
             )}
           </div>
