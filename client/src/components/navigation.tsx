@@ -62,11 +62,11 @@ export default function Navigation() {
               About
             </a>
             <a
-              href="#academics"
-              onClick={(e) => handleLinkClick(e, "#academics")}
+              href="/teachers"
+              onClick={(e) => handleLinkClick(e, "/teachers")}
               className="text-foreground hover:text-primary transition-colors"
             >
-              Academics
+              Teachers
             </a>
             <a
               href="#achievements"
@@ -147,11 +147,11 @@ export default function Navigation() {
                 About
               </a>
               <a
-                href="#academics"
-                onClick={(e) => handleLinkClick(e, "#academics")}
+                href="/teachers"
+                onClick={(e) => handleLinkClick(e, "/teachers")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
-                Academics
+                Teachers
               </a>
               <a
                 href="#achievements"

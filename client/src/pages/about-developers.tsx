@@ -66,7 +66,7 @@ export default function AboutDevelopers() {
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
       {/* === PIXI Background === */}
-      <div className="absolute inset-0 -z-10">
+      <div className="absolute inset-0 -z-0">
         <Stage
           width={canvasSize.w}
           height={canvasSize.h}
