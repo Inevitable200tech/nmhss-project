@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Edit, Save, X, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Edit, Save, X, ArrowLeft, Loader2 } from "lucide-react";
 import type { ClientNews } from "@shared/schema";
 
 export default function AdminNews() {
@@ -120,8 +120,12 @@ export default function AdminNews() {
     editingId ? updateNews.mutate({ id: editingId, data: formData }) : createNews.mutate(formData);
   };
 
-  if (isLoading) return <p>Loading...</p>;
-
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-screen">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <span className="ml-2 text-muted-foreground">Please Wait...</span>
+    </div>
+  );
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
       {/* Status banner */}

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, CheckCircle } from "lucide-react";
+import { BookOpen, CheckCircle,Loader2 } from "lucide-react";
 import type { Section } from "@shared/schema";
 
 export default function AcademicsSection() {
@@ -13,8 +13,12 @@ export default function AcademicsSection() {
     },
   });
 
-  if (isLoading) return <div>Loading...</div>;
-
+if (isLoading) return (
+    <div className="flex items-center justify-center h-screen">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <span className="ml-2 text-muted-foreground">Please Wait...</span>
+    </div>
+  );
   return (
     <section id="academics" className="py-20 bg-card">
       <div className="container mx-auto px-4 lg:px-8">

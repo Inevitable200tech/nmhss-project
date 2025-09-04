@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Eye, Zap, Heart } from "lucide-react";
+import { Eye, Zap, Heart,Loader2 } from "lucide-react";
 import type { Section } from "@shared/schema";
+
 
 type ClientSection = {
   name: string;
@@ -35,7 +36,12 @@ export default function AboutSection({ section: propSection }: { section?: Clien
     stats: fetchedSection?.stats || [],
   };
 
-  if (isLoading && !propSection) return <div>Loading...</div>;
+  if (isLoading && !propSection) return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Please Wait...</span>
+      </div>
+    );;
 
   const fallbackImages = [
     {

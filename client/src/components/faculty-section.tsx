@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Globe, Calculator, FlaskConical, Users, Monitor } from "lucide-react";
+import { BookOpen, Globe, Calculator, FlaskConical, Users, Monitor, Loader2 } from "lucide-react";
 
 // define FacultySection type inline or import it from shared schema
 interface FacultyStat {
@@ -31,8 +31,12 @@ export default function FacultySection() {
     },
   });
 
-  if (isLoading) return <div>Loading...</div>;
-
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-screen">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <span className="ml-2 text-muted-foreground">Please Wait...</span>
+    </div>
+  );
   const fallbackImages = [
     "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
     "https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=300",
@@ -74,16 +78,16 @@ export default function FacultySection() {
       <div className="container mx-auto px-4 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4"data-aos="fade-up"data-testid="faculty-title">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4" data-aos="fade-up" data-testid="faculty-title">
             {section?.title || "Our Dedicated Faculty"}
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto"data-aos="fade-up"data-aos-delay="200"data-testid="faculty-subtitle">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200" data-testid="faculty-subtitle">
             {section?.subtitle || "Experienced educators committed to nurturing young minds and fostering academic excellence"}
           </p>
         </div>
 
         {/* Faculty Statistics */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16"data-aos="fade-up">
+        <div className="grid md:grid-cols-3 gap-8 mb-16" data-aos="fade-up">
           {stats.map((stat, index) => (
             <div key={index} className="bg-background p-8 rounded-xl shadow-lg border border-border text-center hover-lift" >
               <div

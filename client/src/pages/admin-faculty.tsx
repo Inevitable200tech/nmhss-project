@@ -81,7 +81,7 @@ export default function AdminFaculty() {
     ]);
     const [tempPreviews, setTempPreviews] = useState<(string | null)[]>([null, null, null]);
     const [tempFiles, setTempFiles] = useState<(File | null)[]>([null, null, null]);
-
+    const token = localStorage.getItem("adminToken");
     useEffect(() => {
         (async () => {
             try {
@@ -138,7 +138,12 @@ export default function AdminFaculty() {
                     if (tempFiles[i]) {
                         const formData = new FormData();
                         formData.append("file", tempFiles[i] as Blob);
-                        const uploadRes = await fetch("/api/media", { method: "POST", body: formData });
+                        const uploadRes = await fetch("/api/media", {
+                            method: "POST",
+                            headers: {
+                                Authorization: `Bearer ${localStorage.getItem("adminToken")}`
+                            }, body: formData
+                        });
                         if (!uploadRes.ok) throw new Error("Upload failed");
                         const uploaded = await uploadRes.json();
                         return { ...p, mediaId: uploaded.id, imageUrl: `/api/media/${uploaded.id}` };
@@ -154,7 +159,10 @@ export default function AdminFaculty() {
 
             const res = await fetch("/api/faculty", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("adminToken")}`
+                },
                 body: JSON.stringify(finalPayload),
             });
 
@@ -167,24 +175,42 @@ export default function AdminFaculty() {
     };
 
     // ✅ Modified handleImageRemove
-    const handleImageRemove = (i: number) => {
+    // ✅ Modified handleImageRemove
+    const handleImageRemove = async (i: number) => {
         const confirmed = window.confirm(
             "⚠️ Are you sure you want to remove this image?\nThis will delete the image from the database."
         );
         if (!confirmed) return;
-        const newPreviews = [...tempPreviews];
-        const newFiles = [...tempFiles];
-        newPreviews[i] = null;
-        newFiles[i] = null;
-        setTempPreviews(newPreviews);
-        setTempFiles(newFiles);
 
-        const newProfiles = [...profiles];
-        newProfiles[i] = { ...newProfiles[i], mediaId: undefined, imageUrl: undefined };
-        setProfiles(newProfiles);
+        try {
+            // 🔥 Delete from DB if mediaId exists
+            if (profiles[i].mediaId) {
+                await fetch(`/api/media/${profiles[i].mediaId}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+                });
+            }
 
-        // 🔥 Save immediately with updated profiles
-        handleSave({ profiles: newProfiles });
+            // Clear local state
+            const newPreviews = [...tempPreviews];
+            const newFiles = [...tempFiles];
+            newPreviews[i] = null;
+            newFiles[i] = null;
+            setTempPreviews(newPreviews);
+            setTempFiles(newFiles);
+
+            const newProfiles = [...profiles];
+            newProfiles[i] = { ...newProfiles[i], mediaId: undefined, imageUrl: undefined };
+            setProfiles(newProfiles);
+
+            // 🔥 Save immediately with updated profiles
+            await handleSave({ profiles: newProfiles });
+
+            toast({ title: "🗑️ Image removed successfully" });
+        } catch (err) {
+            console.error(err);
+            toast({ title: "❌ Failed to remove image", variant: "destructive" });
+        }
     };
 
     // ✅ Modified handleRestoreDefaults
@@ -198,7 +224,7 @@ export default function AdminFaculty() {
             for (const profile of profiles) {
                 if (profile.mediaId) {
                     try {
-                        await fetch(`/api/media/${profile.mediaId}`, { method: "DELETE" });
+                        await fetch(`/api/media/${profile.mediaId}`, { method: "DELETE", headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` } });
                     } catch (err) {
                         console.error(`Failed to delete media ${profile.mediaId}`, err);
                     }
@@ -290,7 +316,7 @@ export default function AdminFaculty() {
             <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <BarChart3 className="w-5 h-5 text-blue-400" /> Faculty Stats 
+                        <BarChart3 className="w-5 h-5 text-blue-400" /> Faculty Stats
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -332,7 +358,7 @@ focus:ring-2 focus:ring-blue-500 focus:outline-none"
             <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <User className="w-5 h-5 text-blue-400" /> Faculty Profiles 
+                        <User className="w-5 h-5 text-blue-400" /> Faculty Profiles
                     </CardTitle>
                 </CardHeader>
                 <CardContent>

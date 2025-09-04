@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Clock, FlaskConical, Dumbbell, Music, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, FlaskConical, Dumbbell, Music, Users, Loader2 } from "lucide-react";
 import type { ClientEvent, ClientNews } from "@shared/schema";
 
 export default function EventsSection() {
@@ -33,8 +33,12 @@ export default function EventsSection() {
     },
   });
 
-  if (eventsLoading || newsLoading) return <div>Loading...</div>;
-
+if (newsLoading || eventsLoading) return (
+    <div className="flex items-center justify-center h-screen">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <span className="ml-2 text-muted-foreground">Please Wait...</span>
+    </div>
+  );
   // Mock data for fallbacks
   const mockEvents: ClientEvent[] = [
     {

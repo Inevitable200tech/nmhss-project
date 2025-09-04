@@ -55,8 +55,8 @@ export default function Navigation() {
               Home
             </a>
             <a
-              href="#about"
-              onClick={(e) => handleLinkClick(e, "#about")}
+              href="/about-us"
+              onClick={(e) => handleLinkClick(e, "/about-us")}
               className="text-foreground hover:text-primary transition-colors"
             >
               About
@@ -133,15 +133,15 @@ export default function Navigation() {
           <div className="md:hidden border-t border-white/20 dark:border-gray-700/20 backdrop-blur-md bg-white/70 dark:bg-gray-900/70 shadow-md rounded-b-xl">
             <div className="px-2 pt-2 pb-3 space-y-1">
               <a
-                href="#home"
-                onClick={(e) => handleLinkClick(e, "#home")}
+                href="/"
+                onClick={(e) => handleLinkClick(e, "/")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
                 Home
               </a>
               <a
-                href="#about"
-                onClick={(e) => handleLinkClick(e, "#about")}
+                href="/about-us"
+                onClick={(e) => handleLinkClick(e, "/about-us")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
                 About
