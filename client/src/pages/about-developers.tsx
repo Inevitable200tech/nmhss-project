@@ -3,7 +3,7 @@ import Footer from "@/components/footer";
 import { Github as GithubIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { Stage, Graphics, useTick } from "@pixi/react-legacy";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 const developers = [
   {
@@ -22,15 +22,15 @@ const developers = [
   },
 ];
 
-// 🔄 Spinning square background shape
+// 🔄 Optimized spinning shape with useRef to prevent re-renders
 const SpinningShape: React.FC<{ width: number; height: number }> = ({
   width,
   height,
 }) => {
-  const [angle, setAngle] = useState(0);
+  const angleRef = useRef(0);
 
   useTick((delta: number) => {
-    setAngle((prev) => prev + 0.01 * delta);
+    angleRef.current += 0.01 * delta;
   });
 
   return (
@@ -40,7 +40,7 @@ const SpinningShape: React.FC<{ width: number; height: number }> = ({
         g.beginFill(0xff00aa, 0.6);
         g.drawRect(-60, -60, 120, 120);
         g.endFill();
-        g.rotation = angle;
+        g.rotation = angleRef.current;
         g.x = width / 2;
         g.y = height / 2;
       }}
@@ -49,7 +49,19 @@ const SpinningShape: React.FC<{ width: number; height: number }> = ({
 };
 
 export default function AboutDevelopers() {
-  const [canvasSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const [canvasSize, setCanvasSize] = useState({
+    w: window.innerWidth,
+    h: window.innerHeight,
+  });
+
+  // 📏 Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setCanvasSize({ w: window.innerWidth, h: window.innerHeight });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
