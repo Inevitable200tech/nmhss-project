@@ -423,26 +423,39 @@ export default function AboutAdmin() {
           </Card>
 
           {/* Actions */}
-          <div className="flex space-x-4">
-            <Button onClick={handleSave} disabled={!imagesValid}>
+          <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0 w-full">
+            <Button
+              onClick={handleSave}
+              disabled={!imagesValid}
+              className="w-full sm:w-auto"
+            >
               Save
             </Button>
+
             <Button
               variant="outline"
               onClick={() => setPreviewMode(true)}
               disabled={!imagesValid}
+              className="w-full sm:w-auto"
             >
               Preview
             </Button>
-            <Button variant="secondary" onClick={handleRestoreDefaults}>
+
+            <Button
+              variant="secondary"
+              onClick={handleRestoreDefaults}
+              className="w-full sm:w-auto"
+            >
               Restore Defaults
             </Button>
-            <a href="/admin">
-              <Button variant="default">
+
+            <a href="/admin" className="w-full sm:w-auto">
+              <Button variant="default" className="w-full sm:w-auto">
                 Back to Dashboard
               </Button>
             </a>
           </div>
+
         </div>
       ) : (
         <div>

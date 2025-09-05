@@ -271,24 +271,34 @@ export default function AdminFaculty() {
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 p-6 space-y-6">
             {/* Top bar */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+                {/* Back button */}
                 <Button
                     onClick={() => (window.location.href = "/admin")}
                     variant="secondary"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto"
                 >
                     <ArrowLeft className="w-4 h-4" /> Back to Admin
                 </Button>
 
-                <div className="flex gap-2">
-                    <Button onClick={handleRestoreDefaults} variant="outline" className="flex items-center gap-2">
+                {/* Right side buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <Button
+                        onClick={handleRestoreDefaults}
+                        variant="outline"
+                        className="flex items-center gap-2 w-full sm:w-auto"
+                    >
                         <Trash2 className="w-4 h-4" /> Restore Defaults
                     </Button>
-                    <Button onClick={() => handleSave()} className="flex items-center gap-2">
+                    <Button
+                        onClick={() => handleSave()}
+                        className="flex items-center gap-2 w-full sm:w-auto"
+                    >
                         <Save className="w-4 h-4" /> Save
                     </Button>
                 </div>
             </div>
+
 
 
             {/* Section Header */}

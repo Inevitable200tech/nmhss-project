@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Menu, X } from "lucide-react";
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -64,7 +66,7 @@ export default function AdminPage() {
           <h2 className="text-2xl font-bold text-foreground mb-6 text-center">
             Admin Login
           </h2>
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleLogin} className="space-y-4">
             <input
               name="username"
               value={form.username}
@@ -72,10 +74,9 @@ export default function AdminPage() {
                 setForm((prev) => ({ ...prev, username: e.target.value }))
               }
               placeholder="Username"
-              className="mb-4 w-full p-2 border rounded"
+              className="w-full p-2 border rounded"
               required
               style={{ color: "#fff", backgroundColor: "#0000" }}
-
             />
             <input
               type="password"
@@ -85,17 +86,16 @@ export default function AdminPage() {
                 setForm((prev) => ({ ...prev, password: e.target.value }))
               }
               placeholder="Password"
-              className="mb-4 w-full p-2 border rounded"
+              className="w-full p-2 border rounded"
               required
               style={{ color: "#fff", backgroundColor: "#0000" }}
             />
-            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+            {error && <p className="text-red-500 text-sm">{error}</p>}
             <Button type="submit" className="w-full">
               Login
             </Button>
           </form>
 
-          {/* Back to homepage button */}
           <Button
             variant="outline"
             className="w-full mt-4"
@@ -108,11 +108,22 @@ export default function AdminPage() {
     );
   }
 
-
   return (
     <div className="min-h-screen bg-background flex">
-      <div className="w-64 bg-card shadow-lg p-4">
-        <h2 className="text-xl font-bold mb-4">Admin Panel</h2>
+      {/* Mobile top bar */}
+      <div className="sm:hidden fixed top-0 left-0 right-0 flex items-center justify-between bg-card p-4 shadow-md z-50">
+        <h2 className="text-lg font-bold">Admin Panel</h2>
+        <Button variant="outline" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </Button>
+      </div>
+
+      {/* Sidebar */}
+      <div
+        className={`fixed sm:static top-0 left-0 h-full sm:h-screen w-64 bg-card shadow-lg p-4 transform transition-transform duration-300 z-40
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"}`}
+      >
+        <h2 className="text-xl font-bold mb-4 hidden sm:block">Admin Panel</h2>
         <ul className="space-y-2">
           <li>
             <a href="/about-admin">
@@ -161,7 +172,9 @@ export default function AdminPage() {
           Logout
         </Button>
       </div>
-      <div className="flex-1 p-4">
+
+      {/* Main content */}
+      <div className="flex-1 p-4 sm:ml-64 mt-16 sm:mt-0 overflow-y-auto">
         <div className="container mx-auto max-w-2xl">
           <h1 className="text-3xl font-bold mb-4">Welcome to Admin Dashboard</h1>
           <p className="text-gray-500">Use the sidebar to manage content.</p>
