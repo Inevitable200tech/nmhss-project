@@ -59,14 +59,14 @@ export default function Navigation() {
               onClick={(e) => handleLinkClick(e, "/about-us")}
               className="text-foreground hover:text-primary transition-colors"
             >
-              About
+              About Devs
             </a>
-            <a
-              href="/teachers"
-              onClick={(e) => handleLinkClick(e, "/teachers")}
+             <a
+              href="/#academics"
+              onClick={(e) => handleLinkClick(e, "/#academics")}
               className="text-foreground hover:text-primary transition-colors"
             >
-              Teachers
+              Academics
             </a>
             <a
               href="#achievements"
@@ -76,15 +76,15 @@ export default function Navigation() {
               Achievements
             </a>
             <a
-              href="#faculty"
-              onClick={(e) => handleLinkClick(e, "#faculty")}
+              href="/#faculty"
+              onClick={(e) => handleLinkClick(e, "/#faculty")}
               className="text-foreground hover:text-primary transition-colors"
             >
               Faculty
             </a>
             <a
-              href="#events"
-              onClick={(e) => handleLinkClick(e, "#events")}
+              href="/#events"
+              onClick={(e) => handleLinkClick(e, "/#events")}
               className="text-foreground hover:text-primary transition-colors"
             >
               Events
@@ -96,8 +96,8 @@ export default function Navigation() {
               Gallery
             </a>
             <a
-              href="#contact"
-              onClick={(e) => handleLinkClick(e, "#contact")}
+              href="/#contact"
+              onClick={(e) => handleLinkClick(e, "/#contact")}
               className="text-foreground hover:text-primary transition-colors"
             >
               Contact
@@ -144,32 +144,32 @@ export default function Navigation() {
                 onClick={(e) => handleLinkClick(e, "/about-us")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
-                About
+                About Devs
               </a>
               <a
-                href="/teachers"
-                onClick={(e) => handleLinkClick(e, "/teachers")}
+                href="/#academics"
+                onClick={(e) => handleLinkClick(e, "/#academics")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
-                Teachers
+                Academics
               </a>
               <a
-                href="#achievements"
-                onClick={(e) => handleLinkClick(e, "#achievements")}
+                href="/#achievements"
+                onClick={(e) => handleLinkClick(e, "/#achievements")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
                 Achievements
               </a>
               <a
-                href="#faculty"
-                onClick={(e) => handleLinkClick(e, "#faculty")}
+                href="/#faculty"
+                onClick={(e) => handleLinkClick(e, "/#faculty")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
                 Faculty
               </a>
               <a
-                href="#events"
-                onClick={(e) => handleLinkClick(e, "#events")}
+                href="/#events"
+                onClick={(e) => handleLinkClick(e, "/#events")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
                 Events
@@ -181,8 +181,8 @@ export default function Navigation() {
                 Gallery
               </a>
               <a
-                href="#contact"
-                onClick={(e) => handleLinkClick(e, "#contact")}
+                href="/#contact"
+                onClick={(e) => handleLinkClick(e, "/#contact")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
                 Contact

@@ -257,34 +257,34 @@ export default function ContactSection() {
               <h3 className="text-2xl font-bold text-foreground mb-6">Quick Links</h3>
               <div className="grid grid-cols-2 gap-4">
                 <a 
-                  href="#admission" 
+                  href="/gallery" 
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-admission"
                 >
                   <FileText className="w-5 h-5 text-primary mr-3" />
-                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Admission Form</span>
+                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Gallery</span>
                 </a>
                 
                 <a 
-                  href="#fees" 
+                  href="/about-us" 
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-fees"
                 >
                   <DollarSign className="w-5 h-5 text-primary mr-3" />
-                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Fee Structure</span>
+                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">About Devs</span>
                 </a>
                 
                 <a 
-                  href="#handbook" 
+                  href="#academics" 
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-handbook"
                 >
                   <BookOpen className="w-5 h-5 text-primary mr-3" />
-                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Student Handbook</span>
+                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Academics</span>
                 </a>
                 
                 <a 
-                  href="#calendar" 
+                  href="#events" 
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-calendar"
                 >
