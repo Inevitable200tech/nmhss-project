@@ -68,6 +68,8 @@ Built with the latest web technologies, the website is **fast, user-friendly, an
   <img src="./attached_assets/mobile.gif" alt="Mobile Demo" width="300" />
 </p>
 
+---
+
 ## 👥 Contributors  
 
 Thanks to these amazing people:  
