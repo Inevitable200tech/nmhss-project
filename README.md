@@ -53,6 +53,21 @@ Built with the latest web technologies, the website is **fast, user-friendly, an
 
 ---
 
+
+# Live Preview (Not Final Version)
+
+-Desktop Version
+
+<p align="center">
+  <img src="./attached_assets/desktop.gif" alt="Desktop Demo" width="700" />
+</p>
+
+-Mobile Version
+
+<p align="center">
+  <img src="./attached_assets/mobile.gif" alt="Mobile Demo" width="300" />
+</p>
+
 ## 👥 Contributors  
 
 Thanks to these amazing people:  
