@@ -21,7 +21,6 @@ import {
   GalleryVideo,
   GalleryImageModel,
   GalleryVideoModel,
-  MediaModel,
   HeroVideo,
   HeroVideoModel,
   FacultySection,
@@ -313,7 +312,6 @@ export class MongoStorage implements IStorage {
   async deleteGalleryImage(id: string): Promise<GalleryImage | null> {
     const doc = await GalleryImageModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-    await MediaModel.findByIdAndDelete(doc.mediaId);
     return { ...doc, id: doc._id.toString() } as GalleryImage;
   }
 
@@ -341,7 +339,6 @@ export class MongoStorage implements IStorage {
   async deleteGalleryVideo(id: string): Promise<GalleryVideo | null> {
     const doc = await GalleryVideoModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-    await MediaModel.findByIdAndDelete(doc.mediaId);
     return { ...doc, id: doc._id.toString() } as GalleryVideo;
   }
 
@@ -374,10 +371,6 @@ export class MongoStorage implements IStorage {
   async deleteHeroVideo(id: string): Promise<HeroVideo | null> {
     const doc = await HeroVideoModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-
-    // also delete associated media file
-    await MediaModel.findByIdAndDelete(doc.mediaId);
-
     return { ...doc, id: doc._id.toString() } as HeroVideo;
   }
 

@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
-
 import express, { type Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { loadMediaDBs } from "./mediaDb";
 
 dotenv.config({ path: "cert.env" }); // Adjust the path if your .env is elsewhere
 
@@ -49,7 +49,10 @@ app.use((req, res, next) => {
   try {
     await mongoose.connect(mongoUrl);
     log(`Connected to MongoDB at ${mongoUrl}`);
-    
+
+    // Initialize secondary media DB connections
+    await loadMediaDBs();
+    log("[INIT] Media DB connections loaded");
   } catch (err) {
     log(`Failed to connect to MongoDB: ${(err instanceof Error ? err.message : String(err))}`);
     log("Exiting process due to MongoDB connection failure.");

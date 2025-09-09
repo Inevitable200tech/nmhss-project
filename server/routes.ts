@@ -6,12 +6,14 @@ import {
   insertEventSchema,
   insertNewsSchema,
   insertSectionSchema,
+  MediaDatabaseModel,
+  MediaDatabase
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import multer from "multer";
 import { SectionModel } from "@shared/schema";
-import { Db, GridFSBucket } from "mongodb";
+import { GridFSBucket } from "mongodb";
 import { MediaModel } from "@shared/schema";
 import mongoose from "mongoose";
 import { Readable } from "stream";
@@ -19,18 +21,8 @@ const ADMIN_USER = "admin";
 const ADMIN_PASS = "brocookedhard";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 export const upload = multer({ storage: multer.memoryStorage() });
-
-
-let gridFSBucket: GridFSBucket | undefined;
-mongoose.connection.once("open", () => {
-  if (!mongoose.connection.db) {
-    throw new Error("MongoDB connection database is not available");
-  }
-  gridFSBucket = new GridFSBucket(mongoose.connection.db as Db, {
-    bucketName: "media",
-    chunkSizeBytes: 1024 * 1024 * 2, // 2MB chunk size
-  });
-});
+import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
+import { c } from "node_modules/vite/dist/node/moduleRunnerTransport.d-DJ_mE5sf";
 
 
 // Auth middleware
@@ -260,9 +252,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Replace the GET /api/gallery route
   app.get("/api/gallery", async (req, res) => {
     try {
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
-      }
       const [images, videos, section] = await Promise.all([
         storage.getGalleryImages(),
         storage.getGalleryVideos(),
@@ -285,27 +274,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/gallery/images", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
-      }
+
       const maxSize = 100 * 1024 * 1024; // 100MB limit
       if (req.file.size > maxSize) {
         return res.status(400).json({ error: "File size exceeds 100MB limit" });
       }
+
       const uploadedAt = z
         .preprocess((val) => (val ? new Date(val as string) : undefined), z.date())
         .parse(req.body.uploadedAt);
 
-      // Create a Readable stream from the multer buffer
+      // 1. Pick the best DB for this file
+      const dbConn = await getBestMediaDB(req.file.size);
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      // 2. Create a Readable stream from the multer buffer
       const readableStream = Readable.from(req.file.buffer);
 
-      // Upload to GridFS
-      const writeStream = gridFSBucket.openUploadStream(req.file.originalname, {
+      // 3. Upload to GridFS
+      const writeStream = bucket.openUploadStream(req.file.originalname, {
         contentType: req.file.mimetype,
         metadata: { type: "image", uploadedAt },
       });
 
-      // Pipe the buffer stream to GridFS
       readableStream.pipe(writeStream);
 
       const mediaId = await new Promise<string>((resolve, reject) => {
@@ -313,16 +304,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         writeStream.on("error", reject);
       });
 
-      // Store metadata in MediaModel
+      // 4. Store metadata in main DB
       await MediaModel.create({
         _id: new mongoose.Types.ObjectId(mediaId),
         filename: req.file.originalname,
         contentType: req.file.mimetype,
         type: "image",
         uploadedAt,
+        dbName: dbConn.name, // ✅ track where file was stored
       });
 
+      // 5. Store gallery entry in main DB
       const image = await storage.createGalleryImage(mediaId, `/api/media/${mediaId}`, uploadedAt);
+
+      // 6. Respond
       res.json({ id: image.id, url: image.url, uploadedAt: image.uploadedAt });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -335,32 +330,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   // POST /api/gallery/videos
   app.post("/api/gallery/videos", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
-      }
+
       const maxSize = 100 * 1024 * 1024; // 100MB limit
       if (req.file.size > maxSize) {
         return res.status(400).json({ error: "File size exceeds 100MB limit" });
       }
+
       const uploadedAt = z
         .preprocess((val) => (val ? new Date(val as string) : undefined), z.date())
         .parse(req.body.uploadedAt);
 
-      // Create a Readable stream from the multer buffer
+      // 1. Pick the best DB for this file
+      const dbConn = await getBestMediaDB(req.file.size);
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      // 2. Create a Readable stream from the multer buffer
       const readableStream = Readable.from(req.file.buffer);
 
-      // Upload to GridFS
-      const writeStream = gridFSBucket.openUploadStream(req.file.originalname, {
+      // 3. Upload to GridFS
+      const writeStream = bucket.openUploadStream(req.file.originalname, {
         contentType: req.file.mimetype,
         metadata: { type: "video", uploadedAt },
       });
 
-      // Pipe the buffer stream to GridFS
       readableStream.pipe(writeStream);
 
       const mediaId = await new Promise<string>((resolve, reject) => {
@@ -368,16 +364,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         writeStream.on("error", reject);
       });
 
-      // Store metadata in MediaModel
+      // 4. Store metadata in main DB
       await MediaModel.create({
         _id: new mongoose.Types.ObjectId(mediaId),
         filename: req.file.originalname,
         contentType: req.file.mimetype,
         type: "video",
         uploadedAt,
+        dbName: dbConn.name, // ✅ track which DB file was stored in
       });
 
+      // 5. Store gallery entry in main DB
       const video = await storage.createGalleryVideo(mediaId, `/api/media/${mediaId}`, uploadedAt);
+
+      // 6. Respond
       res.json({ id: video.id, url: video.url, uploadedAt: video.uploadedAt });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -390,16 +390,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // DELETE /api/gallery/images/:id
   app.delete("/api/gallery/images/:id", requireAuth, async (req, res) => {
     try {
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
-      }
       const deleted = await storage.deleteGalleryImage(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Image not found" });
-      // Delete GridFS file using mediaId from GalleryImage
-      await gridFSBucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+
+      // 1. Find Media metadata
+      const mediaDoc = await MediaModel.findById(deleted.mediaId);
+      if (!mediaDoc) {
+        return res.status(404).json({ error: "Media metadata not found" });
+      }
+
+      // 2. Get correct DB connection
+      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
+      if (!dbConn) {
+        return res.status(500).json({ error: "Media DB not connected" });
+      }
+
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      // 3. Delete file from GridFS using deleted.mediaId
+      await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+
+      // 4. Delete Media metadata from main DB
+      await MediaModel.deleteOne({ _id: mediaDoc._id });
+
       res.json({ success: true, id: req.params.id });
     } catch (error) {
       console.error(error);
@@ -407,16 +424,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+
   // DELETE /api/gallery/videos/:id
   app.delete("/api/gallery/videos/:id", requireAuth, async (req, res) => {
     try {
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
-      }
       const deleted = await storage.deleteGalleryVideo(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Video not found" });
-      // Delete GridFS file using mediaId from GalleryVideo
-      await gridFSBucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+
+      // 1. Find Media metadata
+      const mediaDoc = await MediaModel.findById(deleted.mediaId);
+      if (!mediaDoc) {
+        return res.status(404).json({ error: "Media metadata not found" });
+      }
+
+      // 2. Get correct DB connection
+      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
+      if (!dbConn) {
+        return res.status(500).json({ error: "Media DB not connected" });
+      }
+
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      // 3. Delete file from GridFS using deleted.mediaId
+      await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+
+      // 4. Delete Media metadata from main DB
+      await MediaModel.deleteOne({ _id: mediaDoc._id });
+
+      // 5. Respond
       res.json({ success: true, id: req.params.id });
     } catch (error) {
       console.error(error);
@@ -424,32 +460,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // ---------------- MEDIA ROUTES ----------------
 
   // Replace the GET /api/media/:id route
   app.get("/api/media/:id", async (req, res) => {
     try {
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
+      // 1. Find metadata in main DB
+      const mediaDoc = await MediaModel.findById(req.params.id);
+      if (!mediaDoc) {
+        return res.status(404).json({ message: "File not found (metadata)" });
       }
 
-      const files = await gridFSBucket
+      // 2. Get correct DB connection
+      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
+      if (!dbConn) {
+        return res.status(500).json({ message: "Media DB not connected" });
+      }
+
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      // 3. Get file details
+      const files = await bucket
         .find({ _id: new mongoose.Types.ObjectId(req.params.id) })
         .toArray();
 
       if (!files[0]) {
-        return res.status(404).json({ message: "File not found" });
+        return res.status(404).json({ message: "File not found in GridFS" });
       }
 
       const file = files[0];
       const fileSize = file.length;
       const range = req.headers.range;
 
-      // Add caching for faster reloads
+      // 4. Add caching for faster reloads
       res.set("Cache-Control", "public, max-age=31536000, immutable");
 
+      // 5. Handle range requests (video/audio streaming)
       if (range) {
-        // Example: "bytes=0-"
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
         const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
@@ -462,7 +510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Content-Type": file.contentType,
         });
 
-        gridFSBucket
+        bucket
           .openDownloadStream(new mongoose.Types.ObjectId(req.params.id), { start, end: end + 1 })
           .pipe(res);
       } else {
@@ -470,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "Content-Length": fileSize,
           "Content-Type": file.contentType,
         });
-        gridFSBucket.openDownloadStream(new mongoose.Types.ObjectId(req.params.id)).pipe(res);
+        bucket.openDownloadStream(new mongoose.Types.ObjectId(req.params.id)).pipe(res);
       }
     } catch (err) {
       console.error(err);
@@ -478,28 +526,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // POST /api/media
   app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
-      }
+
       const maxSize = 100 * 1024 * 1024; // 100MB limit
       if (req.file.size > maxSize) {
         return res.status(400).json({ error: "File size exceeds 100MB limit" });
       }
 
-      // Create a Readable stream from the multer buffer
+      // 1. Pick the best DB for this file
+      const dbConn = await getBestMediaDB(req.file.size);
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      // 2. Create a Readable stream from the multer buffer
       const readableStream = Readable.from(req.file.buffer);
 
-      // Upload to GridFS
-      const writeStream = gridFSBucket.openUploadStream(req.file.originalname, {
+      // 3. Upload to GridFS
+      const writeStream = bucket.openUploadStream(req.file.originalname, {
         contentType: req.file.mimetype,
-        metadata: { type: req.file.mimetype.startsWith("image/") ? "image" : "video" },
+        metadata: {
+          type: req.file.mimetype.startsWith("image/") ? "image" : "video",
+          uploadedAt: new Date(),
+        },
       });
 
-      // Pipe the buffer stream to GridFS
       readableStream.pipe(writeStream);
 
       const mediaId = await new Promise<string>((resolve, reject) => {
@@ -507,15 +560,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         writeStream.on("error", reject);
       });
 
-      // Store metadata in MediaModel
+      // 4. Store metadata in main DB
       await MediaModel.create({
         _id: new mongoose.Types.ObjectId(mediaId),
         filename: req.file.originalname,
         contentType: req.file.mimetype,
         type: req.file.mimetype.startsWith("image/") ? "image" : "video",
         uploadedAt: new Date(),
+        dbName: dbConn.name, // ✅ track which DB file was stored in
       });
 
+      // 5. Respond to client
       res.json({
         id: mediaId,
         filename: req.file.originalname,
@@ -528,24 +583,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
   // DELETE /api/media/:id
   app.delete("/api/media/:id", requireAuth, async (req, res) => {
     try {
-      if (!gridFSBucket) {
-        return res.status(503).json({ message: "Database connection not ready" });
+      // 1. Find metadata in main DB
+      const mediaDoc = await MediaModel.findById(req.params.id);
+      if (!mediaDoc) {
+        console.error("File not found (metadata)");
+        return res.status(404).json({ message: "File not found (metadata)" });
       }
-      const file = await gridFSBucket
+
+      // 2. Get the correct DB connection
+      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
+      if (!dbConn) {
+        return res.status(500).json({ message: "Media DB not connected" });
+      }
+
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      // 3. Check file exists in GridFS
+      const files = await bucket
         .find({ _id: new mongoose.Types.ObjectId(req.params.id) })
         .toArray();
-      if (!file[0]) return res.status(404).json({ message: "File not found" });
-      await gridFSBucket.delete(new mongoose.Types.ObjectId(req.params.id));
+      if (!files[0]) {
+        console.error("File not found in GridFS");
+        return res.status(404).json({ message: "File not found in GridFS" });
+      }
+
+      // 4. Delete from GridFS
+      await bucket.delete(new mongoose.Types.ObjectId(req.params.id));
+
+      // 5. Delete Media metadata from main DB
       await MediaModel.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
 
+      // 6. Remove references from Sections
       await SectionModel.updateMany(
         { "images.mediaId": req.params.id },
         { $pull: { images: { mediaId: req.params.id } } }
       );
-
 
       res.json({ message: "Deleted" });
       console.log("Deleted media and references:", req.params.id);
@@ -554,6 +630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete media" });
     }
   });
+
 
   // ---------------- HERO VIDEO ROUTES ----------------
 
@@ -582,16 +659,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // Delete hero video (admin only)
+  // DELETE /api/hero-video/:id
   app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteHeroVideo(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Video not found" });
 
-      // also delete associated GridFS media
-      if (gridFSBucket) {
-        await gridFSBucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+      // 1. Find Media metadata
+      const mediaDoc = await MediaModel.findById(deleted.mediaId);
+      if (!mediaDoc) {
+        return res.status(404).json({ error: "Media metadata not found" });
       }
+
+      // 2. Get correct DB connection
+      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
+      if (!dbConn) {
+        return res.status(500).json({ error: "Media DB not connected" });
+      }
+
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      // 3. Delete file from GridFS using mediaId
+      await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+
+      // 4. Delete Media metadata from main DB
+      await MediaModel.deleteOne({ _id: mediaDoc._id });
 
       res.json({ success: true, id: req.params.id });
     } catch (error) {
@@ -599,6 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete hero video" });
     }
   });
+
 
   // ---------------- FACULTY SECTION ROUTES ----------------
 
@@ -667,6 +760,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete faculty section" });
     }
   });
+
+  //DB MANAGEMENT ROUTES (admin only)
+
+  // GET /api/admin/media-dbs
+  app.get("/api/admin/media-dbs", requireAuth, async (_req, res) => {
+    try {
+      const mediaDbs = await MediaDatabaseModel.find().lean();
+
+      const mediaDbsWithStats = await Promise.all(
+        mediaDbs.map(async (db) => {
+          let logicalUsedMB: string | null = null;
+          let allocatedMB: string | null = null;
+
+          try {
+            const conn = mediaConnections.get(db.name)?.conn;
+            if (conn && conn.db) {
+              try {
+                const stats = await conn.db.command({ dbStats: 1 });
+                logicalUsedMB = (stats.dataSize / (1024 * 1024)).toFixed(2);
+                allocatedMB = (stats.storageSize / (1024 * 1024)).toFixed(2);
+
+                console.log(
+                  `[MEDIA-DB][${db.name}] dbStats OK → logical=${logicalUsedMB} MB, allocated=${allocatedMB} MB`
+                );
+              } catch (dbStatsErr) {
+                console.warn(`[MEDIA-DB][${db.name}] dbStats failed, falling back to collStats`, dbStatsErr);
+
+                const chunkStats = await conn.db.command({ collStats: "media.chunks" });
+                logicalUsedMB = (chunkStats.size / (1024 * 1024)).toFixed(2);
+                allocatedMB = (chunkStats.storageSize / (1024 * 1024)).toFixed(2);
+
+                console.log(
+                  `[MEDIA-DB][${db.name}] collStats fallback → logical=${logicalUsedMB} MB, allocated=${allocatedMB} MB`
+                );
+              }
+            }
+          } catch (err) {
+            console.error(`[MEDIA-DB][${db.name}] ERROR computing stats:`, err);
+          }
+
+          return {
+            id: db._id.toString(),
+            name: db.name,
+            uri: db.uri,
+            createdAt: db.createdAt,
+            logicalUsedMB,
+            allocatedMB,
+            maxMB: 512,
+          };
+        })
+      );
+
+      console.log(`[MEDIA-DB] Returning stats for ${mediaDbsWithStats.length} DB(s)`);
+      res.json(mediaDbsWithStats);
+    } catch (err) {
+      console.error(`[MEDIA-DB] Failed to fetch media databases`, err);
+      res.status(500).json({ error: "Failed to fetch media databases" });
+    }
+  });
+
+
+
+
+  // POST /api/admin/media-dbs
+  app.post("/api/admin/media-dbs", requireAuth, async (req, res) => {
+    try {
+      const { uri } = req.body;
+      if (!uri) return res.status(400).json({ error: "URI is required" });
+
+      // Test connection
+      const conn = await mongoose.createConnection(uri).asPromise();
+      const dbName = conn.name;
+      await conn.close();
+
+      const mediaDb = await MediaDatabaseModel.create({ uri, name: dbName });
+
+      await reloadMediaDBs(); // Reload all connections in memory
+
+      res.status(201).json({
+        id: mediaDb._id.toString(),
+        name: mediaDb.name,
+        uri: mediaDb.uri,
+        createdAt: mediaDb.createdAt,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(400).json({ error: "Invalid URI or unable to connect" });
+    }
+  });
+
+  // DELETE /api/admin/media-dbs/:id
+  app.delete("/api/admin/media-dbs/:id", requireAuth, async (req, res) => {
+    try {
+      const dbEntry = await MediaDatabaseModel.findById(req.params.id);
+      if (!dbEntry) return res.status(404).json({ error: "Media database not found" });
+
+      const conn = mediaConnections.get(dbEntry.name)?.conn;
+      if (conn && conn.db) {
+        const filesCount = await conn.db.collection("media.files").countDocuments();
+        if (filesCount > 0) {
+          return res.status(400).json({ error: "Cannot delete non-empty database" });
+        }
+      }
+
+      await MediaDatabaseModel.findByIdAndDelete(req.params.id);
+      await reloadMediaDBs();
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to delete media database" });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;

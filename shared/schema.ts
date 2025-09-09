@@ -144,9 +144,9 @@ export interface Section extends Document {
   title: string;
   subtitle?: string;
   paragraphs?: string[];
-  images?: { 
-    mediaId?: string; 
-    url: string; 
+  images?: {
+    mediaId?: string;
+    url: string;
     mode: "upload" | "url";   // ✅ added mode
   }[];
   stats?: { label: string; value: string; description: string }[];
@@ -159,7 +159,7 @@ export const SectionSchema = new Schema({
   paragraphs: [String],
   images: [
     {
-      mediaId: { type: String }, 
+      mediaId: { type: String },
       url: { type: String, required: true },
       mode: { type: String, enum: ["upload", "url"], required: true }, // ✅ enforce mode
     },
@@ -208,6 +208,7 @@ export interface Media extends Document {
   contentType: string;
   type: "image" | "video";
   uploadedAt: Date;
+  dbName: string;  // ✅ new field to track DB name
 }
 
 const mediaSchema = new Schema<Media>({
@@ -216,7 +217,28 @@ const mediaSchema = new Schema<Media>({
   contentType: { type: String, required: true },
   type: { type: String, enum: ["image", "video"], required: true },
   uploadedAt: { type: Date, default: Date.now },
+  dbName: { type: String, required: true },  // ✅ new field
+
 });
+
+
+export interface MediaDatabase extends Document {
+  _id: mongoose.Types.ObjectId;
+  uri: string;
+  name: string;
+  createdAt: Date;
+}
+
+const mediaDatabaseSchema = new Schema<MediaDatabase>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
+  uri: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const MediaDatabaseModel = mongoose.model<MediaDatabase>(
+  "MediaDatabase", mediaDatabaseSchema
+);
 
 
 // ---------------- GALLERY IMAGES & VIDEOS ----------------

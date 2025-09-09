@@ -8,6 +8,7 @@ export default function AdminPage() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasMediaDb, setHasMediaDb] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -17,6 +18,20 @@ export default function AdminPage() {
         .then((res) => {
           if (res.ok) {
             setLoggedIn(true);
+
+            // ✅ fetch media DBs after verifying login
+            fetch("/api/admin/media-dbs", {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (Array.isArray(data) && data.length > 0) {
+                  setHasMediaDb(true);
+                } else {
+                  setHasMediaDb(false);
+                }
+              })
+              .catch(() => setHasMediaDb(false));
           } else {
             setToken("");
             localStorage.removeItem("adminToken");
@@ -125,45 +140,53 @@ export default function AdminPage() {
       >
         <h2 className="text-xl font-bold mb-4 hidden sm:block">Admin Panel</h2>
         <ul className="space-y-2">
+          {/* Disable all except Manage Media DBs */}
           <li>
             <a href="/about-admin">
-              <Button variant="outline" className="w-full text-left">
+              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
                 Manage About Section
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-events">
-              <Button variant="outline" className="w-full text-left">
+              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
                 Manage Events
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-news">
-              <Button variant="outline" className="w-full text-left">
+              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
                 Manage News
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-gallery">
-              <Button variant="outline" className="w-full text-left">
+              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
                 Manage Gallery
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-intro">
-              <Button variant="outline" className="w-full text-left">
+              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
                 Manage Introsection Video
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-faculty">
-              <Button variant="outline" className="w-full text-left">
+              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
                 Edit Faculty Section
+              </Button>
+            </a>
+          </li>
+          <li>
+            <a href="/admin-media-db">
+              <Button variant="outline" className="w-full text-left">
+                Manage Media Databases
               </Button>
             </a>
           </li>
@@ -177,7 +200,11 @@ export default function AdminPage() {
       <div className="flex-1 p-4 sm:ml-64 mt-16 sm:mt-0 overflow-y-auto">
         <div className="container mx-auto max-w-2xl">
           <h1 className="text-3xl font-bold mb-4">Welcome to Admin Dashboard</h1>
-          <p className="text-gray-500">Use the sidebar to manage content.</p>
+          <p className="text-gray-500">
+            {hasMediaDb
+              ? "Use the sidebar to manage content."
+              : "⚠ Please configure a Media Database first. Other sections are locked until then."}
+          </p>
         </div>
       </div>
     </div>
