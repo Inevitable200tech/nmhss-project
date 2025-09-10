@@ -19,6 +19,7 @@ import { Readable } from "stream";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
 
 const rootEnvPath = path.resolve("cert.env");
 const folderEnvPath = path.resolve("cert_env", "cert.env");
@@ -30,7 +31,6 @@ const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASS = process.env.ADMIN_PASS || "password";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 export const upload = multer({ storage: multer.memoryStorage() });
-import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
 
 
 // Auth middleware
@@ -829,38 +829,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/admin/media-dbs
-app.post("/api/admin/media-dbs", requireAuth, async (req, res) => {
-  try {
-    const { uri } = req.body;
-    if (!uri) return res.status(400).json({ error: "URI is required" });
+  app.post("/api/admin/media-dbs", requireAuth, async (req, res) => {
+    try {
+      const { uri } = req.body;
+      if (!uri) return res.status(400).json({ error: "URI is required" });
 
-    const count = await MediaDatabaseModel.countDocuments();
-    if (count >= 80) {
-      return res.status(400).json({ error: "Maximum of 80 media DBs reached" });
+      const count = await MediaDatabaseModel.countDocuments();
+      if (count >= 80) {
+        return res.status(400).json({ error: "Maximum of 80 media DBs reached" });
+      }
+
+      // Test connection
+      const conn = await mongoose.createConnection(uri).asPromise();
+      const dbName = conn.name;
+      await conn.close();
+
+      const mediaDb = await MediaDatabaseModel.create({ uri, name: dbName });
+
+      await reloadMediaDBs(); // Reload all connections in memory
+
+      res.status(201).json({
+        id: mediaDb._id.toString(),
+        name: mediaDb.name,
+        uri: mediaDb.uri,
+        createdAt: mediaDb.createdAt,
+        totalSlots: 80,
+        usedSlots: count + 1,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(400).json({ error: "Invalid URI or unable to connect" });
     }
-
-    // Test connection
-    const conn = await mongoose.createConnection(uri).asPromise();
-    const dbName = conn.name;
-    await conn.close();
-
-    const mediaDb = await MediaDatabaseModel.create({ uri, name: dbName });
-
-    await reloadMediaDBs(); // Reload all connections in memory
-
-    res.status(201).json({
-      id: mediaDb._id.toString(),
-      name: mediaDb.name,
-      uri: mediaDb.uri,
-      createdAt: mediaDb.createdAt,
-      totalSlots: 80,
-      usedSlots: count + 1,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(400).json({ error: "Invalid URI or unable to connect" });
-  }
-});
+  });
 
   // DELETE /api/admin/media-dbs/:id
   app.delete("/api/admin/media-dbs/:id", requireAuth, async (req, res) => {
