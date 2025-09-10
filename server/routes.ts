@@ -7,7 +7,6 @@ import {
   insertNewsSchema,
   insertSectionSchema,
   MediaDatabaseModel,
-  MediaDatabase
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
@@ -819,35 +818,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-
-
   // POST /api/admin/media-dbs
-  app.post("/api/admin/media-dbs", requireAuth, async (req, res) => {
-    try {
-      const { uri } = req.body;
-      if (!uri) return res.status(400).json({ error: "URI is required" });
+app.post("/api/admin/media-dbs", requireAuth, async (req, res) => {
+  try {
+    const { uri } = req.body;
+    if (!uri) return res.status(400).json({ error: "URI is required" });
 
-      // Test connection
-      const conn = await mongoose.createConnection(uri).asPromise();
-      const dbName = conn.name;
-      await conn.close();
-
-      const mediaDb = await MediaDatabaseModel.create({ uri, name: dbName });
-
-      await reloadMediaDBs(); // Reload all connections in memory
-
-      res.status(201).json({
-        id: mediaDb._id.toString(),
-        name: mediaDb.name,
-        uri: mediaDb.uri,
-        createdAt: mediaDb.createdAt,
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(400).json({ error: "Invalid URI or unable to connect" });
+    const count = await MediaDatabaseModel.countDocuments();
+    if (count >= 80) {
+      return res.status(400).json({ error: "Maximum of 80 media DBs reached" });
     }
-  });
+
+    // Test connection
+    const conn = await mongoose.createConnection(uri).asPromise();
+    const dbName = conn.name;
+    await conn.close();
+
+    const mediaDb = await MediaDatabaseModel.create({ uri, name: dbName });
+
+    await reloadMediaDBs(); // Reload all connections in memory
+
+    res.status(201).json({
+      id: mediaDb._id.toString(),
+      name: mediaDb.name,
+      uri: mediaDb.uri,
+      createdAt: mediaDb.createdAt,
+      totalSlots: 80,
+      usedSlots: count + 1,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: "Invalid URI or unable to connect" });
+  }
+});
 
   // DELETE /api/admin/media-dbs/:id
   app.delete("/api/admin/media-dbs/:id", requireAuth, async (req, res) => {

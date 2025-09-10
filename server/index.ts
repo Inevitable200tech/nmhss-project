@@ -4,8 +4,14 @@ import mongoose from "mongoose";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { loadMediaDBs } from "./mediaDb";
+import fs from "fs";
+import path from "path";
 
-dotenv.config({ path: "cert.env" }); // Adjust the path if your .env is elsewhere
+const rootEnvPath = path.resolve("cert.env");
+const folderEnvPath = path.resolve("cert_env", "cert.env");
+export const envPath = fs.existsSync(rootEnvPath) ? rootEnvPath : folderEnvPath;
+
+dotenv.config({ path: envPath }); // Adjust the path if your .env is elsewhere
 
 log("Starting server initialization…");
 log(`Loaded environment variables: MONGO_URL=${process.env.MONGO_URL}, PORT=${process.env.PORT}`);
@@ -81,7 +87,7 @@ app.use((req, res, next) => {
     log("Static file serving setup complete.");
   }
 
-  const port = 5000;
+  const port = Number(process.env.PORT) || 5000;
   log(`Starting server on port ${port}…`);
   server.listen({
     port,

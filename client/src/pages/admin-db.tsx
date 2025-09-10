@@ -17,14 +17,14 @@ type MediaDatabase = {
   name: string;
   uri: string;
   createdAt: string;
-  logicalUsedMB?: string;
-  allocatedMB?: string;
-  maxMB?: number;
+  logicalUsedMB?: string; // actual used
 };
 
 export default function AdminMediaDBPage() {
   const [mediaDbs, setMediaDbs] = useState<MediaDatabase[]>([]);
   const [newUri, setNewUri] = useState("");
+  const MAX_DBS = 80;
+  const DB_QUOTA_MB = 512;
 
   const getAuthHeaders = (): HeadersInit => {
     const token = localStorage.getItem("adminToken");
@@ -56,6 +56,15 @@ export default function AdminMediaDBPage() {
   };
 
   const addMediaDb = async () => {
+    if (mediaDbs.length >= MAX_DBS) {
+      toast({
+        title: "Limit Reached",
+        description: `You can only add up to ${MAX_DBS} Media DBs.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!newUri) {
       toast({
         title: "Error",
@@ -135,13 +144,24 @@ export default function AdminMediaDBPage() {
         </Button>
       </div>
 
+      {/* Slot usage display */}
+      <p className="text-sm text-gray-500">
+        Slots used: {mediaDbs.length} / {MAX_DBS}
+      </p>
+
       <div className="space-y-2">
         <Input
           placeholder="MongoDB URI"
           value={newUri}
           onChange={(e) => setNewUri(e.target.value)}
+          disabled={mediaDbs.length >= MAX_DBS}
         />
-        <Button onClick={addMediaDb}>Add Media Database</Button>
+        <Button
+          onClick={addMediaDb}
+          disabled={mediaDbs.length >= MAX_DBS}
+        >
+          Add Media Database
+        </Button>
       </div>
 
       <div>
@@ -160,15 +180,15 @@ export default function AdminMediaDBPage() {
             </thead>
             <tbody>
               {mediaDbs.map((db) => {
-                const hasFiles =
-                  !!db.logicalUsedMB && parseFloat(db.logicalUsedMB) > 0;
-                const usagePercent =
-                  db.logicalUsedMB && db.maxMB
-                    ? Math.min(
-                        (parseFloat(db.logicalUsedMB) / db.maxMB) * 100,
-                        100
-                      )
-                    : 0;
+                const logical = db.logicalUsedMB
+                  ? parseFloat(db.logicalUsedMB)
+                  : 0;
+                const usagePercent = Math.min(
+                  (logical / DB_QUOTA_MB) * 100,
+                  100
+                );
+                const hasFiles = logical > 0;
+
                 return (
                   <tr key={db.id}>
                     <td className="border px-2 py-1">{db.name}</td>
@@ -176,16 +196,12 @@ export default function AdminMediaDBPage() {
                       {maskUri(db.uri)}
                     </td>
                     <td className="border px-2 py-1">
-                      {db.logicalUsedMB ? (
-                        <div className="space-y-1">
-                          <div>
-                            {db.logicalUsedMB} MB used / 512 MB total
-                          </div>
-                          <Progress value={usagePercent} className="h-2" />
+                      <div className="space-y-1">
+                        <div>
+                          {logical.toFixed(2)} MB / {DB_QUOTA_MB} MB
                         </div>
-                      ) : (
-                        "N/A"
-                      )}
+                        <Progress value={usagePercent} className="h-2" />
+                      </div>
                     </td>
                     <td className="border px-2 py-1">
                       {new Date(db.createdAt).toLocaleString()}

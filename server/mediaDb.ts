@@ -6,18 +6,45 @@ const MAX_DB_CAPACITY_MB = 512;
 
 export async function loadMediaDBs() {
   const dbs = await MediaDatabaseModel.find();
+  const numDBs = dbs.length;
+
+  // Hard cap at 80 DBs
+  const DB_CAP = 80;
+  if (numDBs > DB_CAP) {
+    console.error(`[MEDIA-DB] ❌ Too many DBs (${numDBs}). Cap is ${DB_CAP}. Refusing to connect.`);
+    throw new Error(`Exceeded DB cap of ${DB_CAP}`);
+  }
+
+  const MAX_POOL = 10;
+  const MIN_POOL = 2;
+
+  // Scale pool inversely with DB count, reaching MIN_POOL by 80 DBs
+  const poolSize = Math.max(
+    MIN_POOL,
+    Math.floor(MAX_POOL - (numDBs / DB_CAP) * (MAX_POOL - MIN_POOL))
+  );
+
+  console.log(
+    `[MEDIA-DB] Preparing to connect to ${numDBs} DB(s) with poolSize=${poolSize}`
+  );
+
   for (const db of dbs) {
     if (!mediaConnections.has(db.name)) {
       try {
-        const conn = await mongoose.createConnection(db.uri).asPromise();
+        const conn = await mongoose.createConnection(db.uri, {
+          maxPoolSize: poolSize,
+          minPoolSize: 1,
+        }).asPromise();
+
         mediaConnections.set(db.name, { conn, name: db.name });
-        console.log(`[MEDIA-DB] Connected to ${db.name}`);
+        console.log(`[MEDIA-DB] Connected to ${db.name} (poolSize=${poolSize})`);
       } catch (err) {
         console.error(`[MEDIA-DB] Failed to connect to ${db.uri}`, err);
       }
     }
   }
 }
+
 
 export async function reloadMediaDBs() {
   for (const { conn } of Array.from(mediaConnections.values())) {
