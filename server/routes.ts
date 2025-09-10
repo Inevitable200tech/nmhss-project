@@ -16,8 +16,18 @@ import { GridFSBucket } from "mongodb";
 import { MediaModel } from "@shared/schema";
 import mongoose from "mongoose";
 import { Readable } from "stream";
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "brocookedhard";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+
+const rootEnvPath = path.resolve("cert.env");
+const folderEnvPath = path.resolve("cert_env", "cert.env");
+export const envPath = fs.existsSync(rootEnvPath) ? rootEnvPath : folderEnvPath;
+
+dotenv.config({ path: envPath }); // Adjust the path if your .env is elsewhere
+
+const ADMIN_USER = process.env.ADMIN_USER || "admin";
+const ADMIN_PASS = process.env.ADMIN_PASS || "password";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 export const upload = multer({ storage: multer.memoryStorage() });
 import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
