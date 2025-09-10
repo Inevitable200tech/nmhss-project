@@ -769,7 +769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  //DB MANAGEMENT ROUTES (admin only)
+//------------------- MEDIA DATABASE ROUTES ----------------
 
   // GET /api/admin/media-dbs
   app.get("/api/admin/media-dbs", requireAuth, async (_req, res) => {
