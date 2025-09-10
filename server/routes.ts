@@ -22,7 +22,6 @@ const ADMIN_PASS = "brocookedhard";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 export const upload = multer({ storage: multer.memoryStorage() });
 import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
-import { c } from "node_modules/vite/dist/node/moduleRunnerTransport.d-DJ_mE5sf";
 
 
 // Auth middleware

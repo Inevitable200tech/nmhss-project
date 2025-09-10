@@ -28,7 +28,6 @@ import {
   FacultySectionInput
 } from "@shared/schema";
 
-export const upload = multer({ storage: multer.memoryStorage() });
 
 // Define models
 const UserModel: Model<User> =
