@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import heroImage from "@assets/logo.png"; // replace with your actual video path 
+import heroImage from "@assets/icon.png"; // replace with your actual video path 
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

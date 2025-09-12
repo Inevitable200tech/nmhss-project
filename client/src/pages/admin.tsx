@@ -190,6 +190,13 @@ export default function AdminPage() {
               </Button>
             </a>
           </li>
+          <li>
+            <a href="/admin-students-setting">
+              <Button variant="outline" className="w-full text-left">
+                Manage Students Media
+              </Button>
+            </a>
+          </li>
         </ul>
         <Button variant="outline" className="w-full mt-4" onClick={handleLogout}>
           Logout

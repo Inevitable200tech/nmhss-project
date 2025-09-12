@@ -162,6 +162,10 @@ export default function AboutAdmin() {
   };
 
   const handleRemoveImage = async (index: number) => {
+    const confirmed = window.confirm(
+      "⚠️ Are you sure you want to delete the image?\nThis action will delete image from the database completely."
+    );
+    if (!confirmed) return;
     const current = aboutData.images[index];
 
     if (current.mediaId) {
@@ -207,6 +211,10 @@ export default function AboutAdmin() {
   };
 
   const handleSave = async () => {
+    const confirmed = window.confirm(
+      "Continue With Changes ?."
+    );
+    if (!confirmed) return;
     try {
       const uploadedImages: ImageItem[] = [];
       for (const img of aboutData.images) {
@@ -253,6 +261,10 @@ export default function AboutAdmin() {
   };
 
   const handleRestoreDefaults = async () => {
+    const confirmed = window.confirm(
+      "⚠️ Are you sure you want to reset?\nThis will delete the all image from the form."
+    );
+    if (!confirmed) return;
     const resetData: AboutSectionDTO = {
       ...aboutData,
       title: "About Us",

@@ -355,7 +355,57 @@ export const FacultySectionSchema = z.object({
   profiles: z.array(FacultyProfileSchema).length(3),
 });
 
+// ---------------- STUDENT MEDIA ----------------
+// 👉 Data you return to the frontend
+// Data returned to frontend
+export interface StudentMedia {
+  id: string;
+  mediaId: string;
+  url: string;
+  type: "image" | "video";
+  batch: "+1" | "+2";
+  year: number;
+  description?: string;
+}
 
+// Lean version of a document
+export type LeanStudentMedia = Omit<StudentMedia, "id"> & {
+  _id: mongoose.Types.ObjectId;
+};
+
+// Mongoose document type
+export type StudentMediaDoc = Omit<StudentMedia, "id"> & Document;
+
+// Zod validation schema for StudentMedia input
+export const StudentMediaZodSchema = z.object({
+  mediaId: z.string().min(1),                 // Non-empty string
+  url: z.string().min(1),                   // Non-empty string
+  type: z.enum(["image", "video"]),
+  batch: z.enum(["+1", "+2"]),
+  year: z.number().int().min(1900),
+  description: z.string().max(160).optional(),
+});
+
+// Mongoose Schema definition
+export const studentMediaSchema = new Schema<StudentMediaDoc>(
+  {
+    mediaId: { type: String, required: true },
+    url: { type: String, required: true },
+    type: { type: String, enum: ["image", "video"], required: true },
+    batch: { type: String, enum: ["+1", "+2"], required: true },
+    year: { type: Number, required: true },
+    description: { type: String, maxlength: 200 },
+  },
+  { timestamps: false }
+);
+
+// Compound index for performance
+studentMediaSchema.index({ type: 1, batch: 1, year: 1 });
+
+// Mongoose model export
+export const StudentMediaModel =
+  mongoose.models.StudentMedia ||
+  mongoose.model<StudentMediaDoc>("StudentMedia", studentMediaSchema);
 // ---------------- EXPORT MODELS & TYPES ----------------
 
 export type FacultySectionInput = z.infer<typeof FacultySectionSchema>;

@@ -1,6 +1,4 @@
 import mongoose, { model, Model } from "mongoose";
-import multer from "multer";
-
 import {
   type User,
   type InsertUser,
@@ -25,7 +23,11 @@ import {
   HeroVideoModel,
   FacultySection,
   FacultySectionModel,
-  FacultySectionInput
+  FacultySectionInput,
+  StudentMedia,
+  StudentMediaModel,
+  LeanStudentMedia,
+  StudentMediaZodSchema
 } from "@shared/schema";
 
 
@@ -70,6 +72,9 @@ export interface IStorage {
   getFacultySection(): Promise<FacultySection | null>;
   createOrUpdateFacultySection(data: FacultySection): Promise<FacultySection>;
   deleteFacultySection(): Promise<FacultySection | null>;
+  getStudentMedia(): Promise<StudentMedia[]>;
+  createStudentMedia(entry: Omit<StudentMedia, "id">): Promise<StudentMedia>;
+  deleteStudentMedia(id: string): Promise<StudentMedia | null>;
 }
 
 export class MongoStorage implements IStorage {
@@ -396,6 +401,63 @@ export class MongoStorage implements IStorage {
     return { ...doc, id: doc._id.toString() } as FacultySection;
   }
 
+  async getStudentMedia(filter: Partial<Pick<StudentMedia, "batch" | "type" | "year">> = {}): Promise<StudentMedia[]> {
+    const raw = await StudentMediaModel.find(filter)
+      .sort({ year: -1 })
+      .lean()
+      .exec();
+
+    const docs = raw as unknown as LeanStudentMedia[];
+
+    return docs.map((d) => ({
+      id: d._id.toString(),
+      mediaId: d.mediaId,
+      url: d.url,
+      type: d.type,
+      batch: d.batch,
+      year: d.year,
+      description: d.description,
+    }));
+  }
+
+
+  async createStudentMedia(entry: Omit<StudentMedia, "id">): Promise<StudentMedia> {
+    // Validate using Zod schema from schema.ts
+    const parsed = StudentMediaZodSchema.parse(entry);
+
+    const doc = await StudentMediaModel.create(parsed);
+    const obj = doc.toObject() as LeanStudentMedia;
+
+    return {
+      id: obj._id.toString(),
+      mediaId: obj.mediaId,
+      url: obj.url,
+      type: obj.type,
+      batch: obj.batch,
+      year: obj.year,
+      description: obj.description,
+    };
+  }
+
+  async deleteStudentMedia(id: string): Promise<StudentMedia | null> {
+    const doc = await StudentMediaModel.findByIdAndDelete(id)
+      .lean()
+      .exec();
+
+    const typedDoc = doc as LeanStudentMedia | null;
+
+    return typedDoc
+      ? {
+        id: typedDoc._id.toString(),
+        mediaId: typedDoc.mediaId,
+        url: typedDoc.url,
+        type: typedDoc.type,
+        batch: typedDoc.batch,
+        year: typedDoc.year,
+        description: typedDoc.description,
+      }
+      : null;
+  }
 
 }
 

@@ -178,7 +178,7 @@ export default function AdminFaculty() {
     // ✅ Modified handleImageRemove
     const handleImageRemove = async (i: number) => {
         const confirmed = window.confirm(
-            "⚠️ Are you sure you want to remove this image?\nThis will delete the image from the database."
+            "⚠️ Are you sure you want to remove this image?\nThis action will delete the image from the database."
         );
         if (!confirmed) return;
 
@@ -216,7 +216,7 @@ export default function AdminFaculty() {
     // ✅ Modified handleRestoreDefaults
     const handleRestoreDefaults = async () => {
         const confirmed = window.confirm(
-            "⚠️ Are you sure you want to reset?\nThis will delete the all image from the form."
+            "⚠️ Are you sure you want to reset?\nThis action will delete the all image from the form and database and also reset everything to defaults!!!!"
         );
         if (!confirmed) return;
         try {

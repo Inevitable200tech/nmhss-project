@@ -7,6 +7,7 @@ import {
   insertNewsSchema,
   insertSectionSchema,
   MediaDatabaseModel,
+  StudentMediaZodSchema
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
@@ -769,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-//------------------- MEDIA DATABASE ROUTES ----------------
+  //------------------- MEDIA DATABASE ROUTES ----------------
 
   // GET /api/admin/media-dbs
   app.get("/api/admin/media-dbs", requireAuth, async (_req, res) => {
@@ -883,6 +884,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to delete media database" });
+    }
+  });
+
+  //------------------- STUDENTS MEDIA MANAGEMENT ----------------
+
+  // Create StudentMedia
+  app.post("/api/admin-students", requireAuth, async (req, res) => {
+    try {
+      const validated = StudentMediaZodSchema.parse(req.body);
+      const studentMedia = await storage.createStudentMedia(validated);
+      res.status(201).json({ success: true, studentMedia });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create student media" });
+    }
+  });
+
+  // Get all StudentMedia
+  app.get("/api/students", async (req, res) => {
+    try {
+      const { batch, type, year } = req.query;
+
+      const query: any = {};
+      if (batch) query.batch = batch;        // "+1" | "+2"
+      if (type) query.type = type;          // "image" | "video"
+      if (year) query.year = parseInt(year as string); // numeric
+
+      const studentMedia = await storage.getStudentMedia(query);
+      res.json(studentMedia);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch student media" });
+    }
+  });
+
+
+  // Delete StudentMedia + associated file
+  app.delete("/api/admin-students/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteStudentMedia(req.params.id);
+      if (!deleted) return res.status(404).json({ error: "Student media not found" });
+
+      const mediaDoc = await MediaModel.findById(deleted.mediaId);
+      if (!mediaDoc) return res.status(404).json({ error: "Associated media not found" });
+
+      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
+      if (!dbConn) return res.status(500).json({ error: "Media DB not connected" });
+
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+
+      await MediaModel.deleteOne({ _id: mediaDoc._id });
+
+      res.json({ success: true, id: req.params.id });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to delete student media" });
     }
   });
 

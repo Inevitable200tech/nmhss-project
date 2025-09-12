@@ -19,6 +19,7 @@ import AdminGalleryPage from "@/pages/admin-gallery";
 import AdminIntroPage from "@/pages/admin-intro";
 import AdminFaculty from "@/pages/admin-faculty";
 import AdminMediaDBPage from "@/pages/admin-db";
+import AdminStudentsPage from "@/pages/admin-students"
 // Use named import for ProtectedRoute
 import { ProtectedRoute } from "@/components/ProtectedRoute"; // Corrected import
 
@@ -40,6 +41,7 @@ function Router() {
           <Route path="/admin-intro" component={AdminIntroPage} />
           <Route path="/admin-faculty" component={AdminFaculty} />
           <Route path="/admin-media-db" component={AdminMediaDBPage} />
+          <Route path="/admin-students-setting" component={AdminStudentsPage} />
         </div>
       </ProtectedRoute>
 
