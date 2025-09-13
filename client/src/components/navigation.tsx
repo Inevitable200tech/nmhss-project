@@ -43,7 +43,7 @@ export default function Navigation() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-7">
             <div className="ml-2">
               <ThemeToggle />
             </div>
@@ -62,11 +62,11 @@ export default function Navigation() {
               About Devs
             </a>
              <a
-              href="/#academics"
-              onClick={(e) => handleLinkClick(e, "/#academics")}
+              href="/students"
+              onClick={(e) => handleLinkClick(e, "/students")}
               className="text-foreground hover:text-primary transition-colors"
             >
-              Academics
+              Student Gallery
             </a>
             <a
               href="#achievements"
@@ -147,11 +147,11 @@ export default function Navigation() {
                 About Devs
               </a>
               <a
-                href="/#academics"
-                onClick={(e) => handleLinkClick(e, "/#academics")}
+                href="/students"
+                onClick={(e) => handleLinkClick(e, "/students")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
-                Academics
+                Student Handbook
               </a>
               <a
                 href="/#achievements"

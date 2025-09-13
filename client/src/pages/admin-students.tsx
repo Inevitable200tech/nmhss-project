@@ -46,9 +46,10 @@ export default function AdminStudentsPage() {
     const loadMedia = async () => {
         setIsLoading(true);
         const params = new URLSearchParams();
-        if (filterBatch) params.append("batch", filterBatch);
-        if (filterType) params.append("type", filterType);
-        if (filterYear) params.append("year", filterYear);
+        if (filterBatch) params.set("batch", filterBatch); // ✅ auto-encodes +1/+2
+        if (filterType) params.set("type", filterType);
+        if (filterYear) params.set("year", filterYear);
+
 
         const res = await fetch(`/api/students?${params.toString()}`);
         if (res.ok) {
@@ -108,9 +109,9 @@ export default function AdminStudentsPage() {
         type: "image" | "video"
     ) => {
         const confirmed = window.confirm(
-      "Upload Now?"
-    );
-    if (!confirmed) return;
+            "Upload Now?"
+        );
+        if (!confirmed) return;
 
         setIsUploading(true);
         const formData = new FormData();
@@ -180,9 +181,9 @@ export default function AdminStudentsPage() {
 
     const handleDelete = async (id: string) => {
         const confirmed = window.confirm(
-      "⚠️ Are you sure you want to delete the media?\nThis will remove it from the database completely!!!."
-    );
-    if (!confirmed) return;
+            "⚠️ Are you sure you want to delete the media?\nThis will remove it from the database completely!!!."
+        );
+        if (!confirmed) return;
         const res = await fetch(`/api/admin-students/${id}`, {
             method: "DELETE",
             headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
