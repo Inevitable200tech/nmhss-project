@@ -33,6 +33,33 @@ const ADMIN_PASS = process.env.ADMIN_PASS || "password";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 export const upload = multer({ storage: multer.memoryStorage() });
 
+const validContentTypes = {
+  image: [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+  ],
+  video: [
+    "video/mp4",
+    "video/avi",
+    "video/mov",
+    "video/wmv",
+    "video/flv",
+    "video/webm",
+    "video/ogg",
+    "video/mpeg",
+  ],
+  audio: [
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/ogg",
+    "audio/webm",
+  ],
+};
 
 // Auth middleware
 function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -229,13 +256,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   // Create section (admin only)
   app.post("/api/sections", requireAuth, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const section = await storage.createSection(sectionData);
-      res.json(section);
+      res.json({ success: true, section });
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Validation failed", details: error.errors });
@@ -245,14 +271,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+  // Update section (admin only)
+  app.put("/api/sections/:name", requireAuth, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
-      const updated = await storage.updateSection(req.params.id, sectionData);
-      if (!updated) return res.status(404).json({ error: "Section not found" });
-      res.json(updated);
+      const updated = await storage.updateSection(req.params.name, sectionData);
+      if (!updated) return res.status(404).json({ error: `Section not found: ${req.params.name}` });
+      res.json({ success: true, section: updated });
     } catch (error) {
-      console.error(error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update section" });
+      }
     }
   });
 
@@ -537,6 +568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // POST /api/media
+  // Modified endpoint
   app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
@@ -545,6 +577,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.file.size > maxSize) {
         return res.status(400).json({ error: "File size exceeds 100MB limit" });
       }
+
+      // Validate MIME type
+      const mimeType = req.file.mimetype.toLowerCase();
+      const isValidType = Object.values(validContentTypes).some(types => types.includes(mimeType));
+      if (!isValidType) {
+        return res.status(400).json({ error: "Unsupported file type. Please upload image, video, or audio files only." });
+      }
+
+      // Determine media type
+      const mediaType = mimeType.startsWith("image/") ? "image" :
+        mimeType.startsWith("audio/") ? "audio" :
+          "video";
 
       // 1. Pick the best DB for this file
       const dbConn = await getBestMediaDB(req.file.size);
@@ -557,7 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const writeStream = bucket.openUploadStream(req.file.originalname, {
         contentType: req.file.mimetype,
         metadata: {
-          type: req.file.mimetype.startsWith("image/") ? "image" : "video",
+          type: mediaType,
           uploadedAt: new Date(),
         },
       });
@@ -574,16 +618,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         _id: new mongoose.Types.ObjectId(mediaId),
         filename: req.file.originalname,
         contentType: req.file.mimetype,
-        type: req.file.mimetype.startsWith("image/") ? "image" : "video",
+        type: mediaType,
         uploadedAt: new Date(),
-        dbName: dbConn.name, // ✅ track which DB file was stored in
+        dbName: dbConn.name,
       });
 
       // 5. Respond to client
       res.json({
         id: mediaId,
         filename: req.file.originalname,
-        type: req.file.mimetype.startsWith("image/") ? "image" : "video",
+        type: mediaType,
         url: `/api/media/${mediaId}`,
       });
     } catch (err) {
@@ -591,7 +635,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: (err as Error).message });
     }
   });
-
 
   // DELETE /api/media/:id
   app.delete("/api/media/:id", requireAuth, async (req, res) => {

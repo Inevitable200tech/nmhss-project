@@ -1,5 +1,8 @@
 /* client/src/index.css */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* index.css */
+@import url('https://fonts.googleapis.com/css2?family=Chilanka&display=swap');
+
 
 @tailwind base;
 @tailwind components;
@@ -12,6 +15,9 @@ body {
   overflow-x: hidden;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
+}
+.font-chilanka {
+  font-family: 'Chilanka', sans-serif;
 }
 
 :root {

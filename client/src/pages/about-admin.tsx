@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type ImageItem = { url: string; mediaId?: string; file?: File; mode: "upload" | "url" };
+type AudioItem = { url: string; mediaId?: string; file?: File; mode: "upload" }; // Restored mode, fixed to "upload"
 type StatItem = { label: string; value: string; description: string };
 type AboutSectionDTO = {
   id: string;
@@ -18,6 +19,7 @@ type AboutSectionDTO = {
   subtitle: string;
   paragraphs: string[];
   images: ImageItem[];
+  audios: AudioItem[]; // Array with 0 or 1 item
   stats: StatItem[];
 };
 
@@ -51,6 +53,7 @@ const emptyAbout: AboutSectionDTO = {
   subtitle: "",
   paragraphs: ["", ""],
   images: [...FALLBACKS],
+  audios: [],
   stats: [
     { label: "", value: "", description: "" },
     { label: "", value: "", description: "" },
@@ -60,10 +63,15 @@ const emptyAbout: AboutSectionDTO = {
 };
 
 export default function AboutAdmin() {
-
   const [aboutData, setAboutData] = useState<AboutSectionDTO>(emptyAbout);
   const [previewMode, setPreviewMode] = useState(false);
-  const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
+  const [token] = useState(localStorage.getItem("adminToken") || "");
+  const [previousParagraphs, setPreviousParagraphs] = useState<string[]>([]);
+
+  const isMalayalam = (text?: string) =>
+    text ? /[\u0D00-\u0D7F]/.test(text) : false;
+
+  const hasMalayalam = aboutData.paragraphs.some(isMalayalam);
 
   // Fetch section
   const { data: serverData, refetch } = useQuery({
@@ -100,9 +108,25 @@ export default function AboutAdmin() {
           ...FALLBACKS[i],
           ...img,
         })),
+        audios: serverData.audios?.length ? [{ ...serverData.audios[0], mode: "upload" }] : [], // Ensure mode: "upload"
       });
+      setPreviousParagraphs([...serverData.paragraphs]);
     }
   }, [serverData]);
+
+  // Watch for paragraph changes when audio exists
+  useEffect(() => {
+    const hasChanged = aboutData.paragraphs.some((p, i) => p !== previousParagraphs[i]);
+    if (hasChanged && aboutData.audios.length > 0) {
+      const confirmed = window.confirm(
+        "Paragraph content has changed since audio was uploaded. This may mismatch the audio. Remove audio and save? (OK to confirm)"
+      );
+      if (confirmed) {
+        handleRemoveAudioOnParagraphChange();
+      }
+    }
+    setPreviousParagraphs([...aboutData.paragraphs]);
+  }, [aboutData.paragraphs]);
 
   const isFallback = (img: ImageItem) => FALLBACKS.some((f) => f.url === img.url);
 
@@ -121,6 +145,9 @@ export default function AboutAdmin() {
         !isFallback(img) &&
         (img.mode === "upload" || (img.mode === "url" && img.url.trim() !== ""))
     );
+  const audiosValid =
+    imagesValid &&
+    (!hasMalayalam || (aboutData.audios.length === 0 || (aboutData.audios[0]?.file || aboutData.audios[0]?.mediaId)));
 
   // Handlers
   const handleFieldChange = (field: keyof AboutSectionDTO, value: any) => {
@@ -144,6 +171,11 @@ export default function AboutAdmin() {
     const updated = [...aboutData.images];
     updated[index] = { url: blobUrl, file, mode: "upload" };
     setAboutData((p) => ({ ...p, images: updated }));
+  };
+
+  const handleAudioFileSelect = (file: File) => {
+    const blobUrl = URL.createObjectURL(file);
+    setAboutData((p) => ({ ...p, audios: [{ url: blobUrl, file, mode: "upload" }] }));
   };
 
   const handleUrlChange = (url: string, index: number) => {
@@ -210,10 +242,98 @@ export default function AboutAdmin() {
     }
   };
 
-  const handleSave = async () => {
+  const handleRemoveAudio = async () => {
     const confirmed = window.confirm(
-      "Continue With Changes ?."
+      "⚠️ Are you sure you want to delete the audio?\nThis action will reset all paragraphs to default and save the section."
     );
+    if (!confirmed) return;
+    const current = aboutData.audios[0];
+
+    if (current?.mediaId) {
+      try {
+        const res = await fetch(`/api/media/${current.mediaId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to delete media file");
+        console.log("Deleted media:", current.mediaId);
+      } catch (err) {
+        toast({ title: "Failed to delete audio file", variant: "destructive" });
+        return;
+      }
+    }
+
+    if (current?.file) {
+      URL.revokeObjectURL(current.url);
+    }
+
+    // Reset all paragraphs to default
+    const updatedParagraphs = [...DEFAULT_PARAGRAPHS];
+    setAboutData((p) => ({ ...p, paragraphs: updatedParagraphs, audios: [] }));
+
+    // Save immediately
+    try {
+      const payload = { ...aboutData, paragraphs: updatedParagraphs, audios: [] };
+      const res = await fetch("/api/sections/about", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast({ title: "Audio removed, paragraphs reset, & saved" });
+        refetch();
+      }
+    } catch {
+      toast({ title: "Failed to save after audio removal", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveAudioOnParagraphChange = async () => {
+    if (!aboutData.audios.length) return;
+    const current = aboutData.audios[0];
+
+    if (current.mediaId) {
+      try {
+        const res = await fetch(`/api/media/${current.mediaId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to delete media file");
+        console.log("Deleted media:", current.mediaId);
+      } catch (err) {
+        toast({ title: "Failed to delete audio file", variant: "destructive" });
+        return;
+      }
+    }
+
+    if (current.file) {
+      URL.revokeObjectURL(current.url);
+    }
+
+    setAboutData((p) => ({ ...p, audios: [] }));
+    // Save
+    try {
+      const payload = { ...aboutData, audios: [] };
+      await fetch("/api/sections/about", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      toast({ title: "Audio removed due to paragraph changes & saved" });
+      refetch();
+    } catch {
+      toast({ title: "Failed to save after audio removal", variant: "destructive" });
+    }
+  };
+
+  const handleSave = async () => {
+    const confirmed = window.confirm("Continue With Changes ?.");
     if (!confirmed) return;
     try {
       const uploadedImages: ImageItem[] = [];
@@ -243,7 +363,24 @@ export default function AboutAdmin() {
         }
       }
 
-      const payload = { ...aboutData, images: uploadedImages };
+      let uploadedAudios: AudioItem[] = [];
+      if (aboutData.audios[0]?.file) {
+        const formData = new FormData();
+        formData.append("file", aboutData.audios[0].file);
+        const res = await fetch("/api/media", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (!res.ok) throw new Error("Failed to upload audio");
+        const uploaded = await res.json();
+        uploadedAudios = [{ url: uploaded.url, mediaId: uploaded.id, mode: "upload" }];
+        URL.revokeObjectURL(aboutData.audios[0].url);
+      } else {
+        uploadedAudios = aboutData.audios.map(aud => ({ ...aud, mode: "upload" }));
+      }
+
+      const payload = { ...aboutData, images: uploadedImages, audios: uploadedAudios };
       const res = await fetch("/api/sections/about", {
         method: "PUT",
         headers: {
@@ -262,9 +399,49 @@ export default function AboutAdmin() {
 
   const handleRestoreDefaults = async () => {
     const confirmed = window.confirm(
-      "⚠️ Are you sure you want to reset?\nThis will delete the all image from the form."
+      "⚠️ Are you sure you want to reset?\nThis will delete all images and audio from the form and database."
     );
     if (!confirmed) return;
+
+    // Delete all uploaded images
+    for (const img of aboutData.images) {
+      if (img.mediaId) {
+        try {
+          const res = await fetch(`/api/media/${img.mediaId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) throw new Error("Failed to delete media file");
+          console.log("Deleted media:", img.mediaId);
+          toast({title:`Deleted Image ${img.mediaId}`})
+        } catch (err) {
+          toast({ title: `Failed to delete image ${img.mediaId}`, variant: "destructive" });
+        }
+      }
+      if (img.file) {
+        URL.revokeObjectURL(img.url);
+      }
+    }
+
+    // Delete audio if exists
+    const currentAudio = aboutData.audios[0];
+    if (currentAudio?.mediaId) {
+      try {
+        const res = await fetch(`/api/media/${currentAudio.mediaId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Failed to delete audio file");
+        console.log("Deleted media:", currentAudio.mediaId);
+        toast({ title: "Deleted Audio"  })
+      } catch (err) {
+        toast({ title: "Failed to delete audio file", variant: "destructive" });
+      }
+    }
+    if (currentAudio?.file) {
+      URL.revokeObjectURL(currentAudio.url);
+    }
+
     const resetData: AboutSectionDTO = {
       ...aboutData,
       title: "About Us",
@@ -272,6 +449,7 @@ export default function AboutAdmin() {
       paragraphs: [...DEFAULT_PARAGRAPHS],
       stats: [...DEFAULT_STATS],
       images: [...FALLBACKS],
+      audios: [],
     };
     setAboutData(resetData);
     try {
@@ -434,25 +612,55 @@ export default function AboutAdmin() {
             </CardContent>
           </Card>
 
+          {/* Step 4: Audio (conditional, single upload) */}
+          {hasMalayalam && (
+            <Card className={!imagesValid ? "opacity-50 pointer-events-none" : ""}>
+              <CardHeader>
+                <CardTitle>Audio (Malayalam Detected)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {aboutData.audios.length > 0 && (
+                    <audio src={aboutData.audios[0].url} controls className="w-full">
+                      Your browser does not support the audio element.
+                    </audio>
+                  )}
+                  {aboutData.audios.length === 0 && (
+                    <Input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) =>
+                        e.target.files?.[0] && handleAudioFileSelect(e.target.files[0])
+                      }
+                    />
+                  )}
+                  {aboutData.audios.length > 0 && (
+                    <Button variant="destructive" onClick={handleRemoveAudio}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Actions */}
           <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0 w-full">
             <Button
               onClick={handleSave}
-              disabled={!imagesValid}
+              disabled={!audiosValid}
               className="w-full sm:w-auto"
             >
               Save
             </Button>
-
             <Button
               variant="outline"
               onClick={() => setPreviewMode(true)}
-              disabled={!imagesValid}
+              disabled={!audiosValid}
               className="w-full sm:w-auto"
             >
               Preview
             </Button>
-
             <Button
               variant="secondary"
               onClick={handleRestoreDefaults}
@@ -460,14 +668,12 @@ export default function AboutAdmin() {
             >
               Restore Defaults
             </Button>
-
             <a href="/admin" className="w-full sm:w-auto">
               <Button variant="default" className="w-full sm:w-auto">
                 Back to Dashboard
               </Button>
             </a>
           </div>
-
         </div>
       ) : (
         <div>
@@ -481,6 +687,10 @@ export default function AboutAdmin() {
               images: aboutData.images.map((img, i) => ({
                 id: img.mediaId ?? `preview-${i}`,
                 url: img.url,
+              })),
+              audios: aboutData.audios.map((aud, i) => ({
+                id: aud.mediaId ?? `preview-audio-${i}`,
+                url: aud.url,
               })),
             }}
           />

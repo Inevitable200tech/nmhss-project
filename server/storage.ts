@@ -194,8 +194,6 @@ export class MongoStorage implements IStorage {
     );
   }
 
-
-
   async createNews(insertNews: InsertNews): Promise<News> {
     const doc = await NewsModel.create(insertNews);
     const plainDoc = doc.toObject() as {
@@ -244,6 +242,9 @@ export class MongoStorage implements IStorage {
       images: doc.images as
         | { mediaId?: string; url: string; mode: "upload" | "url" }[]
         | undefined,
+      audios: doc.audios as
+        | { mediaId?: string; url: string; mode: "upload" | "url" }[]
+        | undefined,
     })) as Section[];
   }
 
@@ -257,6 +258,7 @@ export class MongoStorage implements IStorage {
       subtitle?: string;
       paragraphs?: string[];
       images?: { mediaId?: string; url: string; mode: "upload" | "url" }[];
+      audios?: { mediaId?: string; url: string; mode: "upload" | "url" }[];
       stats?: { label: string; value: string; description: string }[];
     };
 
@@ -267,12 +269,12 @@ export class MongoStorage implements IStorage {
       subtitle: plainDoc.subtitle,
       paragraphs: plainDoc.paragraphs,
       images: plainDoc.images,
+      audios: plainDoc.audios,
       stats: plainDoc.stats,
     } as Section;
   }
 
   async updateSection(name: string, data: InsertSection): Promise<Section | null> {
-    // Directly update (frontend enforces delete-before-replace)
     const doc = await SectionModel.findOneAndUpdate({ name }, data, {
       new: true,
       upsert: true,
@@ -286,6 +288,9 @@ export class MongoStorage implements IStorage {
       ...doc,
       id: doc._id.toString(),
       images: doc.images as
+        | { mediaId?: string; url: string; mode: "upload" | "url" }[]
+        | undefined,
+      audios: doc.audios as
         | { mediaId?: string; url: string; mode: "upload" | "url" }[]
         | undefined,
     } as Section;

@@ -137,7 +137,6 @@ export const insertNewsSchema = z.object({
 
 
 // ---------------- SECTIONS  MANAGEMENT ----------------
-
 export interface Section extends Document {
   id: string;
   name: string;
@@ -147,7 +146,12 @@ export interface Section extends Document {
   images?: {
     mediaId?: string;
     url: string;
-    mode: "upload" | "url";   // ✅ added mode
+    mode: "upload" | "url";
+  }[];
+  audios?: {
+    mediaId?: string;
+    url: string;
+    mode: "upload" | "url";
   }[];
   stats?: { label: string; value: string; description: string }[];
 }
@@ -161,7 +165,14 @@ export const SectionSchema = new Schema({
     {
       mediaId: { type: String },
       url: { type: String, required: true },
-      mode: { type: String, enum: ["upload", "url"], required: true }, // ✅ enforce mode
+      mode: { type: String, enum: ["upload", "url"], required: true },
+    },
+  ],
+  audios: [
+    {
+      mediaId: { type: String },
+      url: { type: String, required: true },
+      mode: { type: String, enum: ["upload", "url"], required: true },
     },
   ],
   stats: [
@@ -183,7 +194,16 @@ export const insertSectionSchema = z.object({
       z.object({
         mediaId: z.string().optional(),
         url: z.string(),
-        mode: z.enum(["upload", "url"]),   // ✅ required in zod
+        mode: z.enum(["upload", "url"]),
+      })
+    )
+    .optional(),
+  audios: z
+    .array(
+      z.object({
+        mediaId: z.string().optional(),
+        url: z.string(),
+        mode: z.enum(["upload", "url"]),
       })
     )
     .optional(),
@@ -206,21 +226,19 @@ export interface Media extends Document {
   id: string;
   filename: string;
   contentType: string;
-  type: "image" | "video";
+  type: "image" | "video" | "audio"; // Add "audio" to enum
   uploadedAt: Date;
-  dbName: string;  // ✅ new field to track DB name
+  dbName: string;
 }
 
 const mediaSchema = new Schema<Media>({
   _id: { type: Schema.Types.ObjectId, auto: true },
   filename: { type: String, required: true },
   contentType: { type: String, required: true },
-  type: { type: String, enum: ["image", "video"], required: true },
+  type: { type: String, enum: ["image", "video", "audio"], required: true }, // Add "audio" to enum
   uploadedAt: { type: Date, default: Date.now },
-  dbName: { type: String, required: true },  // ✅ new field
-
+  dbName: { type: String, required: true },
 });
-
 
 export interface MediaDatabase extends Document {
   _id: mongoose.Types.ObjectId;
