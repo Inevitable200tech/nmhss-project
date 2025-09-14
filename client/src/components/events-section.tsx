@@ -109,9 +109,9 @@ if (newsLoading || eventsLoading) return (
       case "academic":
         return <FlaskConical className="w-6 h-6 text-primary-foreground" />;
       case "sports":
-        return <Dumbbell className="w-6 h-6 text-gray-200" />; {/* softened */}
+        return <Dumbbell className="w-6 h-6 text-black-700" />; {/* softened */}
       case "cultural":
-        return <Music className="w-6 h-6 text-gray-200" />; {/* softened */}
+        return <Music className="w-6 h-6 text-black-700" />; {/* softened */}
       case "community":
         return <Users className="w-6 h-6 text-primary-foreground" />;
       default:
@@ -137,13 +137,13 @@ if (newsLoading || eventsLoading) return (
   const getTypeColor = (type: string) => {
     switch (type) {
       case "announcement":
-        return "bg-primary text-gray-200"; // softened text
+        return "bg-primary text-black-700"; // softened text
       case "news":
-        return "bg-secondary text-gray-200"; // softened text
+        return "bg-secondary text-black-700"; // softened text
       case "update":
-        return "bg-accent text-gray-200"; // softened text
+        return "bg-accent text-black-700"; // softened text
       default:
-        return "bg-primary text-gray-200";
+        return "bg-primary text-black-700";
     }
   };
 
@@ -207,15 +207,15 @@ if (newsLoading || eventsLoading) return (
                   data-testid={`event-item-${index}`}
                 >
                   <div
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-gray-200 mr-4 ${getCategoryColor(event.category)}`}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-text-black-700 mr-4 ${getCategoryColor(event.category)}`}
                   >
                     <span className="text-sm font-semibold">{month.toUpperCase()}</span>
                     <span className="text-lg font-bold">{day}</span>
                   </div>
                   <div className="flex-grow">
-                    <h4 className="font-semibold text-gray-200 mb-1">{event.title}</h4>
-                    <p className="text-sm text-gray-300">{event.description}</p>
-                    <div className="flex items-center mt-2 text-xs text-gray-400">
+                    <h4 className="font-semibold text-black-700 mb-1">{event.title}</h4>
+                    <p className="text-sm text-black-700">{event.description}</p>
+                    <div className="flex items-center mt-2 text-xs text-black-700">
                       <Clock className="w-4 h-4 mr-1" />
                       <span>{event.time}</span>
                     </div>
@@ -278,7 +278,7 @@ if (newsLoading || eventsLoading) return (
                       >
                         {item.type.toUpperCase()}
                       </span>
-                      <span className="text-sm text-gray-400">
+                      <span className="text-sm text-black-700">
                         {new Date(item.createdAt).toLocaleDateString("en-US", {
                           year: "numeric",
                           month: "long",
@@ -286,8 +286,8 @@ if (newsLoading || eventsLoading) return (
                         })}
                       </span>
                     </div>
-                    <h4 className="text-lg font-semibold text-gray-200 mb-2">{item.title}</h4>
-                    <p className="text-gray-300">{item.content}</p>
+                    <h4 className="text-lg font-semibold text-black-700 mb-2">{item.title}</h4>
+                    <p className="text-black-700">{item.content}</p>
                   </div>
                 </div>
               </div>
