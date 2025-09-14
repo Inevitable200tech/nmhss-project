@@ -275,21 +275,21 @@ export default function ContactSection() {
                 </a>
                 
                 <a 
-                  href="#academics" 
+                  href="/students" 
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-handbook"
                 >
                   <BookOpen className="w-5 h-5 text-primary mr-3" />
-                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Academics</span>
+                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Student's Gallery</span>
                 </a>
                 
                 <a 
-                  href="#events" 
+                  href="/about-teachers" 
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-calendar"
                 >
                   <Calendar className="w-5 h-5 text-primary mr-3" />
-                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Academic Calendar</span>
+                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">Our Teacher's</span>
                 </a>
               </div>
             </div>
