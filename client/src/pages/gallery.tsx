@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight, X, Calendar, Loader2 } from "lucide-react";
 import Navigation from "../components/navigation";
 import Footer from "../components/footer";
+import Plyr from "plyr";
+import "plyr/dist/plyr.css"; // Plyr styles
 
 
 const fallbackVideos = [
@@ -29,6 +31,8 @@ const fallbackTimeline = [
 export default function GalleryPage() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [mediaType, setMediaType] = useState<"images" | "videos">("images");
+  const videoPlayerRef = useRef<Plyr | null>(null);
+  const lightboxVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["/api/gallery"],
@@ -50,23 +54,10 @@ export default function GalleryPage() {
         (entries) => {
           if (entries[0].isIntersecting) {
             setIsVisible(true);
-
-            // ✅ Add preload hint for high priority
-            const link = document.createElement("link");
-            link.rel = "preload"
-            link.href = src;
-            link.crossOrigin = "anonymous";
-            link.type = "video/mp4";
-            link.fetchPriority = "high";
-            link.as = "video";
-
-            document.head.appendChild(link);
-
-            // ✅ Force browser to start loading immediately
             if (ref.current) {
+              ref.current.src = src;
               ref.current.load();
             }
-
             observer.disconnect();
           }
         },
@@ -83,15 +74,35 @@ export default function GalleryPage() {
     return (
       <video
         ref={ref}
-        src={isVisible ? src : undefined}
         className={className}
         muted
         loop
         playsInline
-        preload="auto" // ✅ Hint to preload video
+        preload="none"
       />
     );
   }
+
+  // Initialize Plyr for lightbox video
+  useEffect(() => {
+    if (selectedIndex !== null && mediaType === "videos" && lightboxVideoRef.current && !videoPlayerRef.current) {
+      videoPlayerRef.current = new Plyr(lightboxVideoRef.current, {
+        controls: ["play", "progress", "current-time", "mute", "volume", "fullscreen"],
+        autoplay: true,
+        quality: { default: 720, options: [1080, 720, 480] },
+      });
+    }
+    return () => {
+      if (videoPlayerRef.current && lightboxVideoRef.current) {
+        try {
+          videoPlayerRef.current.destroy();
+        } catch (e) {
+          console.warn("Plyr destroy failed:", e);
+        }
+        videoPlayerRef.current = null;
+      }
+    };
+  }, [selectedIndex, mediaType]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -138,15 +149,54 @@ export default function GalleryPage() {
   const groupedImages = data?.images?.length > 0 ? groupByDate(data.images) : [];
   const groupedVideos = data?.videos?.length > 0 ? groupByDate(data.videos) : [];
 
-  const showMedia = (index: number) => setSelectedIndex(index);
-  const closeLightbox = () => setSelectedIndex(null);
+  const showMedia = (index: number) => {
+    if (videoPlayerRef.current && lightboxVideoRef.current) {
+      try {
+        videoPlayerRef.current.destroy();
+      } catch (e) {
+        console.warn("Plyr destroy failed:", e);
+      }
+      videoPlayerRef.current = null;
+    }
+    setSelectedIndex(index);
+  };
+
+  const closeLightbox = () => {
+    if (videoPlayerRef.current && lightboxVideoRef.current) {
+      try {
+        videoPlayerRef.current.destroy();
+      } catch (e) {
+        console.warn("Plyr destroy failed:", e);
+      }
+      videoPlayerRef.current = null;
+    }
+    setSelectedIndex(null);
+  };
+
   const showNext = () => {
     if (selectedIndex !== null && selectedIndex < (mediaType === "images" ? images : videos).length - 1) {
+      if (videoPlayerRef.current && lightboxVideoRef.current) {
+        try {
+          videoPlayerRef.current.destroy();
+        } catch (e) {
+          console.warn("Plyr destroy failed:", e);
+        }
+        videoPlayerRef.current = null;
+      }
       setSelectedIndex(selectedIndex + 1);
     }
   };
+
   const showPrev = () => {
     if (selectedIndex !== null && selectedIndex > 0) {
+      if (videoPlayerRef.current && lightboxVideoRef.current) {
+        try {
+          videoPlayerRef.current.destroy();
+        } catch (e) {
+          console.warn("Plyr destroy failed:", e);
+        }
+        videoPlayerRef.current = null;
+      }
       setSelectedIndex(selectedIndex - 1);
     }
   };
@@ -223,7 +273,6 @@ export default function GalleryPage() {
 
           {/* Media Display (glassy container + cards) */}
           <div className="relative rounded-3xl p-6 bg-white/60 dark:bg-white/5 backdrop-blur-xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden">
-            {/* Ambient blobs */}
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute w-24 h-24 bg-blue-500/20 rounded-full top-10 left-10 blur-3xl" />
               <div className="absolute w-32 h-32 bg-indigo-500/10 rounded-full bottom-10 right-10 blur-3xl" />
@@ -248,7 +297,7 @@ export default function GalleryPage() {
                               src={item.url}
                               alt={`Media ${idx + 1}`}
                               className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
-                              loading={idx > 1 ? "lazy" : "eager"} // ✅ only first 2 images eager
+                              loading={idx > 1 ? "lazy" : "eager"}
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
                               <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
@@ -355,15 +404,14 @@ export default function GalleryPage() {
                 src={typeof images[selectedIndex] === "string" ? (images[selectedIndex] as string) : (images[selectedIndex] as any).url}
                 alt={`Enlarged image ${selectedIndex + 1}`}
                 className="w-full h-auto max-h-[80vh] object-contain"
-
               />
             ) : (
               <video
+                ref={lightboxVideoRef}
+                id="lightbox-video"
                 src={typeof videos[selectedIndex] === "string" ? (videos[selectedIndex] as string) : (videos[selectedIndex] as any).url}
-                controls
-                autoPlay
                 className="w-full h-auto max-h-[80vh] object-contain"
-                preload="auto" // ✅ preload video for lightbox
+                preload="auto"
               />
             )}
           </div>

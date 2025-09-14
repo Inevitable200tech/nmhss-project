@@ -6,6 +6,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { loadMediaDBs } from "./mediaDb";
 import fs from "fs";
 import path from "path";
+import cookieParser from "cookie-parser";
+import { randomUUID } from "crypto";
 
 const rootEnvPath = path.resolve("cert.env");
 const folderEnvPath = path.resolve("cert_env", "cert.env");
@@ -18,6 +20,8 @@ log(`Loaded environment variables: MONGO_URL=${process.env.MONGO_URL}, PORT=${pr
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -29,6 +33,13 @@ app.use((req, res, next) => {
     capturedJsonResponse = bodyJson;
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
+  // ✅ Ensure user has a persistent cookie
+  if (!req.cookies.userUploadId) {
+    res.cookie("userUploadId", randomUUID(), {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 365, // 1 year
+    });
+  }
 
   res.on("finish", () => {
     const duration = Date.now() - start;
@@ -44,6 +55,8 @@ app.use((req, res, next) => {
 
       log(logLine);
     }
+
+
   });
 
   next();

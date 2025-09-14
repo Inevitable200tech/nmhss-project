@@ -135,7 +135,7 @@ export default function AdminPage() {
 
       {/* Sidebar */}
       <div
-        className={`fixed sm:static top-0 left-0 h-full sm:h-screen w-64 bg-card shadow-lg p-4 transform transition-transform duration-300 z-40
+        className={`fixed sm:static top-20 left-0 h-full sm:h-screen w-64 bg-card shadow-lg p-4 transform transition-transform duration-300 z-40
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"}`}
       >
         <h2 className="text-xl font-bold mb-4 hidden sm:block">Admin Panel</h2>

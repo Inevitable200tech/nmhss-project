@@ -26,7 +26,7 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-white/70 dark:bg-gray-900/70 border-b border-white/20 dark:border-gray-700/20 shadow-lg">
+    <nav className="fixed top-0 w-full z-50 backdrop-blur-md bg-white/40 dark:bg-gray-900/10 border-b border-white/20 dark:border-gray-700/20 shadow-lg">
       <div className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -37,9 +37,13 @@ export default function Navigation() {
               className="h-10 w-auto object-contain drop-shadow-md"
             />
           </div>
-          <div className="mr-8">
-            <h1 className="font-bold text-lg text-foreground">Navamukunda HSS</h1>
-            <p className="text-xs text-muted-foreground">Thirunavaya</p>
+          <div className="mr-4">
+            <h1 className="font-bold text-[16px] sm:text-[18px] md:text-[16px] text-foreground">
+              Navamukunda HSS
+            </h1>
+            <p className="text-[10px] sm:text-[12px] md:text-[14px] text-foreground">
+              Thirunavaya
+            </p>
           </div>
 
           {/* Desktop Navigation */}
@@ -61,19 +65,19 @@ export default function Navigation() {
             >
               About Devs
             </a>
-             <a
+            <a
               href="/students"
               onClick={(e) => handleLinkClick(e, "/students")}
               className="text-foreground hover:text-primary transition-colors"
             >
-              Student Gallery
+              Student's Gallery
             </a>
             <a
-              href="#achievements"
-              onClick={(e) => handleLinkClick(e, "#achievements")}
+              href="/students-upload"
+              onClick={(e) => handleLinkClick(e, "/students-upload")}
               className="text-foreground hover:text-primary transition-colors"
             >
-              Achievements
+              Student's Upload 
             </a>
             <a
               href="/#faculty"
@@ -151,14 +155,14 @@ export default function Navigation() {
                 onClick={(e) => handleLinkClick(e, "/students")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
-                Student Handbook
+                Student's Gallery
               </a>
               <a
-                href="/#achievements"
-                onClick={(e) => handleLinkClick(e, "/#achievements")}
+                href="/students-upload"
+                onClick={(e) => handleLinkClick(e, "/students-upload")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
-                Achievements
+                Student's Upload
               </a>
               <a
                 href="/#faculty"

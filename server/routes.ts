@@ -21,6 +21,18 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
+import { pendingUploads, PendingMedia } from "@shared/memoryUploads";
+import { randomUUID } from "crypto";
+import cookieParser from "cookie-parser";
+
+type UploadTracker = {
+  count: number;
+  month: number; // track month (1-12)
+  lastUpload: number;
+};
+
+const userUploadTracker = new Map<string, UploadTracker>();
+
 
 const rootEnvPath = path.resolve("cert.env");
 const folderEnvPath = path.resolve("cert_env", "cert.env");
@@ -988,6 +1000,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error(err);
       res.status(500).json({ error: "Failed to delete student media" });
     }
+  });
+
+  //-------------TEMP-UPLOAD-VIDEO------------------------------
+
+  app.post("/api/students-upload", upload.single("file"), (req, res) => {
+    const userId = req.cookies.userUploadId;
+
+    if (!userId) {
+      return res.status(400).json({ error: "Upload tracking failed" });
+    }
+
+    const now = new Date();
+
+    const currentMonth = now.getMonth(); // 0-11
+    let tracker = userUploadTracker.get(userId);
+    
+
+    if (!tracker) {
+      tracker = { count: 0, month: currentMonth, lastUpload: 0 };
+      userUploadTracker.set(userId, tracker);
+    }
+
+    // ✅ Reset count if month changed
+    if (tracker.month !== currentMonth) {
+      tracker.count = 0;
+      tracker.month = currentMonth;
+    }
+
+    // ✅ Monthly limit
+    if (tracker.count >= 30) {
+      return res.status(429).json({ error: "Monthly upload limit (30) reached" });
+    }
+
+    if (Date.now() - tracker.lastUpload < 25000) {
+    const wait = Math.ceil((tracker.lastUpload + 25000 - Date.now()) / 1000);
+    return res.status(429).json({ error: `Please wait ${wait}s before next upload` });
+  }
+
+    tracker.count++;
+    tracker.lastUpload = Date.now();
+
+    const { type, batch, year, description } = req.body;
+
+    if (!req.file || !type || !batch || !year)
+      return res.status(400).json({ error: "Missing required fields" });
+
+    // ✅ Add this debug log
+    console.log("Stored file:", {
+      isBuffer: Buffer.isBuffer(req.file.buffer),
+      mime: req.file.mimetype,
+      length: req.file.buffer.length,
+    });
+
+    const tempId = randomUUID();
+    pendingUploads.set(tempId, {
+      tempId,
+      file: Buffer.from(req.file.buffer), // <-- ensure Node Buffer
+      mimeType: req.file.mimetype,
+      filename: req.file.originalname,
+      type: type as "image" | "video",
+      batch: batch as "+1" | "+2",
+      year: parseInt(year),
+      description,
+    });
+
+    res.json({ tempId, message: "Upload successful, pending approval" });
+  });
+
+  app.get("/api/admin/pending-file/:tempId", (req, res) => {
+    const pending = pendingUploads.get(req.params.tempId);
+    if (!pending) return res.status(404).json({ error: "File not found" });
+
+    // Explicit headers
+    res.setHeader("Content-Type", pending.mimeType);
+    res.setHeader("Content-Length", pending.file.length);
+    res.setHeader("Content-Disposition", `inline; filename="${pending.filename}"`);
+
+    // Important: use res.send(Buffer) here
+    return res.send(Buffer.from(pending.file));
+  });
+
+  app.get("/api/admin/pending-uploads", requireAuth, (_req, res) => {
+    const list = Array.from(pendingUploads.values()).map(({ tempId, type, batch, year, description, filename }) => ({
+      tempId, type, batch, year, description, filename
+    }));
+    res.json(list);
+  });
+
+  app.post("/api/admin/approve-upload/:tempId", requireAuth, async (req, res) => {
+    const pending = pendingUploads.get(req.params.tempId);
+    if (!pending) return res.status(404).json({ error: "Upload not found" });
+
+    try {
+      // 1. Pick the best DB for this file
+      const dbConn = await getBestMediaDB(pending.file.length);
+      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+      const readableStream = Readable.from(pending.file);
+      const writeStream = bucket.openUploadStream(pending.filename, {
+        contentType: pending.mimeType,
+        metadata: { type: pending.type, uploadedAt: new Date() },
+      });
+
+      const mediaId = await new Promise<string>((resolve, reject) => {
+        writeStream.on("finish", () => resolve(writeStream.id.toString()));
+        writeStream.on("error", reject);
+        readableStream.pipe(writeStream);
+      });
+
+      // 2. Store metadata in MediaModel
+      await MediaModel.create({
+        _id: new mongoose.Types.ObjectId(mediaId),
+        filename: pending.filename,
+        contentType: pending.mimeType,
+        type: pending.type,
+        uploadedAt: new Date(),
+        dbName: dbConn.name,
+      });
+
+      // 3. Store in StudentMedia collection
+      const studentMedia = await storage.createStudentMedia({
+        mediaId,
+        url: `/api/media/${mediaId}`,
+        type: pending.type,
+        batch: pending.batch,
+        year: pending.year,
+        description: pending.description,
+      });
+
+      // 4. Remove from memory
+      pendingUploads.delete(req.params.tempId);
+
+      res.json({ success: true, studentMedia });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to approve upload" });
+    }
+  });
+
+  app.delete("/api/admin/disapprove-upload/:tempId", requireAuth, (req, res) => {
+    const deleted = pendingUploads.delete(req.params.tempId);
+    if (!deleted) return res.status(404).json({ error: "Upload not found" });
+    res.json({ success: true });
+  });
+
+  app.get("/api/students-upload/quota", (req, res) => {
+    const userId = req.cookies.userUploadId;
+    if (!userId) return res.json({ remaining: 30, cooldownRemaining: 0 });
+
+    const tracker = userUploadTracker.get(userId);
+    const currentMonth = new Date().getMonth();
+
+    if (!tracker || tracker.month !== currentMonth) {
+      return res.json({ remaining: 30, cooldownRemaining: 0 });
+    }
+
+    const now = Date.now();
+    const cooldownRemaining = Math.max(0, Math.ceil((tracker.lastUpload + 25000 - now) / 1000));
+
+    res.json({
+      remaining: Math.max(30 - tracker.count, 0),
+      cooldownRemaining,
+    });
   });
 
 
