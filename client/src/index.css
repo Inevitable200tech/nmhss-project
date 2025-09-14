@@ -8,17 +8,52 @@
 @tailwind components;
 @tailwind utilities;
 
-nav,section {
-  overflow-x:hidden;
+nav,
+section {
+  overflow-x: hidden;
 }
+
 body {
   overflow-x: hidden;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
 }
+
 .font-chilanka {
   font-family: 'Chilanka', sans-serif;
 }
+
+@keyframes gradient {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 12s ease infinite;
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-fade-out {
+  animation: fade-out 3s ease-in-out 1 forwards;
+}
+
 
 :root {
   --background: hsl(210, 40%, 98%);

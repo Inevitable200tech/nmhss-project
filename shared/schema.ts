@@ -374,8 +374,7 @@ export const FacultySectionSchema = z.object({
 });
 
 // ---------------- STUDENT MEDIA ----------------
-// 👉 Data you return to the frontend
-// Data returned to frontend
+
 export interface StudentMedia {
   id: string;
   mediaId: string;
@@ -424,6 +423,55 @@ studentMediaSchema.index({ type: 1, batch: 1, year: 1 });
 export const StudentMediaModel =
   mongoose.models.StudentMedia ||
   mongoose.model<StudentMediaDoc>("StudentMedia", studentMediaSchema);
+
+// ---------------- TEACHER MANAGEMENT ----------------
+
+// Frontend-specific type (plain object without Mongoose Document properties)
+export interface ClientTeacher {
+  id: string;
+  name: string;
+  subject: string;
+  bio: string;
+  mediaId: string;
+  imageUrl: string;
+}
+
+// Mongoose document type
+export interface Teacher extends Document {
+  id: string;
+  name: string;
+  subject: string;
+  bio: string;
+  mediaId: string;
+  imageUrl: string;
+}
+
+export const teacherSchema = new Schema<Teacher>({
+  _id: { type: Schema.Types.ObjectId, auto: true },
+  name: { type: String, required: true },
+  subject: { type: String, required: true },
+  bio: { type: String, required: true },
+  mediaId: { type: String, required: true },
+  imageUrl: { type: String, required: true },
+}, { timestamps: false });
+
+export const insertTeacherSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  subject: z.string().min(1, "Subject is required"),
+  bio: z.string().min(1, "Bio is required"),
+  mediaId: z.string().min(1, "Media ID is required"),
+  imageUrl: z.string().min(1, "Image URL is required"),
+});
+export const teacherInputSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  subject: z.string().min(1, "Subject is required"),
+  bio: z.string().min(1, "Bio is required"),
+});
+
+export type TeacherInput = z.infer<typeof teacherInputSchema>;
+// Add to export models & types section
+export type InsertTeacher = z.infer<typeof insertTeacherSchema>;
+export const TeacherModel = mongoose.model<Teacher>("Teacher", teacherSchema);
 // ---------------- EXPORT MODELS & TYPES ----------------
 
 export type FacultySectionInput = z.infer<typeof FacultySectionSchema>;

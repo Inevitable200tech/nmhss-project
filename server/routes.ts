@@ -6,8 +6,9 @@ import {
   insertEventSchema,
   insertNewsSchema,
   insertSectionSchema,
+  insertTeacherSchema,
   MediaDatabaseModel,
-  StudentMediaZodSchema
+  StudentMediaZodSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
@@ -23,7 +24,6 @@ import path from "path";
 import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
 import { pendingUploads, PendingMedia } from "@shared/memoryUploads";
 import { randomUUID } from "crypto";
-import cookieParser from "cookie-parser";
 
 type UploadTracker = {
   count: number;
@@ -32,8 +32,6 @@ type UploadTracker = {
 };
 
 const userUploadTracker = new Map<string, UploadTracker>();
-
-
 const rootEnvPath = path.resolve("cert.env");
 const folderEnvPath = path.resolve("cert_env", "cert.env");
 export const envPath = fs.existsSync(rootEnvPath) ? rootEnvPath : folderEnvPath;
@@ -1015,7 +1013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const currentMonth = now.getMonth(); // 0-11
     let tracker = userUploadTracker.get(userId);
-    
+
 
     if (!tracker) {
       tracker = { count: 0, month: currentMonth, lastUpload: 0 };
@@ -1034,9 +1032,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     if (Date.now() - tracker.lastUpload < 25000) {
-    const wait = Math.ceil((tracker.lastUpload + 25000 - Date.now()) / 1000);
-    return res.status(429).json({ error: `Please wait ${wait}s before next upload` });
-  }
+      const wait = Math.ceil((tracker.lastUpload + 25000 - Date.now()) / 1000);
+      return res.status(429).json({ error: `Please wait ${wait}s before next upload` });
+    }
 
     tracker.count++;
     tracker.lastUpload = Date.now();
@@ -1165,6 +1163,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  //------------------- TEACHER MANAGEMENT ----------------
+
+  // Get all teachers (public)
+  app.get("/api/teachers", async (req, res) => {
+    try {
+      const teachers = await storage.getTeachers();
+      res.json(teachers);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to fetch teachers" });
+    }
+  });
+
+  // Create teacher (admin only)
+  app.post("/api/admin/teachers", requireAuth, async (req, res) => {
+    try {
+      const teacherData = insertTeacherSchema.parse(req.body);
+      const teacher = await storage.createTeacher(teacherData);
+      res.status(201).json({ success: true, teacher });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: error.errors });
+      }
+      console.error(error);
+      res.status(500).json({ error: "Failed to create teacher" });
+    }
+  });
+
+  // Delete teacher (admin only)
+  app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteTeacher(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Teacher not found" });
+      }
+
+      // Delete associated media if exists
+      if (deleted.mediaId) {
+        // 1. Find Media metadata
+        const mediaDoc = await MediaModel.findById(deleted.mediaId);
+        if (!mediaDoc) {
+          return res.status(404).json({ error: "Media metadata not found" });
+        }
+
+        // 2. Get correct DB connection
+        const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
+        if (!dbConn) {
+          return res.status(500).json({ error: "Media DB not connected" });
+        }
+
+        const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+
+        // 3. Delete file from GridFS
+        await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+
+        // 4. Delete Media metadata from main DB
+        await MediaModel.deleteOne({ _id: mediaDoc._id });
+      }
+
+      res.json({ success: true, id: req.params.id });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Failed to delete teacher" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

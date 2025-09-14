@@ -192,8 +192,15 @@ export default function AdminPage() {
           </li>
           <li>
             <a href="/admin-students-setting">
-              <Button variant="outline" className="w-full text-left">
+              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
                 Manage Students Media
+              </Button>
+            </a>
+          </li>
+          <li>
+            <a href="/admin-teachers-edit">
+              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+                Manage Teacher's Section
               </Button>
             </a>
           </li>

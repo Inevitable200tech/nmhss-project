@@ -27,7 +27,10 @@ import {
   StudentMedia,
   StudentMediaModel,
   LeanStudentMedia,
-  StudentMediaZodSchema
+  StudentMediaZodSchema,
+  Teacher,
+  InsertTeacher,
+  TeacherModel
 } from "@shared/schema";
 
 
@@ -75,6 +78,9 @@ export interface IStorage {
   getStudentMedia(): Promise<StudentMedia[]>;
   createStudentMedia(entry: Omit<StudentMedia, "id">): Promise<StudentMedia>;
   deleteStudentMedia(id: string): Promise<StudentMedia | null>;
+  getTeachers(): Promise<Teacher[]>;
+  createTeacher(teacher: InsertTeacher): Promise<Teacher>;
+  deleteTeacher(id: string): Promise<Teacher | null>;
 }
 
 export class MongoStorage implements IStorage {
@@ -464,6 +470,36 @@ export class MongoStorage implements IStorage {
       : null;
   }
 
+  async getTeachers(): Promise<Teacher[]> {
+    const docs = await TeacherModel.find().sort({ name: 1 }).lean().exec();
+    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as Teacher[];
+  }
+
+  async createTeacher(insertTeacher: InsertTeacher): Promise<Teacher> {
+    const doc = await TeacherModel.create(insertTeacher);
+    const plainDoc = doc.toObject() as {
+      _id: mongoose.Types.ObjectId;
+      name: string;
+      subject: string;
+      bio: string;
+      mediaId: string;
+      imageUrl: string;
+    };
+    return {
+      id: plainDoc._id.toString(),
+      name: plainDoc.name,
+      subject: plainDoc.subject,
+      bio: plainDoc.bio,
+      mediaId: plainDoc.mediaId,
+      imageUrl: plainDoc.imageUrl,
+    } as Teacher;
+  }
+
+  async deleteTeacher(id: string): Promise<Teacher | null> {
+    const doc = await TeacherModel.findByIdAndDelete(id).lean().exec();
+    if (!doc) return null;
+    return { ...doc, id: doc._id.toString() } as Teacher;
+  }
 }
 
 export const storage = new MongoStorage();

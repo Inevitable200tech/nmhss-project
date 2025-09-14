@@ -1,5 +1,5 @@
 import { Facebook, Twitter, Linkedin } from "lucide-react";
-
+import heroImage from "@assets/icon.png"; // replace with your actual video path 
 export default function Footer() {
   const quickLinks = [
     { href: "#about", label: "About Us", testId: "footer-link-about" },
@@ -34,7 +34,7 @@ export default function Footer() {
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center">
                 <img
-                  src="/assets/logo.png"
+                  src={heroImage}
                   alt="Navamukunda HSS Logo"
                   className="w-12 h-12 object-contain"
                 />

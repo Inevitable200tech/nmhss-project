@@ -34,14 +34,14 @@ export default function Navigation() {
             <img
               src={heroImage}
               alt="Navamukunda HSS Logo"
-              className="h-10 w-auto object-contain drop-shadow-md"
+              className="h-10 w-auto object-contain drop-shadow-md mr-4"
             />
           </div>
-          <div className="mr-4">
-            <h1 className="font-bold text-[16px] sm:text-[18px] md:text-[16px] text-foreground">
+          <div className="animate-fade-out mr-1">
+            <h1 className="font-bold text-[16px] sm:text-[18px] md:text-[17px] text-foreground">
               Navamukunda HSS
             </h1>
-            <p className="text-[10px] sm:text-[12px] md:text-[14px] text-foreground">
+            <p className="text-[10px] sm:text-[14px] md:text-[14px] text-foreground">
               Thirunavaya
             </p>
           </div>
@@ -77,21 +77,14 @@ export default function Navigation() {
               onClick={(e) => handleLinkClick(e, "/students-upload")}
               className="text-foreground hover:text-primary transition-colors"
             >
-              Student's Upload 
+              Student's Upload
             </a>
             <a
-              href="/#faculty"
-              onClick={(e) => handleLinkClick(e, "/#faculty")}
+              href="/about-teachers"
+              onClick={(e) => handleLinkClick(e, "/about-teachers")}
               className="text-foreground hover:text-primary transition-colors"
             >
-              Faculty
-            </a>
-            <a
-              href="/#events"
-              onClick={(e) => handleLinkClick(e, "/#events")}
-              className="text-foreground hover:text-primary transition-colors"
-            >
-              Events
+              Our Teachers
             </a>
             <a
               href="/gallery"
@@ -165,18 +158,11 @@ export default function Navigation() {
                 Student's Upload
               </a>
               <a
-                href="/#faculty"
-                onClick={(e) => handleLinkClick(e, "/#faculty")}
+                href="/about-teachers"
+                onClick={(e) => handleLinkClick(e, "/about-teachers")}
                 className="block px-3 py-2 text-foreground hover:text-primary"
               >
-                Faculty
-              </a>
-              <a
-                href="/#events"
-                onClick={(e) => handleLinkClick(e, "/#events")}
-                className="block px-3 py-2 text-foreground hover:text-primary"
-              >
-                Events
+                About Teacher's
               </a>
               <a
                 href="/gallery"
