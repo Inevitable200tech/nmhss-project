@@ -33,7 +33,7 @@ export default function EventsSection() {
     },
   });
 
-if (newsLoading || eventsLoading) return (
+  if (newsLoading || eventsLoading) return (
     <div className="flex items-center justify-center h-screen">
       <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       <span className="ml-2 text-muted-foreground">Please Wait...</span>
@@ -109,9 +109,9 @@ if (newsLoading || eventsLoading) return (
       case "academic":
         return <FlaskConical className="w-6 h-6 text-primary-foreground" />;
       case "sports":
-        return <Dumbbell className="w-6 h-6 text-black-700" />; {/* softened */}
+        return <Dumbbell className="w-6 h-6 text-black-700" />; {/* softened */ }
       case "cultural":
-        return <Music className="w-6 h-6 text-black-700" />; {/* softened */}
+        return <Music className="w-6 h-6 text-black-700" />; {/* softened */ }
       case "community":
         return <Users className="w-6 h-6 text-primary-foreground" />;
       default:
@@ -122,15 +122,15 @@ if (newsLoading || eventsLoading) return (
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "academic":
-        return "border-teal bg-teal-700";
+        return "border-[rgb(34,211,238)] bg-[rgb(11,100,114)]"; // Teal
       case "sports":
-        return "border-red bg-red-700";
+        return "border-[rgb(163,63,63)] bg-[rgb(239,68,68)]"; // Red
       case "cultural":
-        return "border-black bg-black";
+        return "border-[rgb(0,0,0)] bg-[rgb(73,85,135)]"; // Black border, Teal background
       case "community":
-        return "border-primary bg-primary";
+        return "border-[rgb(59,130,246)] bg-[rgb(59,130,246)]"; // Blue (example primary)
       default:
-        return "border-primary bg-primary";
+        return "border-[rgb(59,130,246)] bg-[rgb(59,130,246)]"; // Blue (default)
     }
   };
 
@@ -207,15 +207,15 @@ if (newsLoading || eventsLoading) return (
                   data-testid={`event-item-${index}`}
                 >
                   <div
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-text-black-700 mr-4 ${getCategoryColor(event.category)}`}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-white mr-4 ${getCategoryColor(event.category)}`}
                   >
                     <span className="text-sm font-semibold">{month.toUpperCase()}</span>
                     <span className="text-lg font-bold">{day}</span>
                   </div>
                   <div className="flex-grow">
-                    <h4 className="font-semibold text-black-700 mb-1">{event.title}</h4>
-                    <p className="text-sm text-black-700">{event.description}</p>
-                    <div className="flex items-center mt-2 text-xs text-black-700">
+                    <h4 className="font-semibold text-white mb-1">{event.title}</h4>
+                    <p className="text-sm text-white">{event.description}</p>
+                    <div className="flex items-center mt-2 text-xs text-white">
                       <Clock className="w-4 h-4 mr-1" />
                       <span>{event.time}</span>
                     </div>
