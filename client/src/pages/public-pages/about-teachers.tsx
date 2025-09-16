@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import Navigation from "@/components/navigation";
-import Footer from "@/components/footer";
+import Navigation from "@/components/static-pages/navigation";
+import Footer from "@/components/static-pages/footer";
 import { ClientTeacher } from "@shared/schema";
 
 export default function AboutTeachers() {

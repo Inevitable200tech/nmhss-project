@@ -1,21 +1,23 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+// src/pages/not-found.tsx
+import { Link } from "wouter";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
-          </div>
+    <div className="flex flex-col items-center justify-center h-screen bg-background text-center p-6">
+      <h1 className="text-6xl font-bold mb-4 text-red-500">404</h1>
+      <p className="text-lg text-muted-foreground mb-6">
+        Oops! The page you’re looking for doesn’t exist.
+      </p>
+      <Link href="/">
+        <a className="px-6 py-3 rounded-lg bg-primary text-white hover:bg-primary/90 transition">
+          Go Back Home
+        </a>
+      </Link>
 
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
-          </p>
-        </CardContent>
-      </Card>
+      {/* Footer credit */}
+      <footer className="absolute bottom-6 text-sm text-muted-foreground">
+        Created by <span className="font-semibold">NMHSS Navamukunda Thirunavaya</span>
+      </footer>
     </div>
   );
 }

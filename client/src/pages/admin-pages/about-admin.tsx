@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import AboutSection from "@/components/about-section";
+import AboutSection from "@/components/dynamic-pages/about-section";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";

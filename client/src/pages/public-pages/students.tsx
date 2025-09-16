@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, X, ArrowLeft, ArrowRight } from "lucide-react";
-import Navigation from "@/components/navigation";
-import Footer from "@/components/footer";
+import Navigation from "@/components/static-pages/navigation";
+import Footer from "@/components/static-pages/footer";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css"; // Plyr styles
 

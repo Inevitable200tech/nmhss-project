@@ -22,8 +22,11 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
-import { pendingUploads, PendingMedia } from "@shared/memoryUploads";
+import { pendingUploads } from "@shared/memoryUploads";
 import { randomUUID } from "crypto";
+import nodemailer from "nodemailer";
+
+
 
 type UploadTracker = {
   count: number;
@@ -101,20 +104,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Token is valid" });
   });
 
-  // Contact form submission
   app.post("/api/contact", async (req, res) => {
     try {
       const contactData = insertContactMessageSchema.parse(req.body);
-      const message = await storage.createContactMessage(contactData);
-      res.json({ success: true, message: "Message sent successfully!", id: message.id });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Validation failed", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to send message" });
-      }
+
+      // Gmail transporter (App Password required!)
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_SENDER,     // Gmail address
+          pass: process.env.EMAIL_SENDER_ID, // Gmail App Password
+        },
+      });
+
+      // Send the email
+      await transporter.sendMail({
+        from: process.env.EMAIL_SENDER,
+        replyTo: contactData.email, // so replies go to the user
+        to: process.env.EMAIL_DESTINATION, // destination (your inbox)
+        subject: `Contact Us Message: ${contactData.subject}`,
+        text: `Name: ${contactData.firstName} ${contactData.lastName}
+        Email: ${contactData.email}
+        Phone: ${contactData.phone || "N/A"}
+        Message:${contactData.message}`,
+        html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
+          <h2 style="color: #444;">📩 New Contact Form Submission</h2>
+          <p><strong>Name:</strong> ${contactData.firstName} ${contactData.lastName}</p>
+          <p><strong>Email:</strong> <a href="mailto:${contactData.email}">${contactData.email}</a></p>
+          <p><strong>Phone:</strong> ${contactData.phone || "N/A"}</p>
+          <hr />
+          <p><strong>Message:</strong></p>
+          <p style="white-space: pre-line; background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #eee;">
+            ${contactData.message}
+          </p>
+        </div>
+      `,
+      });
+
+      res.json({ success: true, message: "Message sent successfully!" });
+    } catch (error: any) {
+      console.error("Gmail API error:", error);
+      res.status(500).json({ error: "Failed to send message" });
     }
   });
+
 
 
   //------------------- EVENTS ROUTES ----------------

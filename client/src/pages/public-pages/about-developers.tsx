@@ -1,5 +1,5 @@
-import Navigation from "@/components/navigation";
-import Footer from "@/components/footer";
+import Navigation from "@/components/static-pages/navigation";
+import Footer from "@/components/static-pages/footer";
 import { Github as GithubIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";

@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import Footer from "@/components/footer";
-import Navigation from "@/components/navigation";
+import Footer from "@/components/static-pages/footer";
+import Navigation from "@/components/static-pages/navigation";
 
 export default function StudentsUploadPage(): JSX.Element {
     const [file, setFile] = useState<File | null>(null);

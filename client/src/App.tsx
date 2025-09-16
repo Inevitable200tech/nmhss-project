@@ -9,21 +9,22 @@ import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import AdminPage from "@/pages/admin";
-import AboutAdminPage from "@/pages/about-admin";
-import AdminEvents from "@/pages/admin-events";
-import AdminNews from "@/pages/admin-news";
-import GallerySection from "@/pages/gallery";
-import AboutDevelopers from "@/pages/about-developers";
-import AdminGalleryPage from "@/pages/admin-gallery";
-import AdminIntroPage from "@/pages/admin-intro";
-import AdminFaculty from "@/pages/admin-faculty";
-import AdminMediaDBPage from "@/pages/admin-db";
-import AdminStudentsPage from "@/pages/admin-students"
-import StudentsPage from "./pages/students";
-import StudentsUploadPage from "./pages/students-upload"
-import AboutTeachers from "./pages/about-teachers";
-import AdminTeacherEdit from "./pages/admin-teachers-edit";
+
+import AdminPage from "@/pages/public-pages/admin";
+import AboutAdminPage from "@/pages/admin-pages/about-admin";
+import AdminEvents from "@/pages/admin-pages/admin-events";
+import AdminNews from "@/pages/admin-pages/admin-news";
+import GallerySection from "@/pages/public-pages/gallery";
+import AboutDevelopers from "@/pages/public-pages/about-developers";
+import AdminGalleryPage from "@/pages/admin-pages/admin-gallery";
+import AdminIntroPage from "@/pages/admin-pages/admin-intro";
+import AdminFaculty from "@/pages/admin-pages/admin-faculty";
+import AdminMediaDBPage from "@/pages/admin-pages/admin-db";
+import AdminStudentsPage from "@/pages/admin-pages/admin-students"
+import StudentsPage from "./pages/public-pages/students";
+import StudentsUploadPage from "./pages/public-pages/students-upload"
+import AboutTeachers from "./pages/public-pages/about-teachers";
+import AdminTeacherEdit from "./pages/admin-pages/admin-teachers-edit";
 // Use named import for ProtectedRoute
 import { ProtectedRoute } from "@/components/ProtectedRoute"; // Corrected import
 
@@ -42,7 +43,7 @@ function Router() {
       <ProtectedRoute>
         <div>
           <Route path="/admin-gallery" component={AdminGalleryPage} />
-          <Route path="/about-admin" component={AboutAdminPage} />
+          <Route path="/admin-about" component={AboutAdminPage} />
           <Route path="/admin-events" component={AdminEvents} />
           <Route path="/admin-news" component={AdminNews} />
           <Route path="/admin-intro" component={AdminIntroPage} />
@@ -54,7 +55,7 @@ function Router() {
       </ProtectedRoute>
 
       {/* Fallback route for 404 */}
-      <Route component={NotFound} />
+      <Route path="*" component={NotFound} />
     </Switch>
   );
 }

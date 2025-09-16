@@ -2,16 +2,21 @@
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import NotFound from "@/pages/not-found";
 
 export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!token) {
       setIsVerified(false);
-      setLocation("/admin"); // redirect if no token
+
+      // 🔑 Redirect ONLY if trying to access an /admin route
+      if (location.startsWith("/admin")) {
+        setLocation("/admin");
+      }
       return;
     }
 
@@ -23,7 +28,10 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
           setToken("");
           localStorage.removeItem("adminToken");
           setIsVerified(false);
-          setLocation("/admin");
+
+          if (location.startsWith("/admin")) {
+            setLocation("/admin");
+          }
         } else {
           setIsVerified(true);
         }
@@ -32,9 +40,12 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
         setToken("");
         localStorage.removeItem("adminToken");
         setIsVerified(false);
-        setLocation("/admin");
+
+        if (location.startsWith("/admin")) {
+          setLocation("/admin");
+        }
       });
-  }, [token, setLocation]);
+  }, [token, setLocation, location]);
 
   // While verifying, show spinner
   if (isVerified === null) {
@@ -46,5 +57,8 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     );
   }
 
-  return isVerified ? children : null;
+  // ✅ If not verified:
+  // - For /admin routes, user will already be redirected to /admin by useEffect
+  // - For non-admin routes, show NotFound
+  return isVerified ? children : <NotFound />;
 };

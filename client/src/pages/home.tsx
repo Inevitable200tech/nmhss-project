@@ -1,12 +1,12 @@
-import Navigation from "@/components/navigation";
-import HeroSection from "@/components/hero-section";
-import AboutSection from "@/components/about-section";
-import AcademicsSection from "@/components/academics-section";
-import AchievementsSection from "@/components/achievements-section";
-import FacultySection from "@/components/faculty-section";
-import EventsSection from "@/components/events-section";
-import ContactSection from "@/components/contact-section";
-import Footer from "@/components/footer";
+import Navigation from "@/components/static-pages/navigation";
+import HeroSection from "@/components/dynamic-pages/hero-section";
+import AboutSection from "@/components/dynamic-pages/about-section";
+import AcademicsSection from "@/components/static-pages/academics-section";
+import AchievementsSection from "@/components/static-pages/achievements-section";
+import FacultySection from "@/components/dynamic-pages/faculty-section";
+import EventsSection from "@/components/dynamic-pages/events-section";
+import ContactSection from "@/components/dynamic-pages/contact-section";
+import Footer from "@/components/static-pages/footer";
 
 export default function Home() {
   return (

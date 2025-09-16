@@ -1,17 +1,11 @@
 import mongoose, { model, Model } from "mongoose";
 import {
-  type User,
-  type InsertUser,
-  type ContactMessage,
-  type InsertContactMessage,
   type Event,
   type InsertEvent,
   type News,
   type InsertNews,
   type Section,
   type InsertSection,
-  userSchema,
-  contactMessageSchema,
   eventSchema,
   newsSchema,
   SectionSchema,
@@ -35,11 +29,7 @@ import {
 
 
 // Define models
-const UserModel: Model<User> =
-  mongoose.models.User || model<User>("User", userSchema);
-const ContactMessageModel: Model<ContactMessage> =
-  mongoose.models.ContactMessage ||
-  model<ContactMessage>("ContactMessage", contactMessageSchema);
+
 const EventModel: Model<Event> =
   mongoose.models.Event || model<Event>("Event", eventSchema);
 const NewsModel: Model<News> =
@@ -48,10 +38,6 @@ const SectionModel: Model<Section> =
   mongoose.models.Section || model<Section>("Section", SectionSchema);
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  createContactMessage(message: InsertContactMessage): Promise<ContactMessage>;
   getEvents(): Promise<Event[]>;
   createEvent(event: InsertEvent): Promise<Event>;
   deleteEvent(id: string): Promise<Event | null>;
@@ -84,61 +70,7 @@ export interface IStorage {
 }
 
 export class MongoStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
-    const doc = await UserModel.findById(id).lean().exec();
-    if (!doc) return undefined;
-    return { ...doc, id: doc._id.toString() } as User;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const doc = await UserModel.findOne({ username }).lean().exec();
-    if (!doc) return undefined;
-    return { ...doc, id: doc._id.toString() } as User;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const doc = await UserModel.create(insertUser);
-    const plainDoc = doc.toObject() as {
-      _id: mongoose.Types.ObjectId;
-      username: string;
-      password: string;
-    };
-    return {
-      id: plainDoc._id.toString(),
-      username: plainDoc.username,
-      password: plainDoc.password,
-    } as User;
-  }
-
-  async createContactMessage(
-    insertMessage: InsertContactMessage
-  ): Promise<ContactMessage> {
-    const doc = await ContactMessageModel.create({
-      ...insertMessage,
-      phone: insertMessage.phone ?? undefined,
-    });
-    const plainDoc = doc.toObject() as {
-      _id: mongoose.Types.ObjectId;
-      firstName: string;
-      lastName: string;
-      email: string;
-      phone?: string;
-      subject: string;
-      message: string;
-      createdAt: Date;
-    };
-    return {
-      id: plainDoc._id.toString(),
-      firstName: plainDoc.firstName,
-      lastName: plainDoc.lastName,
-      email: plainDoc.email,
-      phone: plainDoc.phone,
-      subject: plainDoc.subject,
-      message: plainDoc.message,
-      createdAt: plainDoc.createdAt,
-    } as ContactMessage;
-  }
-
+  
   async getEvents(): Promise<Event[]> {
     const docs = await EventModel.find().sort({ date: 1 }).lean().exec();
     return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as Event[];

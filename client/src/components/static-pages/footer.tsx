@@ -1,5 +1,5 @@
 import { Facebook, Twitter, Linkedin } from "lucide-react";
-import heroImage from "@assets/icon.png"; // replace with your actual video path 
+import heroImage from "@assets/icon.png"; // replace with your actual img path 
 export default function Footer() {
   const quickLinks = [
     { href: "#about", label: "About Us", testId: "footer-link-about" },

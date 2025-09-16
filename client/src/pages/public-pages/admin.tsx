@@ -142,7 +142,7 @@ export default function AdminPage() {
         <ul className="space-y-2">
           {/* Disable all except Manage Media DBs */}
           <li>
-            <a href="/about-admin">
+            <a href="/admin-about">
               <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
                 Manage About Section
               </Button>
