@@ -97,8 +97,8 @@ export default function StudentsUploadPage(): JSX.Element {
             return;
         }
 
-        const MAX_IMAGE = 1024 * 1024;
-        const MAX_VIDEO = 25 * 1024 * 1024;
+        const MAX_IMAGE = 5*1024 * 1024;
+        const MAX_VIDEO = 30 * 1024 * 1024;
         if (type === "image" && selected.size > MAX_IMAGE) {
             toast({ title: "Image is too large (max 1 MB)." });
             return;
