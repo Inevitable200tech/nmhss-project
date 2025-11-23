@@ -208,7 +208,7 @@ export default function StudentsUploadPage(): JSX.Element {
                                 disabled={uploading || cooldown > 0}
                             />
                             <div className="text-xs text-gray-500 mt-1">
-                                {type === "image" ? "Images up to 1 MB." : "Videos up to 25 MB."}
+                                {type === "image" ? "Images up to 5 MB." : "Videos up to 30 MB."}
                             </div>
                         </div>
 
