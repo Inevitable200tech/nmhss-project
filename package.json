@@ -9,6 +9,9 @@
     "dev": "cross-env NODE_ENV=development vite"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.937.0",
+    "@aws-sdk/lib-storage": "^3.937.0",
+    "@aws-sdk/s3-request-presigner": "^3.937.0",
     "@babel/helpers": "^7.28.3",
     "@esbuild-kit/core-utils": "^3.3.2",
     "@esbuild-kit/esm-loader": "^2.6.5",

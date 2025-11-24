@@ -8,7 +8,7 @@ export default function AdminPage() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [hasMediaDb, setHasMediaDb] = useState(false);
+  // REMOVED: const [hasMediaDb, setHasMediaDb] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -18,20 +18,7 @@ export default function AdminPage() {
         .then((res) => {
           if (res.ok) {
             setLoggedIn(true);
-
-            // ✅ fetch media DBs after verifying login
-            fetch("/api/admin/media-dbs", {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                if (Array.isArray(data) && data.length > 0) {
-                  setHasMediaDb(true);
-                } else {
-                  setHasMediaDb(false);
-                }
-              })
-              .catch(() => setHasMediaDb(false));
+            // REMOVED: The logic to fetch /api/admin/media-dbs and set hasMediaDb
           } else {
             setToken("");
             localStorage.removeItem("adminToken");
@@ -140,45 +127,45 @@ export default function AdminPage() {
       >
         <h2 className="text-xl font-bold mb-4 hidden sm:block">Admin Panel</h2>
         <ul className="space-y-2">
-          {/* Disable all except Manage Media DBs */}
+          {/* Sidebar items now fully enabled */}
           <li>
             <a href="/admin-about">
-              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+              <Button variant="outline" className="w-full text-left">
                 Manage About Section
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-events">
-              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+              <Button variant="outline" className="w-full text-left">
                 Manage Events
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-news">
-              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+              <Button variant="outline" className="w-full text-left">
                 Manage News
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-gallery">
-              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+              <Button variant="outline" className="w-full text-left">
                 Manage Gallery
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-intro">
-              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+              <Button variant="outline" className="w-full text-left">
                 Manage Introsection Video
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-faculty">
-              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+              <Button variant="outline" className="w-full text-left">
                 Edit Faculty Section
               </Button>
             </a>
@@ -192,14 +179,14 @@ export default function AdminPage() {
           </li>
           <li>
             <a href="/admin-students-setting">
-              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+              <Button variant="outline" className="w-full text-left">
                 Manage Students Media
               </Button>
             </a>
           </li>
           <li>
             <a href="/admin-teachers-edit">
-              <Button variant="outline" className="w-full text-left" disabled={!hasMediaDb}>
+              <Button variant="outline" className="w-full text-left">
                 Manage Teacher's Section
               </Button>
             </a>
@@ -215,9 +202,7 @@ export default function AdminPage() {
         <div className="container mx-auto max-w-2xl">
           <h1 className="text-3xl font-bold mb-4">Welcome to Admin Dashboard</h1>
           <p className="text-gray-500">
-            {hasMediaDb
-              ? "Use the sidebar to manage content."
-              : "⚠ Please configure a Media Database first. Other sections are locked until then."}
+            Use the sidebar to manage content.
           </p>
         </div>
       </div>

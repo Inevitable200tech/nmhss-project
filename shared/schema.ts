@@ -15,7 +15,7 @@ export type InsertContactMessage = z.infer<typeof insertContactMessageSchema>;
 
 // ---------------- EVENT MANAGEMENT ----------------
 
-// Frontend-specific types (plain objects without Mongoose Document properties)
+// Frontend-specific types
 export interface ClientEvent {
   id: string;
   title: string;
@@ -37,7 +37,6 @@ export interface Event extends Document {
 }
 
 export const eventSchema = new Schema<Event>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
   date: { type: Date, required: true },
@@ -49,7 +48,7 @@ export const eventSchema = new Schema<Event>({
 export const insertEventSchema = z.object({
   title: z.string(),
   description: z.string(),
-  date: z.preprocess((val) => new Date(val as string), z.date()), // 👈 auto converts string → Date
+  date: z.preprocess((val) => new Date(val as string), z.date()),
   time: z.string(),
   category: z.string(),
 });
@@ -57,14 +56,13 @@ export const insertEventSchema = z.object({
 
 // ---------------- NEWS MANAGEMENT ----------------
 
-
 export interface ClientNews {
   id: string;
   title: string;
   content: string;
   type: string;
   createdAt: Date;
-  expiresAt?: Date | null; // ✅ frontend expiry
+  expiresAt?: Date | null;
 }
 
 export interface News extends Document {
@@ -73,25 +71,24 @@ export interface News extends Document {
   content: string;
   type: string;
   createdAt: Date;
-  expiresAt?: Date | null; // ✅ optional expiry
+  expiresAt?: Date | null;
 }
 
 export const newsSchema = new Schema<News>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   title: { type: String, required: true },
   content: { type: String, required: true },
   type: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
-  expiresAt: { type: Date, required: false }, // ✅ optional expiry
+  expiresAt: { type: Date, required: false },
 }, { timestamps: false });
 
 export const insertNewsSchema = z.object({
   title: z.string(),
   content: z.string(),
-  type: z.enum(["announcement", "news", "update"]), // restrict allowed values
+  type: z.enum(["announcement", "news", "update"]),
   expiresAt: z.preprocess(
     (val) => {
-      if (!val || val === "") return null; // empty → null
+      if (!val || val === "") return null;
       return new Date(val as string);
     },
     z.date().nullable()
@@ -99,7 +96,8 @@ export const insertNewsSchema = z.object({
 });
 
 
-// ---------------- SECTIONS  MANAGEMENT ----------------
+// ---------------- SECTIONS MANAGEMENT ----------------
+
 export interface Section extends Document {
   id: string;
   name: string;
@@ -119,7 +117,8 @@ export interface Section extends Document {
   stats?: { label: string; value: string; description: string }[];
 }
 
-export const SectionSchema = new Schema({
+// Added <Section> generic for type safety
+export const SectionSchema = new Schema<Section>({
   name: { type: String, required: true, unique: true },
   title: { type: String, required: true },
   subtitle: { type: String },
@@ -184,21 +183,19 @@ export const insertSectionSchema = z.object({
 
 // ---------------- MEDIA MANAGEMENT ----------------
 
-// Replace the Media interface and schema in schema.ts
 export interface Media extends Document {
   id: string;
   filename: string;
   contentType: string;
-  type: "image" | "video" | "audio"; // Add "audio" to enum
+  type: "image" | "video" | "audio";
   uploadedAt: Date;
   dbName: string;
 }
 
 const mediaSchema = new Schema<Media>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   filename: { type: String, required: true },
   contentType: { type: String, required: true },
-  type: { type: String, enum: ["image", "video", "audio"], required: true }, // Add "audio" to enum
+  type: { type: String, enum: ["image", "video", "audio"], required: true },
   uploadedAt: { type: Date, default: Date.now },
   dbName: { type: String, required: true },
 });
@@ -211,19 +208,14 @@ export interface MediaDatabase extends Document {
 }
 
 const mediaDatabaseSchema = new Schema<MediaDatabase>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   uri: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
 });
 
-export const MediaDatabaseModel = mongoose.model<MediaDatabase>(
-  "MediaDatabase", mediaDatabaseSchema
-);
-
 
 // ---------------- GALLERY IMAGES & VIDEOS ----------------
-// Add to schema.ts
+
 export interface GalleryImage extends Document {
   id: string;
   mediaId: string;
@@ -239,30 +231,28 @@ export interface GalleryVideo extends Document {
 }
 
 export const galleryImageSchema = new Schema<GalleryImage>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   mediaId: { type: String, required: true },
   url: { type: String, required: true },
   uploadedAt: { type: Date, required: true },
 });
 
 export const galleryVideoSchema = new Schema<GalleryVideo>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   mediaId: { type: String, required: true },
   url: { type: String, required: true },
   uploadedAt: { type: Date, required: true },
 });
 
 // ---------------- HERO VIDEO ----------------
+
 export interface HeroVideo extends Document {
   id: string;
-  mediaId: string;   // ✅ link to Media collection
-  url: string;       // e.g. "/api/media/:id"
+  mediaId: string;
+  url: string;
   uploadedAt: Date;
 }
 
 export const heroVideoSchema = new Schema<HeroVideo>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
-  mediaId: { type: String, required: true },    // ✅ must store media id
+  mediaId: { type: String, required: true },
   url: { type: String, required: true },
   uploadedAt: { type: Date, default: Date.now },
 });
@@ -292,7 +282,6 @@ export interface FacultySection extends Document {
 }
 
 export const facultySectionSchema = new Schema<FacultySection>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   title: { type: String, required: true },
   subtitle: { type: String, required: true },
   stats: [
@@ -314,7 +303,7 @@ export const facultySectionSchema = new Schema<FacultySection>({
 }, { timestamps: false });
 
 
-// ✅ keep your existing Zod schema for validation
+// Zod schema for validation
 export const FacultyStatSchema = z.object({
   label: z.string(),
   value: z.string(),
@@ -356,10 +345,10 @@ export type LeanStudentMedia = Omit<StudentMedia, "id"> & {
 // Mongoose document type
 export type StudentMediaDoc = Omit<StudentMedia, "id"> & Document;
 
-// Zod validation schema for StudentMedia input
+// Zod validation schema
 export const StudentMediaZodSchema = z.object({
-  mediaId: z.string().min(1),                 // Non-empty string
-  url: z.string().min(1),                   // Non-empty string
+  mediaId: z.string().min(1),
+  url: z.string().min(1),
   type: z.enum(["image", "video"]),
   batch: z.enum(["+1", "+2"]),
   year: z.number().int().min(1900),
@@ -382,14 +371,10 @@ export const studentMediaSchema = new Schema<StudentMediaDoc>(
 // Compound index for performance
 studentMediaSchema.index({ type: 1, batch: 1, year: 1 });
 
-// Mongoose model export
-export const StudentMediaModel =
-  mongoose.models.StudentMedia ||
-  mongoose.model<StudentMediaDoc>("StudentMedia", studentMediaSchema);
 
 // ---------------- TEACHER MANAGEMENT ----------------
 
-// Frontend-specific type (plain object without Mongoose Document properties)
+// Frontend-specific type
 export interface ClientTeacher {
   id: string;
   name: string;
@@ -410,7 +395,6 @@ export interface Teacher extends Document {
 }
 
 export const teacherSchema = new Schema<Teacher>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   name: { type: String, required: true },
   subject: { type: String, required: true },
   bio: { type: String, required: true },
@@ -425,6 +409,7 @@ export const insertTeacherSchema = z.object({
   mediaId: z.string().min(1, "Media ID is required"),
   imageUrl: z.string().min(1, "Image URL is required"),
 });
+
 export const teacherInputSchema = z.object({
   name: z.string().min(1, "Name is required"),
   subject: z.string().min(1, "Subject is required"),
@@ -432,18 +417,26 @@ export const teacherInputSchema = z.object({
 });
 
 export type TeacherInput = z.infer<typeof teacherInputSchema>;
-// Add to export models & types section
 export type InsertTeacher = z.infer<typeof insertTeacherSchema>;
-export const TeacherModel = mongoose.model<Teacher>("Teacher", teacherSchema);
+
+
 // ---------------- EXPORT MODELS & TYPES ----------------
 
-export type FacultySectionInput = z.infer<typeof FacultySectionSchema>;
-export const FacultySectionModel = mongoose.model<FacultySection>("FacultySection", facultySectionSchema);
-export const SectionModel = mongoose.model("Section", SectionSchema);
-export const GalleryImageModel = mongoose.model<GalleryImage>("GalleryImage", galleryImageSchema);
-export const GalleryVideoModel = mongoose.model<GalleryVideo>("GalleryVideo", galleryVideoSchema);
-export const HeroVideoModel = mongoose.model<HeroVideo>("HeroVideo", heroVideoSchema);
-export const MediaModel = mongoose.model<Media>("Media", mediaSchema);
+// Types
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type InsertNews = z.infer<typeof insertNewsSchema>;
 export type InsertSection = z.infer<typeof insertSectionSchema>;
+export type FacultySectionInput = z.infer<typeof FacultySectionSchema>;
+
+// Models (Using singleton pattern for Next.js/Serverless)
+export const EventModel = mongoose.models.Event || mongoose.model<Event>("Event", eventSchema);
+export const NewsModel = mongoose.models.News || mongoose.model<News>("News", newsSchema);
+export const SectionModel = mongoose.models.Section || mongoose.model<Section>("Section", SectionSchema);
+export const MediaModel = mongoose.models.Media || mongoose.model<Media>("Media", mediaSchema);
+export const MediaDatabaseModel = mongoose.models.MediaDatabase || mongoose.model<MediaDatabase>("MediaDatabase", mediaDatabaseSchema);
+export const GalleryImageModel = mongoose.models.GalleryImage || mongoose.model<GalleryImage>("GalleryImage", galleryImageSchema);
+export const GalleryVideoModel = mongoose.models.GalleryVideo || mongoose.model<GalleryVideo>("GalleryVideo", galleryVideoSchema);
+export const HeroVideoModel = mongoose.models.HeroVideo || mongoose.model<HeroVideo>("HeroVideo", heroVideoSchema);
+export const FacultySectionModel = mongoose.models.FacultySection || mongoose.model<FacultySection>("FacultySection", facultySectionSchema);
+export const StudentMediaModel = mongoose.models.StudentMedia || mongoose.model<StudentMediaDoc>("StudentMedia", studentMediaSchema);
+export const TeacherModel = mongoose.models.Teacher || mongoose.model<Teacher>("Teacher", teacherSchema);

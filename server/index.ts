@@ -3,7 +3,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { loadMediaDBs } from "./mediaDb";
 import fs from "fs";
 import path from "path";
 import cookieParser from "cookie-parser";
@@ -70,7 +69,6 @@ app.use((req, res, next) => {
     log(`Connected to MongoDB at ${mongoUrl}`);
 
     // Initialize secondary media DB connections
-    await loadMediaDBs();
     log("[INIT] Media DB connections loaded");
   } catch (err) {
     log(`Failed to connect to MongoDB: ${(err instanceof Error ? err.message : String(err))}`);

@@ -19,7 +19,6 @@ import AboutDevelopers from "@/pages/public-pages/about-developers";
 import AdminGalleryPage from "@/pages/admin-pages/admin-gallery";
 import AdminIntroPage from "@/pages/admin-pages/admin-intro";
 import AdminFaculty from "@/pages/admin-pages/admin-faculty";
-import AdminMediaDBPage from "@/pages/admin-pages/admin-db";
 import AdminStudentsPage from "@/pages/admin-pages/admin-students"
 import StudentsPage from "./pages/public-pages/students";
 import StudentsUploadPage from "./pages/public-pages/students-upload"
@@ -48,7 +47,6 @@ function Router() {
           <Route path="/admin-news" component={AdminNews} />
           <Route path="/admin-intro" component={AdminIntroPage} />
           <Route path="/admin-faculty" component={AdminFaculty} />
-          <Route path="/admin-media-db" component={AdminMediaDBPage} />
           <Route path="/admin-students-setting" component={AdminStudentsPage} />
           <Route path="/admin-teachers-edit" component={AdminTeacherEdit} />
         </div>

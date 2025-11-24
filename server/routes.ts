@@ -14,19 +14,17 @@ import { z } from "zod";
 import jwt from "jsonwebtoken";
 import multer from "multer";
 import { SectionModel } from "@shared/schema";
-import { GridFSBucket } from "mongodb";
 import { MediaModel } from "@shared/schema";
 import mongoose from "mongoose";
-import { Readable } from "stream";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
-import { getBestMediaDB, mediaConnections, reloadMediaDBs } from "./mediaDb";
 import { pendingUploads } from "@shared/memoryUploads";
 import { randomUUID } from "crypto";
 import nodemailer from "nodemailer";
-
-
+import { s3Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from "./s3.ts";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 type UploadTracker = {
   count: number;
@@ -355,6 +353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/gallery/images
+  // POST /api/gallery/images
   app.post("/api/gallery/images", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
@@ -368,40 +367,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .preprocess((val) => (val ? new Date(val as string) : undefined), z.date())
         .parse(req.body.uploadedAt);
 
-      // 1. Pick the best DB for this file
-      const dbConn = await getBestMediaDB(req.file.size);
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+      // --- R2 MODIFICATION START ---
 
-      // 2. Create a Readable stream from the multer buffer
-      const readableStream = Readable.from(req.file.buffer);
+      // 1. Generate a unique ID and R2 Key
+      const mediaId = new mongoose.Types.ObjectId().toString();
+      // Store file under a clean key path (the Key acts as the MediaModel.filename)
+      const Key = `gallery/images/${mediaId}-${req.file.originalname}`;
+      // Construct the public URL (assuming R2_PUBLIC_URL is defined)
+      const url = `${R2_PUBLIC_URL}/${Key}`;
 
-      // 3. Upload to GridFS
-      const writeStream = bucket.openUploadStream(req.file.originalname, {
-        contentType: req.file.mimetype,
-        metadata: { type: "image", uploadedAt },
+      // 2. Upload to R2
+      const command = new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+        Metadata: {
+          type: "image",
+          uploadedat: uploadedAt.toISOString(),
+        },
       });
 
-      readableStream.pipe(writeStream);
+      await s3Client.send(command);
 
-      const mediaId = await new Promise<string>((resolve, reject) => {
-        writeStream.on("finish", () => resolve(writeStream.id.toString()));
-        writeStream.on("error", reject);
-      });
-
-      // 4. Store metadata in main DB
+      // 3. Store metadata in main DB (using the unique ID and R2 Key)
       await MediaModel.create({
-        _id: new mongoose.Types.ObjectId(mediaId),
-        filename: req.file.originalname,
+        _id: mediaId, // Use the unique ID for easy lookups
+        filename: Key, // Store the R2 Key/path here
         contentType: req.file.mimetype,
         type: "image",
         uploadedAt,
-        dbName: dbConn.name, // ✅ track where file was stored
+        dbName: "r2", // Tracking placeholder for storage type
       });
 
-      // 5. Store gallery entry in main DB
-      const image = await storage.createGalleryImage(mediaId, `/api/media/${mediaId}`, uploadedAt);
+      // 4. Store gallery entry in main DB (using the unique ID and public URL)
+      const image = await storage.createGalleryImage(mediaId, url, uploadedAt);
 
-      // 6. Respond
+      // --- R2 MODIFICATION END ---
+
+      // 5. Respond
       res.json({ id: image.id, url: image.url, uploadedAt: image.uploadedAt });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -414,6 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/gallery/videos
   // POST /api/gallery/videos
   app.post("/api/gallery/videos", requireAuth, upload.single("file"), async (req, res) => {
     try {
@@ -428,40 +433,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .preprocess((val) => (val ? new Date(val as string) : undefined), z.date())
         .parse(req.body.uploadedAt);
 
-      // 1. Pick the best DB for this file
-      const dbConn = await getBestMediaDB(req.file.size);
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+      // --- R2 MODIFICATION START ---
 
-      // 2. Create a Readable stream from the multer buffer
-      const readableStream = Readable.from(req.file.buffer);
+      // 1. Generate a unique ID and R2 Key
+      const mediaId = new mongoose.Types.ObjectId().toString();
+      // Store file under a clean key path (the Key acts as the MediaModel.filename)
+      const Key = `gallery/videos/${mediaId}-${req.file.originalname}`;
+      // Construct the public URL (assuming R2_PUBLIC_URL is defined)
+      const url = `${R2_PUBLIC_URL}/${Key}`;
 
-      // 3. Upload to GridFS
-      const writeStream = bucket.openUploadStream(req.file.originalname, {
-        contentType: req.file.mimetype,
-        metadata: { type: "video", uploadedAt },
+      // 2. Upload to R2
+      const command = new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+        Metadata: {
+          type: "video",
+          uploadedat: uploadedAt.toISOString(),
+        },
       });
 
-      readableStream.pipe(writeStream);
+      await s3Client.send(command);
 
-      const mediaId = await new Promise<string>((resolve, reject) => {
-        writeStream.on("finish", () => resolve(writeStream.id.toString()));
-        writeStream.on("error", reject);
-      });
-
-      // 4. Store metadata in main DB
+      // 3. Store metadata in main DB (using the unique ID and R2 Key)
       await MediaModel.create({
-        _id: new mongoose.Types.ObjectId(mediaId),
-        filename: req.file.originalname,
+        _id: mediaId, // Use the unique ID for easy lookups
+        filename: Key, // Store the R2 Key/path here
         contentType: req.file.mimetype,
         type: "video",
         uploadedAt,
-        dbName: dbConn.name, // ✅ track which DB file was stored in
+        dbName: "r2", // Tracking placeholder for storage type
       });
 
-      // 5. Store gallery entry in main DB
-      const video = await storage.createGalleryVideo(mediaId, `/api/media/${mediaId}`, uploadedAt);
+      // 4. Store gallery entry in main DB (using the unique ID and public URL)
+      const video = await storage.createGalleryVideo(mediaId, url, uploadedAt);
 
-      // 6. Respond
+      // --- R2 MODIFICATION END ---
+
+      // 5. Respond
       res.json({ id: video.id, url: video.url, uploadedAt: video.uploadedAt });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -474,32 +484,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
+  // DELETE /api/gallery/images/:id
   // DELETE /api/gallery/images/:id
   app.delete("/api/gallery/images/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteGalleryImage(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Image not found" });
 
-      // 1. Find Media metadata
+      // 1. Find Media metadata using the ID of the deleted gallery entry
       const mediaDoc = await MediaModel.findById(deleted.mediaId);
-      if (!mediaDoc) {
-        return res.status(404).json({ error: "Media metadata not found" });
+
+      // --- R2 MODIFICATION START ---
+
+      if (mediaDoc) {
+        // The R2 Key/path is stored in the filename field
+        const Key = mediaDoc.filename;
+
+        // 2. Delete file from R2
+        const deleteCommand = new DeleteObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: Key,
+        });
+
+        await s3Client.send(deleteCommand);
+
+        // 3. Delete Media metadata from main DB
+        await MediaModel.deleteOne({ _id: mediaDoc._id });
       }
+      // Note: If mediaDoc is not found, we assume the file was already cleaned up
+      // and only the gallery entry needed removal, which is handled above.
 
-      // 2. Get correct DB connection
-      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
-      if (!dbConn) {
-        return res.status(500).json({ error: "Media DB not connected" });
-      }
-
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
-
-      // 3. Delete file from GridFS using deleted.mediaId
-      await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
-
-      // 4. Delete Media metadata from main DB
-      await MediaModel.deleteOne({ _id: mediaDoc._id });
+      // --- R2 MODIFICATION END ---
 
       res.json({ success: true, id: req.params.id });
     } catch (error) {
@@ -511,32 +526,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // DELETE /api/gallery/videos/:id
+  // DELETE /api/gallery/videos/:id
   app.delete("/api/gallery/videos/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteGalleryVideo(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Video not found" });
 
-      // 1. Find Media metadata
+      // 1. Find Media metadata using the ID of the deleted gallery entry
       const mediaDoc = await MediaModel.findById(deleted.mediaId);
-      if (!mediaDoc) {
-        return res.status(404).json({ error: "Media metadata not found" });
+
+      // --- R2 MODIFICATION START ---
+
+      if (mediaDoc) {
+        // The R2 Key/path is stored in the filename field
+        const Key = mediaDoc.filename;
+
+        // 2. Delete file from R2
+        const deleteCommand = new DeleteObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: Key,
+        });
+
+        await s3Client.send(deleteCommand);
+
+        // 3. Delete Media metadata from main DB
+        await MediaModel.deleteOne({ _id: mediaDoc._id });
       }
+      // --- R2 MODIFICATION END ---
 
-      // 2. Get correct DB connection
-      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
-      if (!dbConn) {
-        return res.status(500).json({ error: "Media DB not connected" });
-      }
-
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
-
-      // 3. Delete file from GridFS using deleted.mediaId
-      await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
-
-      // 4. Delete Media metadata from main DB
-      await MediaModel.deleteOne({ _id: mediaDoc._id });
-
-      // 5. Respond
+      // 4. Respond
       res.json({ success: true, id: req.params.id });
     } catch (error) {
       console.error(error);
@@ -544,11 +562,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
   // ---------------- MEDIA ROUTES ----------------
 
   // Replace the GET /api/media/:id route
-  app.get("/api/media/:id", async (req, res) => {
+app.get("/api/media/:id", async (req, res) => {
     try {
       // 1. Find metadata in main DB
       const mediaDoc = await MediaModel.findById(req.params.id);
@@ -556,54 +573,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "File not found (metadata)" });
       }
 
-      // 2. Get correct DB connection
-      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
-      if (!dbConn) {
-        return res.status(500).json({ message: "Media DB not connected" });
-      }
+      // --- R2 MODIFICATION START ---
 
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+      // The R2 Key/path is stored in the filename field
+      const Key = mediaDoc.filename;
 
-      // 3. Get file details
-      const files = await bucket
-        .find({ _id: new mongoose.Types.ObjectId(req.params.id) })
-        .toArray();
+      // 2. Create the command to get the object
+      const command = new GetObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key,
+      });
 
-      if (!files[0]) {
-        return res.status(404).json({ message: "File not found in GridFS" });
-      }
+      // 3. Generate a signed URL for the client to directly access the file from R2
+      // We set a short expiration (e.g., 60 seconds) for security.
+      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 60 });
 
-      const file = files[0];
-      const fileSize = file.length;
-      const range = req.headers.range;
-
-      // 4. Add caching for faster reloads
+      // 4. Redirect the client to the signed R2 URL
       res.set("Cache-Control", "public, max-age=31536000, immutable");
+      res.redirect(302, signedUrl);
 
-      // 5. Handle range requests (video/audio streaming)
-      if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunkSize = end - start + 1;
+      // --- R2 MODIFICATION END ---
 
-        res.writeHead(206, {
-          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-          "Accept-Ranges": "bytes",
-          "Content-Length": chunkSize,
-          "Content-Type": file.contentType,
-        });
-
-        bucket
-          .openDownloadStream(new mongoose.Types.ObjectId(req.params.id), { start, end: end + 1 })
-          .pipe(res);
-      } else {
-        res.writeHead(200, {
-          "Content-Length": fileSize,
-          "Content-Type": file.contentType,
-        });
-        bucket.openDownloadStream(new mongoose.Types.ObjectId(req.params.id)).pipe(res);
-      }
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: (err as Error).message });
@@ -612,8 +602,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // POST /api/media
-  // Modified endpoint
-  app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
+// Modified endpoint
+app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -634,45 +624,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mimeType.startsWith("audio/") ? "audio" :
           "video";
 
-      // 1. Pick the best DB for this file
-      const dbConn = await getBestMediaDB(req.file.size);
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+      // --- R2 MODIFICATION START ---
 
-      // 2. Create a Readable stream from the multer buffer
-      const readableStream = Readable.from(req.file.buffer);
+      // 1. Generate unique ID and R2 Key
+      const mediaId = new mongoose.Types.ObjectId().toString();
+      const Key = `${mediaType}s/${mediaId}-${req.file.originalname}`;
 
-      // 3. Upload to GridFS
-      const writeStream = bucket.openUploadStream(req.file.originalname, {
-        contentType: req.file.mimetype,
-        metadata: {
+      // 2. Upload to R2
+      const command = new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+        Metadata: {
           type: mediaType,
-          uploadedAt: new Date(),
+          uploadedat: new Date().toISOString(),
         },
       });
 
-      readableStream.pipe(writeStream);
+      await s3Client.send(command);
 
-      const mediaId = await new Promise<string>((resolve, reject) => {
-        writeStream.on("finish", () => resolve(writeStream.id.toString()));
-        writeStream.on("error", reject);
-      });
-
-      // 4. Store metadata in main DB
+      // 3. Store metadata in main DB
       await MediaModel.create({
-        _id: new mongoose.Types.ObjectId(mediaId),
-        filename: req.file.originalname,
+        _id: mediaId,
+        filename: Key, // Store the R2 Key here for retrieval/deletion
         contentType: req.file.mimetype,
         type: mediaType,
         uploadedAt: new Date(),
-        dbName: dbConn.name,
+        dbName: "r2", // Tracking placeholder for storage type
       });
 
-      // 5. Respond to client
+      // --- R2 MODIFICATION END ---
+
+      // 4. Respond to client
       res.json({
         id: mediaId,
         filename: req.file.originalname,
         type: mediaType,
-        url: `/api/media/${mediaId}`,
+        url: `/api/media/${mediaId}`, // URL points to the secure API endpoint
       });
     } catch (err) {
       console.error(err);
@@ -681,7 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/media/:id
-  app.delete("/api/media/:id", requireAuth, async (req, res) => {
+app.delete("/api/media/:id", requireAuth, async (req, res) => {
     try {
       // 1. Find metadata in main DB
       const mediaDoc = await MediaModel.findById(req.params.id);
@@ -690,30 +679,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "File not found (metadata)" });
       }
 
-      // 2. Get the correct DB connection
-      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
-      if (!dbConn) {
-        return res.status(500).json({ message: "Media DB not connected" });
-      }
+      // --- R2 MODIFICATION START ---
 
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+      // The R2 Key is stored in the filename field
+      const Key = mediaDoc.filename;
 
-      // 3. Check file exists in GridFS
-      const files = await bucket
-        .find({ _id: new mongoose.Types.ObjectId(req.params.id) })
-        .toArray();
-      if (!files[0]) {
-        console.error("File not found in GridFS");
-        return res.status(404).json({ message: "File not found in GridFS" });
-      }
+      // 2. Delete file from R2
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: Key,
+      });
 
-      // 4. Delete from GridFS
-      await bucket.delete(new mongoose.Types.ObjectId(req.params.id));
+      await s3Client.send(deleteCommand);
 
-      // 5. Delete Media metadata from main DB
-      await MediaModel.deleteOne({ _id: new mongoose.Types.ObjectId(req.params.id) });
+      // 3. Delete Media metadata from main DB
+      await MediaModel.deleteOne({ _id: mediaDoc._id });
 
-      // 6. Remove references from Sections
+      // --- R2 MODIFICATION END ---
+
+      // 4. Remove references from Sections (This logic remains intact)
       await SectionModel.updateMany(
         { "images.mediaId": req.params.id },
         { $pull: { images: { mediaId: req.params.id } } }
@@ -756,30 +740,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // DELETE /api/hero-video/:id
-  app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
+app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
     try {
+      // 1. Delete the HeroVideo entry from the main DB
       const deleted = await storage.deleteHeroVideo(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Video not found" });
 
-      // 1. Find Media metadata
+      // 2. Find Media metadata using the mediaId (which references the R2 Key)
       const mediaDoc = await MediaModel.findById(deleted.mediaId);
-      if (!mediaDoc) {
-        return res.status(404).json({ error: "Media metadata not found" });
+
+      // --- R2 MODIFICATION START ---
+
+      if (mediaDoc) {
+        // The R2 Key/path is stored in the filename field
+        const Key = mediaDoc.filename;
+
+        // 3. Delete file from R2
+        const deleteCommand = new DeleteObjectCommand({
+          Bucket: R2_BUCKET_NAME,
+          Key: Key,
+        });
+
+        // Send the delete command to the R2 client
+        await s3Client.send(deleteCommand);
+
+        // 4. Delete Media metadata from the main DB
+        await MediaModel.deleteOne({ _id: mediaDoc._id });
+      } else {
+        // Log a warning if the media metadata is missing, but continue since the hero entry was deleted.
+        console.warn(`Media metadata not found for hero video mediaId: ${deleted.mediaId}`);
       }
-
-      // 2. Get correct DB connection
-      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
-      if (!dbConn) {
-        return res.status(500).json({ error: "Media DB not connected" });
-      }
-
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
-
-      // 3. Delete file from GridFS using mediaId
-      await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
-
-      // 4. Delete Media metadata from main DB
-      await MediaModel.deleteOne({ _id: mediaDoc._id });
+      
+      // --- R2 MODIFICATION END ---
 
       res.json({ success: true, id: req.params.id });
     } catch (error) {
@@ -857,122 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  //------------------- MEDIA DATABASE ROUTES ----------------
-
-  // GET /api/admin/media-dbs
-  app.get("/api/admin/media-dbs", requireAuth, async (_req, res) => {
-    try {
-      const mediaDbs = await MediaDatabaseModel.find().lean();
-
-      const mediaDbsWithStats = await Promise.all(
-        mediaDbs.map(async (db) => {
-          let logicalUsedMB: string | null = null;
-          let allocatedMB: string | null = null;
-
-          try {
-            const conn = mediaConnections.get(db.name)?.conn;
-            if (conn && conn.db) {
-              try {
-                const stats = await conn.db.command({ dbStats: 1 });
-                logicalUsedMB = (stats.dataSize / (1024 * 1024)).toFixed(2);
-                allocatedMB = (stats.storageSize / (1024 * 1024)).toFixed(2);
-
-                console.log(
-                  `[MEDIA-DB][${db.name}] dbStats OK → logical=${logicalUsedMB} MB, allocated=${allocatedMB} MB`
-                );
-              } catch (dbStatsErr) {
-                console.warn(`[MEDIA-DB][${db.name}] dbStats failed, falling back to collStats`, dbStatsErr);
-
-                const chunkStats = await conn.db.command({ collStats: "media.chunks" });
-                logicalUsedMB = (chunkStats.size / (1024 * 1024)).toFixed(2);
-                allocatedMB = (chunkStats.storageSize / (1024 * 1024)).toFixed(2);
-
-                console.log(
-                  `[MEDIA-DB][${db.name}] collStats fallback → logical=${logicalUsedMB} MB, allocated=${allocatedMB} MB`
-                );
-              }
-            }
-          } catch (err) {
-            console.error(`[MEDIA-DB][${db.name}] ERROR computing stats:`, err);
-          }
-
-          return {
-            id: db._id.toString(),
-            name: db.name,
-            uri: db.uri,
-            createdAt: db.createdAt,
-            logicalUsedMB,
-            allocatedMB,
-            maxMB: 512,
-          };
-        })
-      );
-
-      console.log(`[MEDIA-DB] Returning stats for ${mediaDbsWithStats.length} DB(s)`);
-      res.json(mediaDbsWithStats);
-    } catch (err) {
-      console.error(`[MEDIA-DB] Failed to fetch media databases`, err);
-      res.status(500).json({ error: "Failed to fetch media databases" });
-    }
-  });
-
-  // POST /api/admin/media-dbs
-  app.post("/api/admin/media-dbs", requireAuth, async (req, res) => {
-    try {
-      const { uri } = req.body;
-      if (!uri) return res.status(400).json({ error: "URI is required" });
-
-      const count = await MediaDatabaseModel.countDocuments();
-      if (count >= 80) {
-        return res.status(400).json({ error: "Maximum of 80 media DBs reached" });
-      }
-
-      // Test connection
-      const conn = await mongoose.createConnection(uri).asPromise();
-      const dbName = conn.name;
-      await conn.close();
-
-      const mediaDb = await MediaDatabaseModel.create({ uri, name: dbName });
-
-      await reloadMediaDBs(); // Reload all connections in memory
-
-      res.status(201).json({
-        id: mediaDb._id.toString(),
-        name: mediaDb.name,
-        uri: mediaDb.uri,
-        createdAt: mediaDb.createdAt,
-        totalSlots: 80,
-        usedSlots: count + 1,
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(400).json({ error: "Invalid URI or unable to connect" });
-    }
-  });
-
-  // DELETE /api/admin/media-dbs/:id
-  app.delete("/api/admin/media-dbs/:id", requireAuth, async (req, res) => {
-    try {
-      const dbEntry = await MediaDatabaseModel.findById(req.params.id);
-      if (!dbEntry) return res.status(404).json({ error: "Media database not found" });
-
-      const conn = mediaConnections.get(dbEntry.name)?.conn;
-      if (conn && conn.db) {
-        const filesCount = await conn.db.collection("media.files").countDocuments();
-        if (filesCount > 0) {
-          return res.status(400).json({ error: "Cannot delete non-empty database" });
-        }
-      }
-
-      await MediaDatabaseModel.findByIdAndDelete(req.params.id);
-      await reloadMediaDBs();
-
-      res.json({ success: true });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Failed to delete media database" });
-    }
-  });
+  
 
   //------------------- STUDENTS MEDIA MANAGEMENT ----------------
 
@@ -1010,22 +887,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Delete StudentMedia + associated file
-  app.delete("/api/admin-students/:id", requireAuth, async (req, res) => {
+  // Delete StudentMedia + associated file
+app.delete("/api/admin-students/:id", requireAuth, async (req, res) => {
     try {
+      // 1. Delete the StudentMedia database entry
       const deleted = await storage.deleteStudentMedia(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Student media not found" });
 
+      // 2. Find Media metadata using the mediaId
       const mediaDoc = await MediaModel.findById(deleted.mediaId);
-      if (!mediaDoc) return res.status(404).json({ error: "Associated media not found" });
+      if (!mediaDoc) {
+        console.warn(`Associated media metadata not found for Student Media ID: ${req.params.id}. Database record deleted.`);
+        return res.json({ success: true, id: req.params.id, warning: "Media metadata was missing, only Student Media record was deleted." });
+      }
 
-      const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
-      if (!dbConn) return res.status(500).json({ error: "Media DB not connected" });
+      // --- R2 MODIFICATION START ---
 
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+      // The R2 Key/path is stored in the filename field
+      const Key = mediaDoc.filename;
 
-      await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
+      // 3. Delete file from R2
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: Key,
+      });
 
+      await s3Client.send(deleteCommand);
+
+      // 4. Delete Media metadata from main DB
       await MediaModel.deleteOne({ _id: mediaDoc._id });
+
+      // --- R2 MODIFICATION END ---
 
       res.json({ success: true, id: req.params.id });
     } catch (err) {
@@ -1125,43 +1017,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!pending) return res.status(404).json({ error: "Upload not found" });
 
     try {
-      // 1. Pick the best DB for this file
-      const dbConn = await getBestMediaDB(pending.file.length);
-      const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
+      // --- R2 MODIFICATION START ---
 
-      const readableStream = Readable.from(pending.file);
-      const writeStream = bucket.openUploadStream(pending.filename, {
-        contentType: pending.mimeType,
-        metadata: { type: pending.type, uploadedAt: new Date() },
+      // 1. Generate unique ID and R2 Key
+      const mediaId = new mongoose.Types.ObjectId().toString();
+      // Store file under a clean key path (the Key acts as the MediaModel.filename)
+      const Key = `${pending.type}s/${mediaId}-${pending.filename}`;
+
+      // 2. Upload the file buffer to R2
+      const command = new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key,
+        Body: pending.file, // The file is a buffer from memory
+        ContentType: pending.mimeType,
+        Metadata: {
+          type: pending.type,
+          uploadedat: new Date().toISOString(),
+        },
       });
 
-      const mediaId = await new Promise<string>((resolve, reject) => {
-        writeStream.on("finish", () => resolve(writeStream.id.toString()));
-        writeStream.on("error", reject);
-        readableStream.pipe(writeStream);
-      });
+      await s3Client.send(command);
 
-      // 2. Store metadata in MediaModel
+      // 3. Store metadata in MediaModel
       await MediaModel.create({
-        _id: new mongoose.Types.ObjectId(mediaId),
-        filename: pending.filename,
+        _id: mediaId, // Use the unique ID for easy lookups
+        filename: Key, // Store the R2 Key/path here for deletion/retrieval
         contentType: pending.mimeType,
         type: pending.type,
         uploadedAt: new Date(),
-        dbName: dbConn.name,
+        dbName: "r2", // Tracking placeholder for storage type
       });
 
-      // 3. Store in StudentMedia collection
+      // 4. Store in StudentMedia collection
       const studentMedia = await storage.createStudentMedia({
         mediaId,
-        url: `/api/media/${mediaId}`,
+        url: `/api/media/${mediaId}`, // Points to the secure R2 signed URL endpoint
         type: pending.type,
         batch: pending.batch,
         year: pending.year,
         description: pending.description,
       });
 
-      // 4. Remove from memory
+      // --- R2 MODIFICATION END ---
+
+      // 5. Remove from memory
       pendingUploads.delete(req.params.tempId);
 
       res.json({ success: true, studentMedia });
@@ -1226,7 +1125,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete teacher (admin only)
-  app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
+  // Delete teacher (admin only)
+app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteTeacher(req.params.id);
       if (!deleted) {
@@ -1237,23 +1137,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (deleted.mediaId) {
         // 1. Find Media metadata
         const mediaDoc = await MediaModel.findById(deleted.mediaId);
+
         if (!mediaDoc) {
-          return res.status(404).json({ error: "Media metadata not found" });
+          console.warn(`Associated media metadata not found for Teacher ID: ${req.params.id}. Teacher record deleted.`);
+        } else {
+          // --- R2 MODIFICATION START ---
+
+          // The R2 Key/path is stored in the filename field
+          const Key = mediaDoc.filename;
+
+          // 2. Delete file from R2
+          const deleteCommand = new DeleteObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: Key,
+          });
+
+          // Send the delete command to the R2 client
+          await s3Client.send(deleteCommand);
+
+          // 3. Delete Media metadata from main DB
+          await MediaModel.deleteOne({ _id: mediaDoc._id });
+          
+          // --- R2 MODIFICATION END ---
         }
-
-        // 2. Get correct DB connection
-        const dbConn = mediaConnections.get(mediaDoc.dbName)?.conn;
-        if (!dbConn) {
-          return res.status(500).json({ error: "Media DB not connected" });
-        }
-
-        const bucket = new GridFSBucket(dbConn.db!, { bucketName: "media" });
-
-        // 3. Delete file from GridFS
-        await bucket.delete(new mongoose.Types.ObjectId(deleted.mediaId));
-
-        // 4. Delete Media metadata from main DB
-        await MediaModel.deleteOne({ _id: mediaDoc._id });
       }
 
       res.json({ success: true, id: req.params.id });
