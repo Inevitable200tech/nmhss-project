@@ -171,13 +171,6 @@ export default function AdminPage() {
             </a>
           </li>
           <li>
-            <a href="/admin-media-db">
-              <Button variant="outline" className="w-full text-left">
-                Manage Media Databases
-              </Button>
-            </a>
-          </li>
-          <li>
             <a href="/admin-students-setting">
               <Button variant="outline" className="w-full text-left">
                 Manage Students Media

@@ -21,6 +21,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+// ---------------- START ANTI-CACHING MIDDLEWARE ----------------
+
+// Global middleware to disable caching for all API and HTML responses
+app.use((req, res, next) => {
+    // These headers prevent the browser and any proxies from caching responses.
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    next();
+});
+
+// ---------------- END ANTI-CACHING MIDDLEWARE ----------------
+
 
 app.use((req, res, next) => {
   const start = Date.now();
