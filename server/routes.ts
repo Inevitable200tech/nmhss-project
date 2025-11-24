@@ -565,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ---------------- MEDIA ROUTES ----------------
 
   // Replace the GET /api/media/:id route
-app.get("/api/media/:id", async (req, res) => {
+   app.get("/api/media/:id", async (req, res) => {
     try {
       // 1. Find metadata in main DB
       const mediaDoc = await MediaModel.findById(req.params.id);
@@ -589,7 +589,9 @@ app.get("/api/media/:id", async (req, res) => {
       const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 60 });
 
       // 4. Redirect the client to the signed R2 URL
-      res.set("Cache-Control", "public, max-age=31536000, immutable");
+      // REMOVED: res.set("Cache-Control", "public, max-age=31536000, immutable"); 
+      // The global middleware in index.ts now sets 'no-store, no-cache',
+      // which is correct for a redirect to a short-lived signed URL.
       res.redirect(302, signedUrl);
 
       // --- R2 MODIFICATION END ---
