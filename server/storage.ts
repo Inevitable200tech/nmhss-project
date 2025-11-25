@@ -24,7 +24,11 @@ import {
   StudentMediaZodSchema,
   Teacher,
   InsertTeacher,
-  TeacherModel
+  TeacherModel,
+  AcademicResultDocument,
+  AcademicResultSchema,
+  AcademicResultModel,
+  InsertOrUpdateAcademicResult
 } from "@shared/schema";
 
 
@@ -36,6 +40,8 @@ const NewsModel: Model<News> =
   mongoose.models.News || model<News>("News", newsSchema);
 const SectionModel: Model<Section> =
   mongoose.models.Section || model<Section>("Section", SectionSchema);
+const AcademicResultModelInstance: Model<AcademicResultDocument> =
+  mongoose.models.AcademicResult || model<AcademicResultDocument>("AcademicResult", AcademicResultSchema);
 
 export interface IStorage {
   getEvents(): Promise<Event[]>;
@@ -61,19 +67,23 @@ export interface IStorage {
   getFacultySection(): Promise<FacultySection | null>;
   createOrUpdateFacultySection(data: FacultySection): Promise<FacultySection>;
   deleteFacultySection(): Promise<FacultySection | null>;
-  getStudentMedia(): Promise<StudentMedia[]>;
+  getStudentMedia(filter?: Partial<Pick<StudentMedia, "batch" | "type" | "year">>): Promise<StudentMedia[]>;
   createStudentMedia(entry: Omit<StudentMedia, "id">): Promise<StudentMedia>;
   deleteStudentMedia(id: string): Promise<StudentMedia | null>;
   getTeachers(): Promise<Teacher[]>;
   createTeacher(teacher: InsertTeacher): Promise<Teacher>;
   deleteTeacher(id: string): Promise<Teacher | null>;
+  getAcademicResultByYear(year: number): Promise<AcademicResultDocument | null>;
+  getAllAcademicYears(): Promise<number[]>;
+  createOrUpdateAcademicResult(data: InsertOrUpdateAcademicResult): Promise<AcademicResultDocument>;
+  deleteAcademicResult(year: number): Promise<AcademicResultDocument | null>;
 }
 
 export class MongoStorage implements IStorage {
   
   async getEvents(): Promise<Event[]> {
     const docs = await EventModel.find().sort({ date: 1 }).lean().exec();
-    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as Event[];
+    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as unknown as Event[];
   }
 
   async createEvent(insertEvent: InsertEvent): Promise<Event> {
@@ -101,7 +111,7 @@ export class MongoStorage implements IStorage {
   async deleteEvent(id: string): Promise<Event | null> {
     const doc = await EventModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as Event;
+    return { ...doc, id: doc._id.toString() } as unknown as Event;
   }
 
   async updateEvent(id: string, data: InsertEvent): Promise<Event | null> {
@@ -111,7 +121,7 @@ export class MongoStorage implements IStorage {
       .lean()
       .exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as Event;
+    return { ...doc, id: doc._id.toString() } as unknown as Event;
   }
 
   async getNews(): Promise<News[]> {
@@ -128,7 +138,7 @@ export class MongoStorage implements IStorage {
         ({
           ...doc,
           id: doc._id.toString(),
-        }) as News
+        }) as unknown as News
     );
   }
 
@@ -162,13 +172,13 @@ export class MongoStorage implements IStorage {
     return {
       ...doc,
       id: doc._id.toString(),
-    } as News;
+    } as unknown as News;
   }
 
   async deleteNews(id: string): Promise<News | null> {
     const doc = await NewsModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as News;
+    return { ...doc, id: doc._id.toString() } as unknown as News;
   }
 
   async getSections(name?: string): Promise<Section[]> {
@@ -177,13 +187,11 @@ export class MongoStorage implements IStorage {
     return docs.map((doc) => ({
       ...doc,
       id: doc._id.toString(),
-      images: doc.images as
-        | { mediaId?: string; url: string; mode: "upload" | "url" }[]
-        | undefined,
-      audios: doc.audios as
-        | { mediaId?: string; url: string; mode: "upload" | "url" }[]
-        | undefined,
-    })) as Section[];
+      images: doc.images as { mediaId?: string; url: string; mode: "upload" | "url"; }[] |
+        undefined,
+      audios: doc.audios as { mediaId?: string; url: string; mode: "upload" | "url"; }[] |
+        undefined,
+    })) as unknown as Section[];
   }
 
   async createSection(insertSection: InsertSection): Promise<Section> {
@@ -225,19 +233,18 @@ export class MongoStorage implements IStorage {
     return {
       ...doc,
       id: doc._id.toString(),
-      images: doc.images as
-        | { mediaId?: string; url: string; mode: "upload" | "url" }[]
-        | undefined,
-      audios: doc.audios as
-        | { mediaId?: string; url: string; mode: "upload" | "url" }[]
-        | undefined,
-    } as Section;
+      images: doc.images as { mediaId?: string; url: string; mode: "upload" | "url"; }[] |
+        undefined,
+      audios: doc.audios as { mediaId?: string; url: string; mode: "upload" | "url"; }[] |
+        undefined,
+    } as unknown as Section;
   }
 
 
   async getGalleryImages(): Promise<GalleryImage[]> {
     const docs = await GalleryImageModel.find().sort({ uploadedAt: -1 }).lean().exec();
-    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as GalleryImage[];
+    const typed = docs as unknown as ({ _id: mongoose.Types.ObjectId } & Omit<GalleryImage, "id">)[];
+    return typed.map((doc) => ({ ...doc, id: doc._id.toString() })) as unknown as GalleryImage[];
   }
 
   async createGalleryImage(mediaId: string, url: string, uploadedAt: Date): Promise<GalleryImage> {
@@ -259,12 +266,17 @@ export class MongoStorage implements IStorage {
   async deleteGalleryImage(id: string): Promise<GalleryImage | null> {
     const doc = await GalleryImageModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as GalleryImage;
+    const typedDoc = doc as unknown as { _id: mongoose.Types.ObjectId } & Omit<GalleryImage, "id">;
+    return {
+      ...typedDoc,
+      id: typedDoc._id.toString(),
+    } as GalleryImage;
   }
 
   async getGalleryVideos(): Promise<GalleryVideo[]> {
     const docs = await GalleryVideoModel.find().sort({ uploadedAt: -1 }).lean().exec();
-    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as GalleryVideo[];
+    const typed = docs as unknown as ({ _id: mongoose.Types.ObjectId } & Omit<GalleryVideo, "id">)[];
+    return typed.map((doc) => ({ ...doc, id: doc._id.toString() })) as unknown as GalleryVideo[];
   }
 
   async createGalleryVideo(mediaId: string, url: string, uploadedAt: Date): Promise<GalleryVideo> {
@@ -286,13 +298,21 @@ export class MongoStorage implements IStorage {
   async deleteGalleryVideo(id: string): Promise<GalleryVideo | null> {
     const doc = await GalleryVideoModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as GalleryVideo;
+    const typedDoc = doc as unknown as { _id: mongoose.Types.ObjectId } & Omit<GalleryVideo, "id">;
+    return {
+      ...typedDoc,
+      id: typedDoc._id.toString(),
+    } as GalleryVideo;
   }
 
   async getHeroVideo(): Promise<HeroVideo | null> {
     const doc = await HeroVideoModel.findOne().sort({ uploadedAt: -1 }).lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as HeroVideo;
+    const typedDoc: any = doc;
+    return {
+      ...typedDoc,
+      id: typedDoc._id.toString(),
+    } as HeroVideo;
   }
 
   async createHeroVideo(mediaId: string, url: string, uploadedAt: Date): Promise<HeroVideo> {
@@ -318,13 +338,18 @@ export class MongoStorage implements IStorage {
   async deleteHeroVideo(id: string): Promise<HeroVideo | null> {
     const doc = await HeroVideoModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as HeroVideo;
+    const typedDoc = doc as unknown as { _id: mongoose.Types.ObjectId } & Omit<HeroVideo, "id">;
+    return {
+      ...typedDoc,
+      id: typedDoc._id.toString(),
+    } as HeroVideo;
   }
 
   async getFacultySection(): Promise<FacultySection | null> {
     const doc = await FacultySectionModel.findOne().lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as FacultySection;
+    const typedDoc = doc as any;
+    return { ...typedDoc, id: typedDoc._id.toString() } as FacultySection;
   }
 
   async createOrUpdateFacultySection(data: FacultySectionInput): Promise<FacultySection> {
@@ -334,14 +359,19 @@ export class MongoStorage implements IStorage {
       { new: true, upsert: true }
     ).lean().exec();
 
-    return { ...doc, id: doc._id.toString() } as FacultySection;
+    if (!doc) {
+      throw new Error("Failed to create or update faculty section");
+    }
+
+    return { ...doc, id: (doc as any)._id.toString() } as unknown as FacultySection;
   }
 
 
   async deleteFacultySection(): Promise<FacultySection | null> {
     const doc = await FacultySectionModel.findOneAndDelete().lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as FacultySection;
+    const typedDoc = doc as any;
+    return { ...typedDoc, id: typedDoc._id.toString() } as unknown as FacultySection;
   }
 
   async getStudentMedia(filter: Partial<Pick<StudentMedia, "batch" | "type" | "year">> = {}): Promise<StudentMedia[]> {
@@ -404,7 +434,8 @@ export class MongoStorage implements IStorage {
 
   async getTeachers(): Promise<Teacher[]> {
     const docs = await TeacherModel.find().sort({ name: 1 }).lean().exec();
-    return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as Teacher[];
+    const typed = docs as unknown as ({ _id: mongoose.Types.ObjectId } & Omit<Teacher, "id">)[];
+    return typed.map((doc) => ({ ...doc, id: doc._id.toString() })) as unknown as Teacher[];
   }
 
   async createTeacher(insertTeacher: InsertTeacher): Promise<Teacher> {
@@ -430,8 +461,56 @@ export class MongoStorage implements IStorage {
   async deleteTeacher(id: string): Promise<Teacher | null> {
     const doc = await TeacherModel.findByIdAndDelete(id).lean().exec();
     if (!doc) return null;
-    return { ...doc, id: doc._id.toString() } as Teacher;
+    const typedDoc = doc as unknown as { _id: mongoose.Types.ObjectId } & Omit<Teacher, "id">;
+    return {
+      ...typedDoc,
+      id: typedDoc._id.toString(),
+    } as Teacher;
   }
+  async getAcademicResultByYear(year: number): Promise<AcademicResultDocument | null> {
+    const doc = await AcademicResultModelInstance.findOne({ year }).lean().exec();
+    if (!doc) return null;
+
+    return {
+      ...doc,
+      id: doc._id.toString(),
+      lastUpdated: new Date(doc.lastUpdated),
+    } as unknown as AcademicResultDocument;
+  }
+
+  /** Get list of all years that have published results (for dropdown) */
+  async getAllAcademicYears(): Promise<number[]> {
+    const docs = await AcademicResultModelInstance.find({}, { year: 1 }).sort({ year: -1 }).lean().exec();
+    return docs.map(d => d.year);
+  }
+
+  /** Create new year result OR update existing one (upsert) */
+  async createOrUpdateAcademicResult(data: InsertOrUpdateAcademicResult): Promise<AcademicResultDocument> {
+    const result = await AcademicResultModelInstance.findOneAndUpdate(
+      { year: data.year },
+      { ...data, lastUpdated: new Date() },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ).lean().exec();
+
+    return {
+      ...result,
+      id: result._id.toString(),
+      lastUpdated: new Date(result.lastUpdated),
+    } as unknown as AcademicResultDocument;
+  }
+
+  /** Delete an entire year's result */
+  async deleteAcademicResult(year: number): Promise<AcademicResultDocument | null> {
+    const doc = await AcademicResultModelInstance.findOneAndDelete({ year }).lean().exec();
+    if (!doc) return null;
+
+    return {
+      ...doc,
+      id: doc._id.toString(),
+    } as unknown as AcademicResultDocument;
+  }
+
 }
+
 
 export const storage = new MongoStorage();

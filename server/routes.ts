@@ -5,6 +5,7 @@ import {
   insertContactMessageSchema,
   insertEventSchema,
   insertNewsSchema,
+  insertOrUpdateAcademicResultSchema,
   insertSectionSchema,
   insertTeacherSchema,
   MediaDatabaseModel,
@@ -1170,6 +1171,89 @@ app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
       res.status(500).json({ error: "Failed to delete teacher" });
     }
   });
+
+  //------academic-results------------------------
+  
+
+  // 1. Get all available years (for dropdown)
+app.get("/api/academic-results/years", async (_req, res) => {
+  try {
+    const years = await storage.getAllAcademicYears();
+    res.json(years);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch years" });
+  }
+});
+
+// 2. Get full result for a specific year (public page uses this)
+app.get("/api/academic-results/:year", async (req, res) => {
+  const year = parseInt(req.params.year);
+  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+  try {
+    const result = await storage.getAcademicResultByYear(year);
+    if (!result) return res.status(404).json({ error: "Result not found" });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch result" });
+  }
+});
+
+// 3. Create or Update entire academic result (admin only)
+app.post("/api/admin/academic-results", requireAuth, async (req, res) => {
+  try {
+    const data = insertOrUpdateAcademicResultSchema.parse(req.body);
+    const result = await storage.createOrUpdateAcademicResult(data);
+    res.json({ success: true, result });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: "Validation failed", details: err.errors });
+    } else {
+      console.error(err);
+      res.status(500).json({ error: "Failed to save result" });
+    }
+  }
+});
+
+// 4. Update specific year (optional — same as POST but clearer)
+app.put("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
+  const year = parseInt(req.params.year);
+  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+  try {
+    const data = insertOrUpdateAcademicResultSchema.parse({
+      ...req.body,
+      year,
+    });
+    const result = await storage.createOrUpdateAcademicResult(data);
+    res.json({ success: true, result });
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: "Validation failed", details: err.errors });
+    } else {
+      console.error(err);
+      res.status(500).json({ error: "Failed to update result" });
+    }
+  }
+});
+
+// 5. Delete entire year's result (admin only)
+app.delete("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
+  const year = parseInt(req.params.year, 10);
+  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+  try {
+    const deleted = await storage.deleteAcademicResult(year);
+    if (!deleted) return res.status(404).json({ error: "Result not found" });
+    res.json({ success: true, message: "Result deleted", year });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete result" });
+  }
+});
+
 
   //----------------HEALTH-------------------------
   app.get("/health", (req, res) => {

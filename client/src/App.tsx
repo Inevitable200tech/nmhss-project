@@ -24,6 +24,8 @@ import StudentsPage from "./pages/public-pages/students";
 import StudentsUploadPage from "./pages/public-pages/students-upload"
 import AboutTeachers from "./pages/public-pages/about-teachers";
 import AdminTeacherEdit from "./pages/admin-pages/admin-teachers-edit";
+import AcademicResultsPage from "./pages/public-pages/academic-results";
+import AdminAcademicResults from "./pages/admin-pages/admin-academic";
 // Use named import for ProtectedRoute
 import { ProtectedRoute } from "@/components/ProtectedRoute"; // Corrected import
 
@@ -37,6 +39,7 @@ function Router() {
       <Route path="/students" component={StudentsPage} />
       <Route path="/students-upload" component={StudentsUploadPage} />
       <Route path="/about-teachers" component={AboutTeachers} />
+      <Route path="/academic-results" component={AcademicResultsPage} />
 
       {/* Protected admin routes */}
       <ProtectedRoute>
@@ -49,6 +52,7 @@ function Router() {
           <Route path="/admin-faculty" component={AdminFaculty} />
           <Route path="/admin-students-setting" component={AdminStudentsPage} />
           <Route path="/admin-teachers-edit" component={AdminTeacherEdit} />
+          <Route path="/admin-academic-results" component={AdminAcademicResults} />
         </div>
       </ProtectedRoute>
 

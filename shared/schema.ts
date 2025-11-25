@@ -419,6 +419,97 @@ export const teacherInputSchema = z.object({
 export type TeacherInput = z.infer<typeof teacherInputSchema>;
 export type InsertTeacher = z.infer<typeof insertTeacherSchema>;
 
+// ---------------- ACADEMIC RESULTS MANAGEMENT ----------------
+
+export interface TopStudent {
+  name: string;
+  aPlusCount: number;
+  mediaId?: string; // Reference to Media collection (uploaded via POST /api/media)
+  stream?: "Commerce" | "Science (Biology)" | "Computer Science";
+}
+
+export interface AcademicResultDocument extends Document {
+  year: number;
+
+  // Summary Stats
+  hsTotalAplusStudents: number;
+  hsTotalMarkAverage: number;
+  hssTotalAveragePercentage: number;
+  hssCommerceAverage: number;
+  hssScienceBiologyAverage: number;
+  hssComputerScienceAverage: number;
+  lastUpdated: Date;
+
+  // Top Students (now using mediaId instead of imageUrl)
+  topHSStudents: TopStudent[];
+  topHSSStudents: TopStudent[];
+}
+
+export const AcademicResultSchema = new Schema<AcademicResultDocument>({
+  year: { type: Number, required: true, unique: true },
+
+  // Summary
+  hsTotalAplusStudents: { type: Number, required: true, min: 0 },
+  hsTotalMarkAverage: { type: Number, required: true, min: 0, max: 100 },
+  hssTotalAveragePercentage: { type: Number, required: true, min: 0, max: 100 },
+  hssCommerceAverage: { type: Number, required: true, min: 0, max: 100 },
+  hssScienceBiologyAverage: { type: Number, required: true, min: 0, max: 100 },
+  hssComputerScienceAverage: { type: Number, required: true, min: 0, max: 100 },
+  lastUpdated: { type: Date, default: Date.now },
+
+  // Embedded top students — now using mediaId
+  topHSStudents: [
+    {
+      name: { type: String, required: true },
+      aPlusCount: { type: Number, required: true, min: 1, max: 10 },
+      mediaId: { type: String }, // Will be filled by POST /api/media
+    },
+  ],
+
+  topHSSStudents: [
+    {
+      name: { type: String, required: true },
+      aPlusCount: { type: Number, required: true, min: 1, max: 6 },
+      mediaId: { type: String },
+      stream: {
+        type: String,
+        enum: ["Commerce", "Science (Biology)", "Computer Science"],
+        required: true,
+      },
+    },
+  ],
+});
+
+// Zod validation schema — now validates mediaId (string) instead of imageUrl
+export const insertOrUpdateAcademicResultSchema = z.object({
+  year: z.number().int().min(2000).max(2100),
+
+  hsTotalAplusStudents: z.number().int().min(0),
+  hsTotalMarkAverage: z.number().min(0).max(100),
+  hssTotalAveragePercentage: z.number().min(0).max(100),
+  hssCommerceAverage: z.number().min(0).max(100),
+  hssScienceBiologyAverage: z.number().min(0).max(100),
+  hssComputerScienceAverage: z.number().min(0).max(100),
+
+  topHSStudents: z.array(
+    z.object({
+      name: z.string().min(1, "Name is required"),
+      aPlusCount: z.number().int().min(1).max(10),
+      mediaId: z.string().optional(), // Can be empty initially
+    })
+  ),
+
+  topHSSStudents: z.array(
+    z.object({
+      name: z.string().min(1, "Name is required"),
+      aPlusCount: z.number().int().min(1).max(6),
+      mediaId: z.string().optional(),
+      stream: z.enum(["Commerce", "Science (Biology)", "Computer Science"]),
+    })
+  ),
+});
+
+export type InsertOrUpdateAcademicResult = z.infer<typeof insertOrUpdateAcademicResultSchema>;
 
 // ---------------- EXPORT MODELS & TYPES ----------------
 
@@ -428,7 +519,11 @@ export type InsertNews = z.infer<typeof insertNewsSchema>;
 export type InsertSection = z.infer<typeof insertSectionSchema>;
 export type FacultySectionInput = z.infer<typeof FacultySectionSchema>;
 
+
 // Models (Using singleton pattern for Next.js/Serverless)
+export const AcademicResultModel =
+  mongoose.models.AcademicResult ||
+  mongoose.model<AcademicResultDocument>("AcademicResult", AcademicResultSchema);
 export const EventModel = mongoose.models.Event || mongoose.model<Event>("Event", eventSchema);
 export const NewsModel = mongoose.models.News || mongoose.model<News>("News", newsSchema);
 export const SectionModel = mongoose.models.Section || mongoose.model<Section>("Section", SectionSchema);
