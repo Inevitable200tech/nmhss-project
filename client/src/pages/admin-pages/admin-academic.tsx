@@ -1,23 +1,30 @@
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { Loader2, Plus, Trash2, Save, Upload, X, Crop } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+import { Loader2, Plus, Trash2, Save, Upload, X, AlertTriangle, ArrowLeft } from "lucide-react"; import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getCroppedImg } from "@/lib/crop-image";
+
+type PendingImage = {
+  file: File;
+  preview: string;
+  croppedBlob?: Blob;
+};
 
 type TopStudent = {
   name: string;
   aPlusCount: number;
   mediaId?: string;
+  photoUrl?: string;
+  pendingImage?: PendingImage;
   stream?: "Commerce" | "Science (Biology)" | "Computer Science";
-  blobUrl?: string; // Local preview only
-  croppedBlob?: Blob;
 };
 
 type AcademicResult = {
@@ -35,15 +42,15 @@ type AcademicResult = {
 export default function AdminAcademicResults() {
   const { toast } = useToast();
   const [years, setYears] = useState<number[]>([]);
-  const [customYear, setCustomYear] = useState("");
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [customYear, setCustomYear] = useState("");
   const [data, setData] = useState<AcademicResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Crop state
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Cropper state
   const [cropOpen, setCropOpen] = useState(false);
-  const [cropImage, setCropImage] = useState<string>("");
+  const [cropImage, setCropImage] = useState("");
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
@@ -54,170 +61,243 @@ export default function AdminAcademicResults() {
   useEffect(() => {
     fetch("/api/academic-results/years")
       .then(r => r.json())
-      .then(setYears);
-  }, []);
+      .then(setYears)
+      .catch(() => toast({ title: "Error", description: "Failed to load years", variant: "destructive" }));
+  }, [toast]);
 
   const loadYear = async (year: number) => {
     setIsLoading(true);
-    const res = await fetch(`/api/academic-results/${year}`);
-    if (res.ok) {
-      const result = await res.json();
-      result.topHSStudents = result.topHSStudents.map((s: any) => ({ ...s, blobUrl: s.mediaId ? `/api/media/${s.mediaId}` : undefined }));
-      result.topHSSStudents = result.topHSSStudents.map((s: any) => ({ ...s, blobUrl: s.mediaId ? `/api/media/${s.mediaId}` : undefined }));
-      setData(result);
-    } else {
-      setData({
-        year,
-        hsTotalAplusStudents: 0,
-        hsTotalMarkAverage: 0,
-        hssTotalAveragePercentage: 0,
-        hssCommerceAverage: 0,
-        hssScienceBiologyAverage: 0,
-        hssComputerScienceAverage: 0,
-        topHSStudents: [],
-        topHSSStudents: [],
-      });
-    }
     setSelectedYear(year);
-    setIsLoading(false);
+    try {
+      const res = await fetch(`/api/academic-results/${year}`);
+      if (!res.ok) throw new Error();
+      const result = await res.json();
+      setData(result);
+      setHasUnsavedChanges(false);
+    } catch {
+      toast({ title: "Not Found", description: `No data for ${year}`, variant: "destructive" });
+      setData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createNewYear = (year: number) => {
+    setSelectedYear(year);
+    setData({
+      year,
+      hsTotalAplusStudents: 0,
+      hsTotalMarkAverage: 0,
+      hssTotalAveragePercentage: 0,
+      hssCommerceAverage: 0,
+      hssScienceBiologyAverage: 0,
+      hssComputerScienceAverage: 0,
+      topHSStudents: [],
+      topHSSStudents: [],
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  const updateField = (field: keyof AcademicResult, value: number) => {
+    if (!data) return;
+    setData({ ...data, [field]: value });
+    setHasUnsavedChanges(true);
+  };
+
+  const addStudent = (type: "HS" | "HSS") => {
+    if (!data) return;
+    const newStudent: TopStudent = {
+      name: "",
+      aPlusCount: type === "HS" ? 10 : 6,
+      stream: type === "HSS" ? "Commerce" : undefined,
+    };
+    setData({
+      ...data,
+      [type === "HS" ? "topHSStudents" : "topHSSStudents"]: [
+        ...(data[type === "HS" ? "topHSStudents" : "topHSSStudents"] || []),
+        newStudent
+      ]
+    });
+    setHasUnsavedChanges(true);
+  };
+
+  const updateStudent = (type: "HS" | "HSS", index: number, updates: Partial<TopStudent>) => {
+    if (!data) return;
+    const list = [...(data[type === "HS" ? "topHSStudents" : "topHSSStudents"] || [])];
+    list[index] = { ...list[index], ...updates };
+    setData({ ...data, [type === "HS" ? "topHSStudents" : "topHSSStudents"]: list });
+    setHasUnsavedChanges(true);
+  };
+
+  const removeStudent = async (type: "HS" | "HSS", index: number) => {
+    if (!data) return;
+    const student = data[type === "HS" ? "topHSStudents" : "topHSSStudents"][index];
+    if (student.mediaId) {
+      await fetch(`/api/media/${student.mediaId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(() => { });
+    }
+    setData({
+      ...data,
+      [type === "HS" ? "topHSStudents" : "topHSSStudents"]:
+        data[type === "HS" ? "topHSStudents" : "topHSSStudents"].filter((_, i) => i !== index)
+    });
+    setHasUnsavedChanges(true);
   };
 
   const openCropper = (file: File, type: "HS" | "HSS", index: number) => {
-    const url = URL.createObjectURL(file);
-    setCropImage(url);
-    setCropTarget({ type, index });
-    setCropOpen(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImage(reader.result as string);
+      setCropTarget({ type, index });
+      setCropOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+  const onCropComplete = (_: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
-
-  const saveCroppedImage = async () => {
-    if (!cropImage || !croppedAreaPixels || !cropTarget) return;
-
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const image = new Image();
-    image.src = cropImage;
-
-    await new Promise(resolve => { image.onload = resolve; });
-
-    canvas.width = croppedAreaPixels.width;
-    canvas.height = croppedAreaPixels.height;
-
-    ctx?.drawImage(
-      image,
-      croppedAreaPixels.x,
-      croppedAreaPixels.y,
-      croppedAreaPixels.width,
-      croppedAreaPixels.height,
-      0,
-      0,
-      croppedAreaPixels.width,
-      croppedAreaPixels.height
-    );
-
-    canvas.toBlob(blob => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const key = cropTarget.type === "HS" ? "topHSStudents" : "topHSSStudents";
-      const updated = [...data![key]];
-      updated[cropTarget.index] = {
-        ...updated[cropTarget.index],
-        blobUrl: url,
-        croppedBlob: blob,
-      };
-      setData({ ...data!, [key]: updated });
-      setCropOpen(false);
-      toast({ title: "Cropped!", description: "Photo ready for upload on save" });
-    }, "image/jpeg", 0.95);
   };
 
-  const validateAndSave = async () => {
+
+
+  const saveAll = async () => {
     if (!data || !selectedYear) return;
-
-    const emptyNames = [...data.topHSStudents, ...data.topHSSStudents]
-      .map((s, i) => (!s.name?.trim() ? i + 1 : 0))
-      .filter(Boolean);
-
-    if (emptyNames.length > 0) {
-      toast({ title: "Error", description: "All students must have a name", variant: "destructive" });
-      return;
-    }
-
     setIsSaving(true);
 
     try {
-      // Upload all cropped images
-      for (const [type, list] of [
-        ["HS", data.topHSStudents] as const,
-        ["HSS", data.topHSSStudents] as const,
-      ]) {
-        for (let i = 0; i < list.length; i++) {
-          const student = list[i];
-          if (student.croppedBlob && !student.mediaId) {
-            const formData = new FormData();
-            formData.append("file", student.croppedBlob, `student-${selectedYear}-${i}.jpg`);
+      let currentData = { ...data }; // Work on a copy
 
-            const res = await fetch("/api/media", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${token}` },
-              body: formData,
-            });
+      // STEP 1: Upload all pending images
+      if (hasPendingImages()) {
+        toast({ title: "Uploading images...", description: "Please wait" });
 
-            if (!res.ok) throw new Error("Upload failed");
+        const allStudents = [
+          ...currentData.topHSStudents.map((s, i) => ({ ...s, _type: "HS" as const, _index: i })),
+          ...currentData.topHSSStudents.map((s, i) => ({ ...s, _type: "HSS" as const, _index: i }))
+        ];
 
-            const { id } = await res.json();
-            const key = type === "HS" ? "topHSStudents" : "topHSSStudents";
-            const updated = [...data[key]];
-            updated[i] = { ...updated[i], mediaId: id, blobUrl: `/api/media/${id}`, croppedBlob: undefined };
-            setData({ ...data, [key]: updated });
+        const pendingStudents = allStudents.filter(s => s.pendingImage?.croppedBlob);
+
+        for (const student of pendingStudents) {
+          // Delete old image
+          if (student.mediaId) {
+            await fetch(`/api/media/${student.mediaId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => { });
+          }
+
+          const formData = new FormData();
+          formData.append("file", student.pendingImage!.croppedBlob!, `${student.name}.jpg`);
+
+          const res = await fetch("/api/media", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+
+          if (!res.ok) {
+            const err = await res.text();
+            throw new Error(`Upload failed for ${student.name}: ${err}`);
+          }
+
+          const { id, url } = await res.json();
+
+          // Update the correct student in correct list
+          if (student._type === "HS") {
+            currentData.topHSStudents[student._index] = {
+              ...currentData.topHSStudents[student._index],
+              mediaId: id,
+              photoUrl: url,
+              pendingImage: undefined,
+            };
+          } else {
+            currentData.topHSSStudents[student._index] = {
+              ...currentData.topHSSStudents[student._index],
+              mediaId: id,
+              photoUrl: url,
+              pendingImage: undefined,
+            };
           }
         }
+
+        // Update state once
+        setData(currentData);
+        toast({ title: "Images uploaded!", description: "Saving to database..." });
       }
 
-      // Save to DB
+      // STEP 2: Save to DB — now 100% guaranteed to have photoUrl
+      const payload = {
+        ...currentData,
+        topHSStudents: currentData.topHSStudents.map(({ pendingImage, ...s }) => s),
+        topHSSStudents: currentData.topHSSStudents.map(({ pendingImage, ...s }) => s),
+      };
+
       const res = await fetch("/api/admin/academic-results", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(data),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        toast({ title: "Success!", description: `Results for ${data.year} saved successfully` });
-        loadYear(data.year); // Refresh
-      } else throw new Error();
-    } catch {
-      toast({ title: "Error", description: "Failed to save", variant: "destructive" });
+      if (!res.ok) throw new Error("Save failed");
+
+      toast({ title: "Success!", description: `Academic results for ${selectedYear} saved with photos!` });
+      setHasUnsavedChanges(false);
+    } catch (err: any) {
+      toast({
+        title: "Failed",
+        description: err.message,
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
+  const hasPendingImages = () => {
+    if (!data) return false;
+    return [...data.topHSStudents, ...data.topHSSStudents].some(s => s.pendingImage);
+  };
+
   if (!selectedYear) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-8">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Select or Create Academic Year</CardTitle>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-800 p-6">
+        <Card className="max-w-md mx-auto mt-20">
+          <CardHeader className="text-center">
+            <CardTitle className="text-3xl font-bold">Academic Results Admin</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Select onValueChange={(v) => loadYear(Number(v))}>
-              <SelectTrigger><SelectValue placeholder="Choose existing year" /></SelectTrigger>
-              <SelectContent>
-                {years.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <div className="flex gap-2">
+          <CardContent className="space-y-6">
+            <div>
+              <Label className="text-base">Select Existing Year</Label>
+              <Select onValueChange={(v) => loadYear(Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Choose a year" /></SelectTrigger>
+                <SelectContent>
+                  {years.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="614flex gap-3">
               <Input
-                placeholder="Enter new year (e.g. 2023)"
+                placeholder="e.g. 2026"
                 value={customYear}
                 onChange={e => setCustomYear(e.target.value.replace(/\D/g, ""))}
-                maxLength={4}
               />
-              <Button onClick={() => customYear && loadYear(Number(customYear))} disabled={!customYear || years.includes(Number(customYear))}>
-                Create
+              <Button
+                onClick={() => {
+                  const y = Number(customYear);
+                  if (y >= 2000 && y <= 2100) {
+                    createNewYear(y);
+                    setCustomYear("");
+                  }
+                }}
+                disabled={!customYear}
+              >
+                Create New Year
               </Button>
             </div>
           </CardContent>
@@ -227,173 +307,278 @@ export default function AdminAcademicResults() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        <Card>
-          <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-3xl">Academic Results • {data?.year}</CardTitle>
-                <p className="opacity-90">Crop photos → Save once → Done</p>
-              </div>
-              <Button variant="secondary" onClick={() => setSelectedYear(null)}>Change Year</Button>
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+
+          {/* TOP BAR — Title perfectly centered on desktop */}
+          <div className="mb-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+              {/* Back Button — Left aligned */}
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => window.location.href = "/admin"}
+                className="w-full sm:w-auto justify-center sm:justify-start gap-2 font-medium"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                Back to Dashboard
+              </Button>
+
+              {/* Title — Centered on desktop, full width on mobile */}
+              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent text-center order-first sm:order-none">
+                Academic Results {selectedYear}
+              </h1>
+
+              {/* Save Button — Right aligned */}
+              <Button
+                onClick={saveAll}
+                disabled={isSaving || !hasUnsavedChanges}
+                size="lg"
+                className="w-full sm:w-auto gap-3 font-semibold shadow-lg order-last"
+              >
+                {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                {isSaving ? "Saving..." : "Save All Changes"}
+              </Button>
             </div>
-          </CardHeader>
-          <CardContent className="p-8 space-y-10">
-            {isLoading ? (
-              <div className="text-center py-20"><Loader2 className="h-12 w-12 animate-spin mx-auto" /></div>
-            ) : data && (
-              <>
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div><Label>HS Total A+ Students</Label><Input type="number" value={data.hsTotalAplusStudents} onChange={e => setData(d => d && {...d, hsTotalAplusStudents: Number(e.target.value)})} /></div>
-                  <div><Label>HS Avg (%)</Label><Input type="number" step="0.1" value={data.hsTotalMarkAverage} onChange={e => setData(d => d && {...d, hsTotalMarkAverage: Number(e.target.value)})} /></div>
-                  <div><Label>HSS Overall Avg (%)</Label><Input type="number" step="0.1" value={data.hssTotalAveragePercentage} onChange={e => setData(d => d && {...d, hssTotalAveragePercentage: Number(e.target.value)})} /></div>
-                  <div><Label>HSS Commerce Avg (%)</Label><Input type="number" step="0.1" value={data.hssCommerceAverage} onChange={e => setData(d => d && {...d, hssCommerceAverage: Number(e.target.value)})} /></div>
-                  <div><Label>HSS Science (Bio) Avg (%)</Label><Input type="number" step="0.1" value={data.hssScienceBiologyAverage} onChange={e => setData(d => d && {...d, hssScienceBiologyAverage: Number(e.target.value)})} /></div>
-                  <div><Label>HSS CS Avg (%)</Label><Input type="number" step="0.1" value={data.hssComputerScienceAverage} onChange={e => setData(d => d && {...d, hssComputerScienceAverage: Number(e.target.value)})} /></div>
-                </div>
+          </div>
 
-                {/* HS & HSS Sections */}
-                {["HS", "HSS"].map((type: any) => (
-                  <div key={type}>
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className={`text-2xl font-bold ${type === "HS" ? "text-indigo-700" : "text-green-700"}`}>
-                        {type === "HS" ? "HS" : "HSS"} Top Achievers
-                      </h3>
-                      <Button onClick={() => {
-                        const newStudent: TopStudent = {
-                          name: "",
-                          aPlusCount: type === "HS" ? 10 : 6,
-                          ...(type === "HSS" && { stream: "Commerce" }),
-                        };
-                        setData(d => ({ ...d!, [type === "HS" ? "topHSStudents" : "topHSSStudents"]: [...d![type === "HS" ? "topHSStudents" : "topHSSStudents"], newStudent] }));
-                      }}>
-                        <Plus className="h-4 w-4 mr-2" />Add
-                      </Button>
-                    </div>
-                    <div className="space-y-4">
-                      {data[type === "HS" ? "topHSStudents" : "topHSSStudents"].map((s, i) => (
-                        <StudentRow
-                          key={i}
-                          student={s}
-                          type={type}
-                          index={i}
-                          openCropper={openCropper}
-                          updateStudent={(field: keyof TopStudent, value: any) => {
-                            const key = type === "HS" ? "topHSStudents" : "topHSSStudents";
-                            const updated = [...data[key]];
-                            updated[i] = { ...updated[i], [field]: value };
-                            setData({ ...data, [key]: updated });
-                          }}
-                          removeStudent={() => {
-                            const key = type === "HS" ? "topHSStudents" : "topHSSStudents";
-                            setData(d => ({ ...d!, [key]: d![key].filter((_, idx) => idx !== i) }));
-                          }}
-                          showStream={type === "HSS"}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+          {/* Pending Images Alert */}
+          {hasPendingImages() && (
+            <Alert className="mb-6 border-amber-400 bg-amber-50 dark:bg-amber-950/50">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200 font-medium">
+                You have cropped images ready. Click "Save All Changes" to upload them permanently.
+              </AlertDescription>
+            </Alert>
+          )}
 
-                <div className="flex gap-4 pt-8 border-t">
-                  <Button onClick={validateAndSave} disabled={isSaving} size="lg" className="flex-1">
-                    {isSaving ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Save className="h-5 w-5 mr-2" />}
-                    Save All & Upload Photos
-                  </Button>
-                  <a href="/admin"><Button variant="outline" size="lg">Back</Button></a>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+          {/* Stats Grid — Now perfect on mobile */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            {data && [
+              { key: "hsTotalAplusStudents", label: "HS A+ Students" },
+              { key: "hsTotalMarkAverage", label: "HS Avg %" },
+              { key: "hssTotalAveragePercentage", label: "HSS Overall %" },
+              { key: "hssCommerceAverage", label: "Commerce %" },
+              { key: "hssScienceBiologyAverage", label: "Biology %" },
+              { key: "hssComputerScienceAverage", label: "Computer %" },
+            ].map(({ key, label }) => (
+              <Card key={key} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur">
+                <CardHeader className="pb-2 px-4 pt-4">
+                  <Label className="text-xs font-medium text-gray-600 dark:text-gray-400 text-center sm:text-left">
+                    {label}
+                  </Label>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <Input
+                    type="number"
+                    value={data[key as keyof AcademicResult] as number}
+                    onChange={e => updateField(key as keyof AcademicResult, Number(e.target.value) || 0)}
+                    className="text-lg font-bold text-center sm:text-left h-12"
+                    placeholder="0"
+                  />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* HS Section */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xl">
+                <span className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-indigo-600 rounded-full"></div>
+                  HS Top Achievers
+                </span>
+                <Button size="sm" onClick={() => addStudent("HS")} variant="outline" className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4" /> Add Student
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {data?.topHSStudents.length === 0 ? (
+                <p className="text-center text-gray-500 py-12 text-lg">No HS students added yet</p>
+              ) : (
+                data && data.topHSStudents.map((s, i) => (
+                  <StudentRow
+                    key={i}
+                    student={s}
+                    type="HS"
+                    index={i}
+                    updateStudent={updateStudent}
+                    removeStudent={removeStudent}
+                    openCropper={openCropper}
+                  />
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* HSS Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xl">
+                <span className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-emerald-600 rounded-full"></div>
+                  HSS Top Achievers
+                </span>
+                <Button size="sm" onClick={() => addStudent("HSS")} variant="outline" className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4" /> Add Student
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!data || data.topHSSStudents.length === 0 ? (
+                <p className="text-center text-gray-500 py-12 text-lg">No HSS students added yet</p>
+              ) : (
+                data.topHSSStudents.map((s, i) => (
+                  <StudentRow
+                    key={i}
+                    student={s}
+                    type="HSS"
+                    index={i}
+                    updateStudent={updateStudent}
+                    removeStudent={removeStudent}
+                    openCropper={openCropper}
+                  />
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Crop Dialog */}
+      {/* Cropper Dialog */}
       <Dialog open={cropOpen} onOpenChange={setCropOpen}>
-        <DialogContent className="max-w-2xl h-[80vh]">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Crop Photo (Circle Preview)</DialogTitle>
+            <DialogTitle>Crop Student Photo</DialogTitle>
           </DialogHeader>
-          <div className="relative h-full">
+          <div className="relative h-96 bg-black rounded-lg overflow-hidden">
             <Cropper
               image={cropImage}
               crop={crop}
               zoom={zoom}
               aspect={1}
-              cropShape="round"
-              showGrid={false}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}
             />
           </div>
-          <div className="flex justify-end gap-3 mt-4">
+          <div className="flex gap-3 mt-4">
             <Button variant="outline" onClick={() => setCropOpen(false)}>Cancel</Button>
-            <Button onClick={saveCroppedImage}>Apply Crop</Button>
+            <Button
+              className="flex-1"
+              onClick={async () => {
+                if (!cropTarget || !croppedAreaPixels) return;
+                const blob = await getCroppedImg(cropImage, croppedAreaPixels);
+                updateStudent(cropTarget.type, cropTarget.index, {
+                  pendingImage: {
+                    file: new File([blob], "photo.jpg"),
+                    preview: URL.createObjectURL(blob),
+                    croppedBlob: blob
+                  }
+                });
+                setCropOpen(false);
+                setCropImage("");
+                setCropTarget(null);
+                toast({ title: "Cropped!", description: "Image ready. Click Save to upload permanently." });
+              }}
+            >
+              Apply Crop
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
 
-function StudentRow({ student, type, index, openCropper, updateStudent, removeStudent, showStream }: any) {
+function StudentRow({ student, type, index, updateStudent, removeStudent, openCropper }: any) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-6 bg-gray-50 dark:bg-gray-800 rounded-xl border">
-      <Input
-        placeholder="Student Name *"
-        value={student.name}
-        onChange={e => updateStudent("name", e.target.value)}
-        className={`md:col-span-3 ${!student.name.trim() ? "border-red-500" : ""}`}
-      />
-      <Input
-        type="number"
-        value={student.aPlusCount}
-        onChange={e => updateStudent("aPlusCount", Math.max(1, Math.min(type === "HS" ? 10 : 6, Number(e.target.value))))}
-        min="1"
-        max={type === "HS" ? 10 : 6}
-        className="md:col-span-2"
-      />
-      {showStream && (
-        <Select value={student.stream || ""} onValueChange={v => updateStudent("stream", v)}>
-          <SelectTrigger className="md:col-span-3"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Commerce">Commerce</SelectItem>
-            <SelectItem value="Science (Biology)">Science (Biology)</SelectItem>
-            <SelectItem value="Computer Science">Computer Science</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
-      <div className="md:col-span-4 flex items-center gap-3">
-        {student.blobUrl ? (
-          <div className="relative">
-            <img src={student.blobUrl} alt="preview" className="w-20 h-20 rounded-full object-cover border-4 border-green-500" />
-            <button onClick={() => {
-              updateStudent("blobUrl", undefined);
-              updateStudent("croppedBlob", undefined);
-            }} className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1">
-              <X className="h-4 w-4" />
-            </button>
+    <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+        <div className="md:col-span-4">
+          <Input
+            placeholder="Student Name *"
+            value={student.name}
+            onChange={e => updateStudent(type, index, { name: e.target.value })}
+            className={`font-medium ${!student.name.trim() ? "border-red-500" : ""}`}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <Input
+            type="number"
+            value={student.aPlusCount}
+            onChange={e => updateStudent(type, index, {
+              aPlusCount: Math.max(1, Math.min(type === "HS" ? 10 : 6, Number(e.target.value) || 1))
+            })}
+            min="1"
+            max={type === "HS" ? 10 : 6}
+            className="text-center font-bold text-lg"
+          />
+        </div>
+
+        {type === "HSS" && (
+          <div className="md:col-span-3">
+            <Select value={student.stream || ""} onValueChange={v => updateStudent(type, index, { stream: v })}>
+              <SelectTrigger><SelectValue placeholder="Select stream" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Commerce">Commerce</SelectItem>
+                <SelectItem value="Science (Biology)">Science (Biology)</SelectItem>
+                <SelectItem value="Computer Science">Computer Science</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        ) : (
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => e.target.files?.[0] && openCropper(e.target.files[0], type, index)}
-            />
-            <div className="w-20 h-20 bg-gray-200 border-2 border-dashed rounded-full flex items-center justify-center hover:bg-gray-300 transition">
-              <Upload className="h-8 w-8 text-gray-500" />
-            </div>
-          </label>
         )}
+
+        <div className="md:col-span-3 flex justify-center">
+          {student.pendingImage?.preview || student.photoUrl ? (
+            <div className="relative group">
+              <img
+                src={student.pendingImage?.preview || student.photoUrl}
+                alt="Student"
+                className="w-20 h-20 rounded-full object-cover ring-4 ring-green-500 shadow-lg"
+              />
+              <button
+                onClick={() => updateStudent(type, index, {
+                  pendingImage: undefined,
+                  photoUrl: undefined,
+                  mediaId: undefined
+                })}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => e.target.files?.[0] && openCropper(e.target.files[0], type, index)}
+              />
+              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 border-2 border-dashed border-gray-400 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                <Upload className="h-8 w-8 text-gray-500" />
+              </div>
+            </label>
+          )}
+        </div>
+
+        <div className="md:col-span-1">
+          <Button
+            variant="destructive"
+            size="icon"
+            onClick={() => removeStudent(type, index)}
+            className="w-full"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-      <Button variant="destructive" size="icon" onClick={removeStudent}>
-        <Trash2 className="h-4 w-4" />
-      </Button>
     </div>
   );
 }

@@ -1239,17 +1239,56 @@ app.put("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
   }
 });
 
-// 5. Delete entire year's result (admin only)
+// 5. Delete entire year's result + ALL associated student photos (admin only)
 app.delete("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
   const year = parseInt(req.params.year, 10);
   if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
   try {
-    const deleted = await storage.deleteAcademicResult(year);
-    if (!deleted) return res.status(404).json({ error: "Result not found" });
-    res.json({ success: true, message: "Result deleted", year });
+    const result = await storage.getAcademicResultByYear(year);
+    if (!result) return res.status(404).json({ error: "Result not found" });
+
+    // Collect all mediaIds from top students
+    const mediaIds = [
+      ...result.topHSStudents.map(s => s.mediaId).filter(Boolean),
+      ...result.topHSSStudents.map(s => s.mediaId).filter(Boolean),
+    ] as string[];
+
+    // Delete all associated media from R2 + DB
+    if (mediaIds.length > 0) {
+      await Promise.all(
+        mediaIds.map(async (id) => {
+          try {
+            const media = await MediaModel.findById(id);
+            if (media) {
+              // Delete from R2
+              await s3Client.send(
+                new DeleteObjectCommand({
+                  Bucket: R2_BUCKET_NAME,
+                  Key: media.filename,
+                })
+              );
+              // Delete from MongoDB
+              await MediaModel.findByIdAndDelete(id);
+            }
+          } catch (err) {
+            console.warn(`Failed to delete media ${id}:`, err);
+            // Don't fail the whole operation if one image fails
+          }
+        })
+      );
+    }
+
+    // Now delete the academic result document
+    await storage.deleteAcademicResult(year);
+
+    res.json({
+      success: true,
+      message: `Academic result ${year} and ${mediaIds.length} photos deleted successfully`,
+      deletedPhotos: mediaIds.length,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Failed to delete academic result:", err);
     res.status(500).json({ error: "Failed to delete result" });
   }
 });

@@ -23,6 +23,13 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import Footer from "@/components/static-pages/footer";
 import Navigation from "@/components/static-pages/navigation";
@@ -59,7 +66,20 @@ function useAcademicResults(year: number) {
   const [data, setData] = useState<AcademicResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [years, setYears] = useState<number[]>([]);
+  const [isLoadingYears, setIsLoadingYears] = useState(true);
 
+  useEffect(() => {
+    fetch("/api/academic-results/years")
+      .then((r) => r.json())
+      .then((data) => {
+        setYears(data);
+        setIsLoadingYears(false);
+      })
+      .catch(() => {
+        setIsLoadingYears(false);
+      });
+  }, []);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -87,7 +107,7 @@ function useAcademicResults(year: number) {
     fetchData();
   }, [year]);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, years, isLoadingYears };
 }
 
 // --------------------------------------------------------------------
@@ -236,7 +256,7 @@ const AcademicSummaryCard: React.FC<{
 export default function AcademicResultsPage() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
-  const { data, isLoading, error } = useAcademicResults(year);
+  const { data, isLoading, error, years, isLoadingYears } = useAcademicResults(year);
 
   const groupStudents = (students: TopStudent[] = []) => {
     const grouped = students.reduce((acc, s) => {
@@ -255,10 +275,10 @@ export default function AcademicResultsPage() {
 
   const streamPerformanceData = data
     ? [
-        { name: "Commerce", percentage: data.hssCommerceAverage, fill: "#EC4899" },
-        { name: "Science (Bio)", percentage: data.hssScienceBiologyAverage, fill: "#10B981" },
-        { name: "Computer Science", percentage: data.hssComputerScienceAverage, fill: "#3B82F6" },
-      ]
+      { name: "Commerce", percentage: data.hssCommerceAverage, fill: "#EC4899" },
+      { name: "Science (Bio)", percentage: data.hssScienceBiologyAverage, fill: "#10B981" },
+      { name: "Computer Science", percentage: data.hssComputerScienceAverage, fill: "#3B82F6" },
+    ]
     : [];
 
   const maxPercentage = Math.max(...streamPerformanceData.map(d => d.percentage), 100);
@@ -276,18 +296,33 @@ export default function AcademicResultsPage() {
           </div>
         )}
 
-        {/* Year selector */}
-        <div className="flex justify-center my-10">
-          <select
-            value={year}
-            onChange={(e) => setYear(parseInt(e.target.value))}
-            disabled={isLoading}
-            className="p-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-md focus:ring-2 focus:ring-indigo-500 transition duration-150"
-          >
-            {[currentYear, currentYear - 1, currentYear - 2].map(y => (
-              <option key={y} value={y}>{y} Results</option>
-            ))}
-          </select>
+        {/* Year Selector — Shows ALL years from database */}
+        <div className="flex justify-center my-12">
+          <div className="w-full max-w-md">
+            <label className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Select Academic Year
+            </label>
+            <Select value={year.toString()} onValueChange={(value) => setYear(Number(value))}>
+              <SelectTrigger className="w-full h-12 text-lg font-semibold bg-white dark:bg-gray-800 border-2 shadow-lg hover:shadow-xl transition-shadow">
+                <SelectValue placeholder="Choose a year..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-[60vh]">
+                {years.length === 0 ? (
+                  <div className="py-8 text-center text-gray-500">
+                    {isLoading ? "Loading years..." : "No data available"}
+                  </div>
+                ) : (
+                  years
+                    .sort((a, b) => b - a) // Latest first
+                    .map((y) => (
+                      <SelectItem key={y} value={y.toString()} className="text-base font-medium">
+                        {y} – {y + 1} Academic Year
+                      </SelectItem>
+                    ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* HS Section */}

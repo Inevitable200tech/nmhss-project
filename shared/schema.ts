@@ -419,58 +419,54 @@ export const teacherInputSchema = z.object({
 export type TeacherInput = z.infer<typeof teacherInputSchema>;
 export type InsertTeacher = z.infer<typeof insertTeacherSchema>;
 
-// ---------------- ACADEMIC RESULTS MANAGEMENT ----------------
-
-export interface TopStudent {
-  name: string;
-  aPlusCount: number;
-  mediaId?: string; // Reference to Media collection (uploaded via POST /api/media)
-  stream?: "Commerce" | "Science (Biology)" | "Computer Science";
-}
+// ---------------- ACADEMIC RESULTS ----------------
 
 export interface AcademicResultDocument extends Document {
   year: number;
-
-  // Summary Stats
   hsTotalAplusStudents: number;
   hsTotalMarkAverage: number;
   hssTotalAveragePercentage: number;
   hssCommerceAverage: number;
   hssScienceBiologyAverage: number;
   hssComputerScienceAverage: number;
+  topHSStudents: {
+    name: string;
+    aPlusCount: number;
+    mediaId?: string;
+    photoUrl?: string;
+  }[];
+  topHSSStudents: {
+    name: string;
+    aPlusCount: number;
+    mediaId?: string;
+    photoUrl?: string;
+    stream: "Commerce" | "Science (Biology)" | "Computer Science";
+  }[];
   lastUpdated: Date;
-
-  // Top Students (now using mediaId instead of imageUrl)
-  topHSStudents: TopStudent[];
-  topHSSStudents: TopStudent[];
 }
 
 export const AcademicResultSchema = new Schema<AcademicResultDocument>({
   year: { type: Number, required: true, unique: true },
-
-  // Summary
   hsTotalAplusStudents: { type: Number, required: true, min: 0 },
   hsTotalMarkAverage: { type: Number, required: true, min: 0, max: 100 },
   hssTotalAveragePercentage: { type: Number, required: true, min: 0, max: 100 },
   hssCommerceAverage: { type: Number, required: true, min: 0, max: 100 },
   hssScienceBiologyAverage: { type: Number, required: true, min: 0, max: 100 },
   hssComputerScienceAverage: { type: Number, required: true, min: 0, max: 100 },
-  lastUpdated: { type: Date, default: Date.now },
-
-  // Embedded top students — now using mediaId
   topHSStudents: [
     {
       name: { type: String, required: true },
       aPlusCount: { type: Number, required: true, min: 1, max: 10 },
-      mediaId: { type: String }, // Will be filled by POST /api/media
+      mediaId: { type: String },
+      photoUrl: { type: String },
     },
   ],
-
   topHSSStudents: [
     {
       name: { type: String, required: true },
       aPlusCount: { type: Number, required: true, min: 1, max: 6 },
       mediaId: { type: String },
+      photoUrl: { type: String },
       stream: {
         type: String,
         enum: ["Commerce", "Science (Biology)", "Computer Science"],
@@ -478,9 +474,10 @@ export const AcademicResultSchema = new Schema<AcademicResultDocument>({
       },
     },
   ],
+  lastUpdated: { type: Date, default: Date.now },
 });
 
-// Zod validation schema — now validates mediaId (string) instead of imageUrl
+// Zod schema — allows empty name during editing, strict on save
 export const insertOrUpdateAcademicResultSchema = z.object({
   year: z.number().int().min(2000).max(2100),
 
@@ -493,24 +490,25 @@ export const insertOrUpdateAcademicResultSchema = z.object({
 
   topHSStudents: z.array(
     z.object({
-      name: z.string().min(1, "Name is required"),
+      name: z.string().min(1, "Name is required").or(z.literal("")), // allow empty while typing
       aPlusCount: z.number().int().min(1).max(10),
-      mediaId: z.string().optional(), // Can be empty initially
+      mediaId: z.string().optional(),
+      photoUrl: z.string().optional(),
     })
   ),
 
   topHSSStudents: z.array(
     z.object({
-      name: z.string().min(1, "Name is required"),
+      name: z.string().min(1, "Name is required").or(z.literal("")),
       aPlusCount: z.number().int().min(1).max(6),
       mediaId: z.string().optional(),
+      photoUrl: z.string().optional(),
       stream: z.enum(["Commerce", "Science (Biology)", "Computer Science"]),
     })
   ),
 });
 
 export type InsertOrUpdateAcademicResult = z.infer<typeof insertOrUpdateAcademicResultSchema>;
-
 // ---------------- EXPORT MODELS & TYPES ----------------
 
 // Types

@@ -80,7 +80,7 @@ export interface IStorage {
 }
 
 export class MongoStorage implements IStorage {
-  
+
   async getEvents(): Promise<Event[]> {
     const docs = await EventModel.find().sort({ date: 1 }).lean().exec();
     return docs.map((doc) => ({ ...doc, id: doc._id.toString() })) as unknown as Event[];
@@ -471,11 +471,27 @@ export class MongoStorage implements IStorage {
     const doc = await AcademicResultModelInstance.findOne({ year }).lean().exec();
     if (!doc) return null;
 
-    return {
+    // Properly map nested arrays with photoUrl
+    const result = {
       ...doc,
       id: doc._id.toString(),
       lastUpdated: new Date(doc.lastUpdated),
-    } as unknown as AcademicResultDocument;
+      topHSStudents: (doc.topHSStudents || []).map(s => ({
+        name: s.name,
+        aPlusCount: s.aPlusCount,
+        mediaId: s.mediaId,
+        photoUrl: s.photoUrl,
+      })),
+      topHSSStudents: (doc.topHSSStudents || []).map(s => ({
+        name: s.name,
+        aPlusCount: s.aPlusCount,
+        mediaId: s.mediaId,
+        photoUrl: s.photoUrl,
+        stream: s.stream,
+      })),
+    };
+
+    return result as unknown as AcademicResultDocument;
   }
 
   /** Get list of all years that have published results (for dropdown) */
@@ -492,10 +508,25 @@ export class MongoStorage implements IStorage {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     ).lean().exec();
 
+    if (!result) throw new Error("Failed to save academic result");
+
     return {
       ...result,
       id: result._id.toString(),
       lastUpdated: new Date(result.lastUpdated),
+      topHSStudents: (result.topHSStudents || []).map(s => ({
+        name: s.name,
+        aPlusCount: s.aPlusCount,
+        mediaId: s.mediaId,
+        photoUrl: s.photoUrl,
+      })),
+      topHSSStudents: (result.topHSSStudents || []).map(s => ({
+        name: s.name,
+        aPlusCount: s.aPlusCount,
+        mediaId: s.mediaId,
+        photoUrl: s.photoUrl,
+        stream: s.stream,
+      })),
     } as unknown as AcademicResultDocument;
   }
 
