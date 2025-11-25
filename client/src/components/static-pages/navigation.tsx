@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import heroImage from "@assets/icon.png";
+import { isNodeOrChild } from "framer-motion";
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isStudentsOpen, setIsStudentsOpen] = useState(false);
-    const [isExcellenceOpen, setIsExcellenceOpen] = useState(false);
+  const [isExcellenceOpen, setIsExcellenceOpen] = useState(false);
+  const [isClubOpen, setIsClubOpen] = useState(false);
 
 
   const handleLinkClick = (
@@ -70,11 +72,10 @@ export default function Navigation() {
               {/* GLASS DROPDOWN — NOW VISIBLE OUTSIDE NAV */}
               <div className="absolute left-1/2 -translate-x-1/2 top-full mt-3 w-64 pointer-events-none">
                 <div
-                  className={`pointer-events-auto transition-all duration-300 ease-out ${
-                    isStudentsOpen
-                      ? "opacity-100 translate-y-0 visible"
-                      : "opacity-0 -translate-y-2 invisible"
-                  }`}
+                  className={`pointer-events-auto transition-all duration-300 ease-out ${isStudentsOpen
+                    ? "opacity-100 translate-y-0 visible"
+                    : "opacity-0 -translate-y-2 invisible"
+                    }`}
                 >
                   <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/30 dark:border-gray-700/50 overflow-hidden">
                     <a
@@ -95,53 +96,85 @@ export default function Navigation() {
                 </div>
               </div>
             </div>
-<div
+            {/* Excellence Dropdown - Desktop */}
+            <div
               className="relative"
               onMouseEnter={() => setIsExcellenceOpen(true)}
               onMouseLeave={() => setIsExcellenceOpen(false)}
             >
               <button className="flex items-center gap-1 text-foreground hover:text-primary transition-colors font-medium">
-               Excellence  <ChevronDown className={`h-4 w-4 transition-transform ${isExcellenceOpen ? "rotate-180" : ""}`} />
+                Excellence  <ChevronDown className={`h-4 w-4 transition-transform ${isExcellenceOpen ? "rotate-180" : ""}`} />
               </button>
 
               {/* GLASS DROPDOWN — NOW VISIBLE OUTSIDE NAV */}
               <div className="absolute left-1/2 -translate-x-1/2 top-full mt-3 w-64 pointer-events-none">
                 <div
-                  className={`pointer-events-auto transition-all duration-300 ease-out ${
-                    isExcellenceOpen
-                      ? "opacity-100 translate-y-0 visible"
-                      : "opacity-0 -translate-y-2 invisible"
-                  }`}
+                  className={`pointer-events-auto transition-all duration-300 ease-out ${isExcellenceOpen
+                    ? "opacity-100 translate-y-0 visible"
+                    : "opacity-0 -translate-y-2 invisible"
+                    }`}
                 >
                   <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/30 dark:border-gray-700/50 overflow-hidden">
                     <a
                       href="/academic-results"
-                      onClick={(e) => { handleLinkClick(e, "/students"); setIsStudentsOpen(false); }}
+                      onClick={(e) => { handleLinkClick(e, "/students"); setIsExcellenceOpen(false); }}
                       className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium"
                     >
                       Academic
                     </a>
                     <a
                       href="/students-upload"
-                      onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsStudentsOpen(false); }}
+                      onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsExcellenceOpen(false); }}
                       className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium border-t border-white/20 dark:border-gray-700/30"
                     >
                       Arts & Science Fair
                     </a>
                     <a
                       href="/students-upload"
-                      onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsStudentsOpen(false); }}
+                      onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsExcellenceOpen(false); }}
                       className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium border-t border-white/20 dark:border-gray-700/30"
                     >
-                      NSS
+                      Sports
                     </a>
-<a
-                      href="/students-upload"
-                      onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsStudentsOpen(false); }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Club Dropdown - Desktop */}
+            <div
+              className="relative"
+              onMouseEnter={() => setIsClubOpen(true)}
+              onMouseLeave={() => setIsClubOpen(false)}
+            >
+              <button className="flex items-center gap-1 text-foreground hover:text-primary transition-colors font-medium">
+                Clubs  <ChevronDown className={`h-4 w-4 transition-transform ${isClubOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* GLASS DROPDOWN — NOW VISIBLE OUTSIDE NAV */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-3 w-64 pointer-events-none">
+                <div
+                  className={`pointer-events-auto transition-all duration-300 ease-out ${isClubOpen
+                    ? "opacity-100 translate-y-0 visible"
+                    : "opacity-0 -translate-y-2 invisible"
+                    }`}
+                >
+                  <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/30 dark:border-gray-700/50 overflow-hidden">
+                    <a
+                      href="/nss-page"
+                      onClick={(e) => { handleLinkClick(e, "/students"); setIsClubOpen(false); }}
+                      className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium"
+                    >
+                      N.S.S
+                    </a>
+                    <a
+                      href="/souhrida-club"
+                      onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsClubOpen(false); }}
                       className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium border-t border-white/20 dark:border-gray-700/30"
                     >
-                      Sports 
+                      Souhrida Club
                     </a>
+
                   </div>
                 </div>
               </div>
@@ -186,6 +219,8 @@ export default function Navigation() {
                   <a href="/students-upload" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Student's Upload</a>
                 </div>
               )}
+
+
               <button
                 onClick={() => setIsExcellenceOpen(!isExcellenceOpen)}
                 className="w-full flex items-center justify-between py-3 text-foreground hover:text-primary font-medium"
@@ -197,8 +232,22 @@ export default function Navigation() {
                 <div className="pl-6 space-y-2 bg-white/40 dark:bg-gray-800/40 rounded-xl py-3">
                   <a href="/academic-results" onClick={(e) => { handleLinkClick(e, "/students"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Academic</a>
                   <a href="/students-upload" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Arts & Science Fair</a>
-                  <a href="/students-upload" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">NSS</a>
                   <a href="/students-upload" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Sports</a>
+
+                </div>
+              )}
+
+              <button
+                onClick={() => setIsClubOpen(!isClubOpen)}
+                className="w-full flex items-center justify-between py-3 text-foreground hover:text-primary font-medium"
+              >
+                Clubs
+                <ChevronDown className={`h-5 w-5 transition-transform ${isClubOpen ? "rotate-180" : ""}`} />
+              </button>
+              {isClubOpen && (
+                <div className="pl-6 space-y-2 bg-white/40 dark:bg-gray-800/40 rounded-xl py-3">
+                  <a href="/academic-results" onClick={(e) => { handleLinkClick(e, "/students"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">N.S.S</a>
+                  <a href="/students-upload" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Souhrida Club</a>
 
                 </div>
               )}
