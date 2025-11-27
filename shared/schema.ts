@@ -509,6 +509,126 @@ export const insertOrUpdateAcademicResultSchema = z.object({
 });
 
 export type InsertOrUpdateAcademicResult = z.infer<typeof insertOrUpdateAcademicResultSchema>;
+
+// ---------------- SPORTS RESULTS ----------------
+
+export interface SportEvent {
+  name: string;
+  category: "Individual" | "Team";
+  gender?: "Boys" | "Girls" | "Mixed";
+}
+
+export interface Champion {
+  name: string;
+  event: string;
+  position: 1 | 2 | 3;
+  teamMembers?: string[];
+  mediaId?: string;
+  photoUrl?: string; // signed R2 URL (/api/media/:id)
+  level?: 'HSS' | 'HS' | 'State' | 'District'; // Added for grouping (e.g., school level or competition tier)
+  featured?: boolean; // Added for highlighting top champions in UI
+}
+
+export interface SportsResultDocument extends Document {
+  year: number;
+  totalNationalMedals: number;
+  gold: number;
+  silver: number;
+  bronze: number;
+  totalParticipants: number;
+  events: SportEvent[];
+  champions: Champion[];
+  lastUpdated: Date;
+}
+
+// ------------------------------------------------------------
+// MONGOOSE SCHEMA
+// ------------------------------------------------------------
+
+export const SportsResultSchema = new Schema<SportsResultDocument>({
+  year: { type: Number, required: true, unique: true },
+
+  totalNationalMedals: { type: Number, required: true, min: 0 },
+  gold: { type: Number, required: true, min: 0 },
+  silver: { type: Number, required: true, min: 0 },
+  bronze: { type: Number, required: true, min: 0 },
+  totalParticipants: { type: Number, required: true, min: 0 },
+
+  events: [
+    {
+      name: { type: String, required: true },
+      category: { type: String, enum: ["Individual", "Team"], required: true },
+      gender: { type: String, enum: ["Boys", "Girls", "Mixed"] },
+    },
+  ],
+
+  champions: [
+    {
+      name: { type: String, required: true },
+      event: { type: String, required: true },
+      position: { type: Number, enum: [1, 2, 3], required: true },
+      teamMembers: [{ type: String }],
+      mediaId: { type: String },
+      photoUrl: { type: String },
+      level: { type: String, enum: ["HSS", "HS", "State", "District"] }, // Added
+      featured: { type: Boolean }, // Added
+    },
+  ],
+
+  lastUpdated: { type: Date, default: Date.now },
+});
+
+// ------------------------------------------------------------
+// ZOD VALIDATION SCHEMA
+// ------------------------------------------------------------
+
+export const insertOrUpdateSportsResultSchema = z.object({
+  year: z.number().int().min(2000).max(2100),
+
+  totalNationalMedals: z.number().int().min(0),
+  gold: z.number().int().min(0),
+  silver: z.number().int().min(0),
+  bronze: z.number().int().min(0),
+  totalParticipants: z.number().int().min(0),
+
+  events: z.array(
+    z.object({
+      name: z.string().min(1, "Event name is required"),
+      category: z.enum(["Individual", "Team"]),
+      gender: z.enum(["Boys", "Girls", "Mixed"]).optional(),
+    })
+  ),
+
+  champions: z.array(
+    z.object({
+      name: z.string().min(1, "Champion name is required"),
+      event: z.string().min(1, "Event name is required"),
+      position: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+
+      // Always store an array (empty for individuals)
+      teamMembers: z.array(z.string()).default([]),
+
+      mediaId: z.string().optional(),
+      photoUrl: z.string().optional(),
+
+      // Added fields
+      level: z.enum(["HSS", "HS", "State", "District"]).optional(),
+      featured: z.boolean().optional(),
+    })
+  ),
+});
+
+export type InsertOrUpdateSportsResult = z.infer<
+  typeof insertOrUpdateSportsResultSchema
+>;
+
+
+// Now export the model (after schema is defined!)
+
+export const SportsResultModel =
+  (mongoose.models && mongoose.models.SportsResult) || // Check if mongoose.models exists
+  mongoose.model<SportsResultDocument>("SportsResult", SportsResultSchema);
+
 // ---------------- EXPORT MODELS & TYPES ----------------
 
 // Types
@@ -516,20 +636,54 @@ export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type InsertNews = z.infer<typeof insertNewsSchema>;
 export type InsertSection = z.infer<typeof insertSectionSchema>;
 export type FacultySectionInput = z.infer<typeof FacultySectionSchema>;
-
+// Models (Using singleton pattern for Next.js/Serverless)
+// ---------------- EXPORT MODELS & TYPES ----------------
 
 // Models (Using singleton pattern for Next.js/Serverless)
 export const AcademicResultModel =
-  mongoose.models.AcademicResult ||
+  (mongoose.models && mongoose.models.AcademicResult) ||
   mongoose.model<AcademicResultDocument>("AcademicResult", AcademicResultSchema);
-export const EventModel = mongoose.models.Event || mongoose.model<Event>("Event", eventSchema);
-export const NewsModel = mongoose.models.News || mongoose.model<News>("News", newsSchema);
-export const SectionModel = mongoose.models.Section || mongoose.model<Section>("Section", SectionSchema);
-export const MediaModel = mongoose.models.Media || mongoose.model<Media>("Media", mediaSchema);
-export const MediaDatabaseModel = mongoose.models.MediaDatabase || mongoose.model<MediaDatabase>("MediaDatabase", mediaDatabaseSchema);
-export const GalleryImageModel = mongoose.models.GalleryImage || mongoose.model<GalleryImage>("GalleryImage", galleryImageSchema);
-export const GalleryVideoModel = mongoose.models.GalleryVideo || mongoose.model<GalleryVideo>("GalleryVideo", galleryVideoSchema);
-export const HeroVideoModel = mongoose.models.HeroVideo || mongoose.model<HeroVideo>("HeroVideo", heroVideoSchema);
-export const FacultySectionModel = mongoose.models.FacultySection || mongoose.model<FacultySection>("FacultySection", facultySectionSchema);
-export const StudentMediaModel = mongoose.models.StudentMedia || mongoose.model<StudentMediaDoc>("StudentMedia", studentMediaSchema);
-export const TeacherModel = mongoose.models.Teacher || mongoose.model<Teacher>("Teacher", teacherSchema);
+
+export const EventModel =
+  (mongoose.models && mongoose.models.Event) ||
+  mongoose.model<Event>("Event", eventSchema);
+
+export const NewsModel =
+  (mongoose.models && mongoose.models.News) ||
+  mongoose.model<News>("News", newsSchema);
+
+export const SectionModel =
+  (mongoose.models && mongoose.models.Section) ||
+  mongoose.model<Section>("Section", SectionSchema);
+
+export const MediaModel =
+  (mongoose.models && mongoose.models.Media) ||
+  mongoose.model<Media>("Media", mediaSchema);
+
+export const MediaDatabaseModel =
+  (mongoose.models && mongoose.models.MediaDatabase) ||
+  mongoose.model<MediaDatabase>("MediaDatabase", mediaDatabaseSchema);
+
+export const GalleryImageModel =
+  (mongoose.models && mongoose.models.GalleryImage) ||
+  mongoose.model<GalleryImage>("GalleryImage", galleryImageSchema);
+
+export const GalleryVideoModel =
+  (mongoose.models && mongoose.models.GalleryVideo) ||
+  mongoose.model<GalleryVideo>("GalleryVideo", galleryVideoSchema);
+
+export const HeroVideoModel =
+  (mongoose.models && mongoose.models.HeroVideo) ||
+  mongoose.model<HeroVideo>("HeroVideo", heroVideoSchema);
+
+export const FacultySectionModel =
+  (mongoose.models && mongoose.models.FacultySection) ||
+  mongoose.model<FacultySection>("FacultySection", facultySectionSchema);
+
+export const StudentMediaModel =
+  (mongoose.models && mongoose.models.StudentMedia) ||
+  mongoose.model<StudentMediaDoc>("StudentMedia", studentMediaSchema);
+
+export const TeacherModel =
+  (mongoose.models && mongoose.models.Teacher) ||
+  mongoose.model<Teacher>("Teacher", teacherSchema);

@@ -27,8 +27,11 @@ import {
   TeacherModel,
   AcademicResultDocument,
   AcademicResultSchema,
-  AcademicResultModel,
-  InsertOrUpdateAcademicResult
+  SportsResultSchema,
+  type InsertOrUpdateSportsResult,
+  SportsResultDocument,
+  InsertOrUpdateAcademicResult,
+  Champion
 } from "@shared/schema";
 
 
@@ -42,6 +45,8 @@ const SectionModel: Model<Section> =
   mongoose.models.Section || model<Section>("Section", SectionSchema);
 const AcademicResultModelInstance: Model<AcademicResultDocument> =
   mongoose.models.AcademicResult || model<AcademicResultDocument>("AcademicResult", AcademicResultSchema);
+const SportsResultModelInstance: Model<SportsResultDocument> =
+  mongoose.models.SportsResult || model<SportsResultDocument>("SportsResult", SportsResultSchema);
 
 export interface IStorage {
   getEvents(): Promise<Event[]>;
@@ -77,6 +82,10 @@ export interface IStorage {
   getAllAcademicYears(): Promise<number[]>;
   createOrUpdateAcademicResult(data: InsertOrUpdateAcademicResult): Promise<AcademicResultDocument>;
   deleteAcademicResult(year: number): Promise<AcademicResultDocument | null>;
+  getSportsResultByYear(year: number): Promise<SportsResultDocument | null>;
+  getAllSportsYears(): Promise<number[]>;
+  createOrUpdateSportsResult(data: InsertOrUpdateSportsResult): Promise<SportsResultDocument>;
+  deleteSportsResult(year: number): Promise<SportsResultDocument | null>;
 }
 
 export class MongoStorage implements IStorage {
@@ -541,6 +550,200 @@ export class MongoStorage implements IStorage {
     } as unknown as AcademicResultDocument;
   }
 
+  // ------------------------------------------------------------
+  // SPORTS RESULT STORAGE SERVICE (UPDATED)
+  // ------------------------------------------------------------
+
+  async getSportsResultByYear(
+    year: number
+  ): Promise<SportsResultDocument | null> {
+    const doc = await SportsResultModelInstance.findOne({ year })
+      .lean()
+      .exec();
+
+    if (!doc) return null;
+
+    return {
+      ...doc,
+      id: doc._id.toString(),
+      lastUpdated: new Date(doc.lastUpdated),
+
+      events: (doc.events || []).map((e) => ({
+        name: e.name,
+        category: e.category,
+        gender: e.gender,
+      })),
+
+      champions: (doc.champions || []).map((c) => ({
+        name: c.name,
+        event: c.event,
+        position: c.position,
+        teamMembers: c.teamMembers || [],
+        mediaId: c.mediaId,
+        photoUrl: c.photoUrl,
+        level: c.level,       // Added: Include level for grouping
+        featured: c.featured, // Added: Include featured flag for UI highlighting
+      })),
+    } as unknown as SportsResultDocument;
+  }
+
+  // ------------------------------------------------------------
+
+  async getAllSportsYears(): Promise<number[]> {
+    const docs = await SportsResultModelInstance.find({}, { year: 1 })
+      .sort({ year: -1 })
+      .lean()
+      .exec();
+
+    return docs.map((d) => d.year);
+  }
+
+  // ------------------------------------------------------------
+
+  async createOrUpdateSportsResult(
+    data: InsertOrUpdateSportsResult
+  ): Promise<SportsResultDocument> {
+    const result = await SportsResultModelInstance.findOneAndUpdate(
+      { year: data.year },
+      {
+        ...data,
+        lastUpdated: new Date(),
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    )
+      .lean()
+      .exec();
+
+    if (!result) throw new Error("Failed to save sports result");
+
+    return {
+      ...result,
+      id: result._id.toString(),
+      lastUpdated: new Date(result.lastUpdated),
+
+      events: (result.events || []).map((e) => ({
+        name: e.name,
+        category: e.category,
+        gender: e.gender,
+      })),
+
+      champions: (result.champions || []).map((c) => ({
+        name: c.name,
+        event: c.event,
+        position: c.position,
+        teamMembers: c.teamMembers || [],
+        mediaId: c.mediaId,
+        photoUrl: c.photoUrl,
+        level: c.level,       // Added: Include level for grouping
+        featured: c.featured, // Added: Include featured flag for UI highlighting
+      })),
+    } as unknown as SportsResultDocument;
+  }
+
+  // ------------------------------------------------------------
+
+  async deleteSportsResult(
+    year: number
+  ): Promise<SportsResultDocument | null> {
+    const doc = await SportsResultModelInstance.findOneAndDelete({ year })
+      .lean()
+      .exec();
+
+    if (!doc) return null;
+
+    return {
+      ...doc,
+      id: doc._id.toString(),
+    } as unknown as SportsResultDocument;
+  }
+
+  // Add a new champion (returns updated document + new index)
+  async addChampionToYear(
+    year: number,
+    champion: Champion
+  ): Promise<{ updatedResult: SportsResultDocument | null; newIndex: number }> {
+    const result = await SportsResultModelInstance.findOneAndUpdate(
+      { year },
+      { $push: { champions: champion }, lastUpdated: new Date() },
+      { new: true, upsert: true }
+    )
+      .lean()
+      .exec();
+
+    if (!result) return { updatedResult: null, newIndex: -1 };
+
+    const mapped = this.mapSportsResult(result);
+    const newIndex = result.champions.length - 1;
+
+    return { updatedResult: mapped, newIndex };
+  }
+
+  // Update champion by array index
+  async updateChampionInYear(
+    year: number,
+    championIndex: number,
+    champion: Champion
+  ): Promise<SportsResultDocument | null> {
+    const doc = await SportsResultModelInstance.findOne({ year });
+    if (!doc || !doc.champions[championIndex]) return null;
+
+    // Replace the champion at the given index (preserves MongoDB _id if exists)
+    doc.champions[championIndex] = champion as any; // 'as any' safe here — Mongoose handles _id internally
+    doc.lastUpdated = new Date();
+    await doc.save();
+
+    return this.mapSportsResult(doc.toObject());
+  }
+
+  // Delete champion by array index + return mediaId for cleanup
+  async deleteChampionFromYear(
+    year: number,
+    championIndex: number
+  ): Promise<{ deletedChampion: Champion; mediaId?: string } | null> {
+    const doc = await SportsResultModelInstance.findOne({ year });
+    if (!doc || !doc.champions[championIndex]) return null;
+
+    const deleted = doc.champions[championIndex];
+    const mediaId = deleted.mediaId;
+
+    doc.champions.splice(championIndex, 1);
+    doc.lastUpdated = new Date();
+    await doc.save();
+
+    return {
+      deletedChampion: {
+        name: deleted.name,
+        event: deleted.event,
+        position: deleted.position,
+        teamMembers: deleted.teamMembers || [],
+        mediaId: deleted.mediaId,
+        photoUrl: deleted.photoUrl,
+        level: deleted.level,
+        featured: deleted.featured,
+      },
+      mediaId,
+    };
+  }
+
+  // Helper to reuse mapping logic
+  private mapSportsResult(doc: any): SportsResultDocument {
+    return {
+      ...doc,
+      id: doc._id.toString(),
+      lastUpdated: new Date(doc.lastUpdated),
+      events: (doc.events || []).map((e: any) => ({ name: e.name, category: e.category, gender: e.gender })),
+      champions: (doc.champions || []).map((c: any) => ({
+        name: c.name,
+        event: c.event,
+        position: c.position,
+        teamMembers: c.teamMembers || [],
+        mediaId: c.mediaId,
+        photoUrl: c.photoUrl,
+        level: c.level,
+        featured: c.featured,
+      })),
+    } as unknown as SportsResultDocument;
+  }
 }
 
 

@@ -8,8 +8,8 @@ import {
   insertOrUpdateAcademicResultSchema,
   insertSectionSchema,
   insertTeacherSchema,
-  MediaDatabaseModel,
   StudentMediaZodSchema,
+  insertOrUpdateSportsResultSchema
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
@@ -566,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ---------------- MEDIA ROUTES ----------------
 
   // Replace the GET /api/media/:id route
-   app.get("/api/media/:id", async (req, res) => {
+  app.get("/api/media/:id", async (req, res) => {
     try {
       // 1. Find metadata in main DB
       const mediaDoc = await MediaModel.findById(req.params.id);
@@ -605,8 +605,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // POST /api/media
-// Modified endpoint
-app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
+  // Modified endpoint
+  app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -673,7 +673,7 @@ app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
   });
 
   // DELETE /api/media/:id
-app.delete("/api/media/:id", requireAuth, async (req, res) => {
+  app.delete("/api/media/:id", requireAuth, async (req, res) => {
     try {
       // 1. Find metadata in main DB
       const mediaDoc = await MediaModel.findById(req.params.id);
@@ -743,7 +743,7 @@ app.delete("/api/media/:id", requireAuth, async (req, res) => {
 
 
   // DELETE /api/hero-video/:id
-app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
+  app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
     try {
       // 1. Delete the HeroVideo entry from the main DB
       const deleted = await storage.deleteHeroVideo(req.params.id);
@@ -773,7 +773,7 @@ app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
         // Log a warning if the media metadata is missing, but continue since the hero entry was deleted.
         console.warn(`Media metadata not found for hero video mediaId: ${deleted.mediaId}`);
       }
-      
+
       // --- R2 MODIFICATION END ---
 
       res.json({ success: true, id: req.params.id });
@@ -852,7 +852,7 @@ app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
     }
   });
 
-  
+
 
   //------------------- STUDENTS MEDIA MANAGEMENT ----------------
 
@@ -891,7 +891,7 @@ app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
 
   // Delete StudentMedia + associated file
   // Delete StudentMedia + associated file
-app.delete("/api/admin-students/:id", requireAuth, async (req, res) => {
+  app.delete("/api/admin-students/:id", requireAuth, async (req, res) => {
     try {
       // 1. Delete the StudentMedia database entry
       const deleted = await storage.deleteStudentMedia(req.params.id);
@@ -1129,7 +1129,7 @@ app.delete("/api/admin-students/:id", requireAuth, async (req, res) => {
 
   // Delete teacher (admin only)
   // Delete teacher (admin only)
-app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
     try {
       const deleted = await storage.deleteTeacher(req.params.id);
       if (!deleted) {
@@ -1160,7 +1160,7 @@ app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
 
           // 3. Delete Media metadata from main DB
           await MediaModel.deleteOne({ _id: mediaDoc._id });
-          
+
           // --- R2 MODIFICATION END ---
         }
       }
@@ -1173,126 +1173,340 @@ app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
   });
 
   //------academic-results------------------------
-  
+
 
   // 1. Get all available years (for dropdown)
-app.get("/api/academic-results/years", async (_req, res) => {
-  try {
-    const years = await storage.getAllAcademicYears();
-    res.json(years);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch years" });
-  }
-});
-
-// 2. Get full result for a specific year (public page uses this)
-app.get("/api/academic-results/:year", async (req, res) => {
-  const year = parseInt(req.params.year);
-  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
-
-  try {
-    const result = await storage.getAcademicResultByYear(year);
-    if (!result) return res.status(404).json({ error: "Result not found" });
-    res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch result" });
-  }
-});
-
-// 3. Create or Update entire academic result (admin only)
-app.post("/api/admin/academic-results", requireAuth, async (req, res) => {
-  try {
-    const data = insertOrUpdateAcademicResultSchema.parse(req.body);
-    const result = await storage.createOrUpdateAcademicResult(data);
-    res.json({ success: true, result });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      res.status(400).json({ error: "Validation failed", details: err.errors });
-    } else {
+  app.get("/api/academic-results/years", async (_req, res) => {
+    try {
+      const years = await storage.getAllAcademicYears();
+      res.json(years);
+    } catch (err) {
       console.error(err);
-      res.status(500).json({ error: "Failed to save result" });
+      res.status(500).json({ error: "Failed to fetch years" });
     }
-  }
-});
+  });
 
-// 4. Update specific year (optional — same as POST but clearer)
-app.put("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
-  const year = parseInt(req.params.year);
-  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+  // 2. Get full result for a specific year (public page uses this)
+  app.get("/api/academic-results/:year", async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
-  try {
-    const data = insertOrUpdateAcademicResultSchema.parse({
-      ...req.body,
-      year,
-    });
-    const result = await storage.createOrUpdateAcademicResult(data);
-    res.json({ success: true, result });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      res.status(400).json({ error: "Validation failed", details: err.errors });
-    } else {
+    try {
+      const result = await storage.getAcademicResultByYear(year);
+      if (!result) return res.status(404).json({ error: "Result not found" });
+      res.json(result);
+    } catch (err) {
       console.error(err);
-      res.status(500).json({ error: "Failed to update result" });
+      res.status(500).json({ error: "Failed to fetch result" });
     }
-  }
-});
+  });
 
-// 5. Delete entire year's result + ALL associated student photos (admin only)
-app.delete("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
-  const year = parseInt(req.params.year, 10);
-  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+  // 3. Create or Update entire academic result (admin only)
+  app.post("/api/admin/academic-results", requireAuth, async (req, res) => {
+    try {
+      const data = insertOrUpdateAcademicResultSchema.parse(req.body);
+      const result = await storage.createOrUpdateAcademicResult(data);
+      res.json({ success: true, result });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to save result" });
+      }
+    }
+  });
 
-  try {
-    const result = await storage.getAcademicResultByYear(year);
-    if (!result) return res.status(404).json({ error: "Result not found" });
+  // 4. Update specific year (optional — same as POST but clearer)
+  app.put("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
-    // Collect all mediaIds from top students
-    const mediaIds = [
-      ...result.topHSStudents.map(s => s.mediaId).filter(Boolean),
-      ...result.topHSSStudents.map(s => s.mediaId).filter(Boolean),
-    ] as string[];
+    try {
+      const data = insertOrUpdateAcademicResultSchema.parse({
+        ...req.body,
+        year,
+      });
+      const result = await storage.createOrUpdateAcademicResult(data);
+      res.json({ success: true, result });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update result" });
+      }
+    }
+  });
 
-    // Delete all associated media from R2 + DB
-    if (mediaIds.length > 0) {
-      await Promise.all(
-        mediaIds.map(async (id) => {
-          try {
-            const media = await MediaModel.findById(id);
-            if (media) {
-              // Delete from R2
-              await s3Client.send(
-                new DeleteObjectCommand({
-                  Bucket: R2_BUCKET_NAME,
-                  Key: media.filename,
-                })
-              );
-              // Delete from MongoDB
-              await MediaModel.findByIdAndDelete(id);
+  // 5. Delete entire year's result + ALL associated student photos (admin only)
+  app.delete("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year, 10);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+    try {
+      const result = await storage.getAcademicResultByYear(year);
+      if (!result) return res.status(404).json({ error: "Result not found" });
+
+      // Collect all mediaIds from top students
+      const mediaIds = [
+        ...result.topHSStudents.map(s => s.mediaId).filter(Boolean),
+        ...result.topHSSStudents.map(s => s.mediaId).filter(Boolean),
+      ] as string[];
+
+      // Delete all associated media from R2 + DB
+      if (mediaIds.length > 0) {
+        await Promise.all(
+          mediaIds.map(async (id) => {
+            try {
+              const media = await MediaModel.findById(id);
+              if (media) {
+                // Delete from R2
+                await s3Client.send(
+                  new DeleteObjectCommand({
+                    Bucket: R2_BUCKET_NAME,
+                    Key: media.filename,
+                  })
+                );
+                // Delete from MongoDB
+                await MediaModel.findByIdAndDelete(id);
+              }
+            } catch (err) {
+              console.warn(`Failed to delete media ${id}:`, err);
+              // Don't fail the whole operation if one image fails
             }
-          } catch (err) {
-            console.warn(`Failed to delete media ${id}:`, err);
-            // Don't fail the whole operation if one image fails
-          }
-        })
-      );
+          })
+        );
+      }
+
+      // Now delete the academic result document
+      await storage.deleteAcademicResult(year);
+
+      res.json({
+        success: true,
+        message: `Academic result ${year} and ${mediaIds.length} photos deleted successfully`,
+        deletedPhotos: mediaIds.length,
+      });
+    } catch (err) {
+      console.error("Failed to delete academic result:", err);
+      res.status(500).json({ error: "Failed to delete result" });
+    }
+  });
+
+  //------sports-results------------------------
+
+  // 1. Get all available years (for dropdown)
+  app.get("/api/sports-results/years", async (_req, res) => {
+    try {
+      const years = await storage.getAllSportsYears();
+      res.json(years);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch years" });
+    }
+  });
+
+  // 2. Get full result for a specific year (public page uses this)
+  app.get("/api/sports-results/:year", async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+    try {
+      const result = await storage.getSportsResultByYear(year);
+      if (!result) return res.status(404).json({ error: "Result not found" });
+      res.json(result);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch result" });
+    }
+  });
+
+  // 3. Create or Update entire sports result (admin only)
+  app.post("/api/admin/sports-results", requireAuth, async (req, res) => {
+    try {
+      const data = insertOrUpdateSportsResultSchema.parse(req.body);
+      const result = await storage.createOrUpdateSportsResult(data);
+      res.json({ success: true, result });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to save result" });
+      }
+    }
+  });
+
+  // 4. Update specific year (optional — same as POST but clearer)
+  app.put("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+    try {
+      const data = insertOrUpdateSportsResultSchema.parse({
+        ...req.body,
+        year,
+      });
+      const result = await storage.createOrUpdateSportsResult(data);
+      res.json({ success: true, result });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update result" });
+      }
+    }
+  });
+
+  // New: Add a single champion to a year
+  app.post("/api/admin/sports-results/:year/champions", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+    try {
+      const championData = insertOrUpdateSportsResultSchema.shape.champions.element.parse(req.body);
+      const { updatedResult, newIndex } = await storage.addChampionToYear(year, championData);
+      if (!updatedResult) return res.status(404).json({ error: "Year not found" });
+
+      res.json({
+        success: true,
+        result: updatedResult,
+        championIndex: newIndex // Return the index for future updates/deletes
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to add champion" });
+      }
+    }
+  });
+
+  app.put("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    const championIndex = parseInt(req.params.championIndex);
+
+    if (isNaN(year) || isNaN(championIndex)) {
+      return res.status(400).json({ error: "Invalid year or champion index" });
     }
 
-    // Now delete the academic result document
-    await storage.deleteAcademicResult(year);
+    try {
+      const championData = insertOrUpdateSportsResultSchema.shape.champions.element.parse(req.body);
+      const updatedResult = await storage.updateChampionInYear(year, championIndex, championData);
+      if (!updatedResult) return res.status(404).json({ error: "Year or champion not found" });
+      res.json({ success: true, result: updatedResult });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update champion" });
+      }
+    }
+  });
 
-    res.json({
-      success: true,
-      message: `Academic result ${year} and ${mediaIds.length} photos deleted successfully`,
-      deletedPhotos: mediaIds.length,
-    });
-  } catch (err) {
-    console.error("Failed to delete academic result:", err);
-    res.status(500).json({ error: "Failed to delete result" });
-  }
-});
 
+  app.delete("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    const championIndex = parseInt(req.params.championIndex);
+
+    if (isNaN(year) || isNaN(championIndex)) {
+      return res.status(400).json({ error: "Invalid year or champion index" });
+    }
+
+    try {
+      const result = await storage.deleteChampionFromYear(year, championIndex);
+
+      // result can be null → handle it safely
+      if (!result) {
+        return res.status(404).json({ error: "Champion not found" });
+      }
+
+      const { deletedChampion, mediaId } = result;
+
+      // Delete associated media if exists
+      if (mediaId) {
+        try {
+          // Reuse your existing /api/media/:id DELETE logic via direct call
+          const media = await MediaModel.findById(mediaId);
+          if (media) {
+            await s3Client.send(
+              new DeleteObjectCommand({
+                Bucket: R2_BUCKET_NAME,
+                Key: media.filename,
+              })
+            );
+            await MediaModel.findByIdAndDelete(mediaId);
+          }
+        } catch (err) {
+          console.warn(`Failed to delete media ${mediaId}:`, err);
+          // Don't fail the whole request if media cleanup fails
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Champion deleted${mediaId ? ' and photo removed' : ''}`,
+        deletedChampion,
+      });
+    } catch (err) {
+      console.error("Failed to delete champion:", err);
+      res.status(500).json({ error: "Failed to delete champion" });
+    }
+  });
+
+  // 5. Delete entire year's result + ALL associated champion photos (admin only)
+  app.delete("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year, 10);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+    try {
+      const result = await storage.getSportsResultByYear(year);
+      if (!result) return res.status(404).json({ error: "Result not found" });
+
+      // Collect all mediaIds from champions
+      const mediaIds = result.champions.map(c => c.mediaId).filter(Boolean) as string[];
+
+      // Delete all associated media from R2 + DB
+      if (mediaIds.length > 0) {
+        await Promise.all(
+          mediaIds.map(async (id) => {
+            try {
+              const media = await MediaModel.findById(id);
+              if (media) {
+                // Delete from R2
+                await s3Client.send(
+                  new DeleteObjectCommand({
+                    Bucket: R2_BUCKET_NAME,
+                    Key: media.filename,
+                  })
+                );
+                // Delete from MongoDB
+                await MediaModel.findByIdAndDelete(id);
+              }
+            } catch (err) {
+              console.warn(`Failed to delete media ${id}:`, err);
+              // Don't fail the whole operation if one image fails
+            }
+          })
+        );
+      }
+
+      // Now delete the sports result document
+      await storage.deleteSportsResult(year);
+
+      res.json({
+        success: true,
+        message: `Sports result ${year} and ${mediaIds.length} photos deleted successfully`,
+        deletedPhotos: mediaIds.length,
+      });
+    } catch (err) {
+      console.error("Failed to delete sports result:", err);
+      res.status(500).json({ error: "Failed to delete result" });
+    }
+  });
 
   //----------------HEALTH-------------------------
   app.get("/health", (req, res) => {

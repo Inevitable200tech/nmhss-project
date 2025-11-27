@@ -1,4 +1,4 @@
-export async function getCroppedImg(imageSrc: string, pixelCrop: any): Promise<Blob> {
+export async function getCroppedImg(current: HTMLImageElement, imageSrc: string, pixelCrop: any): Promise<Blob> {
   const image = new Image();
   image.src = imageSrc;
   await new Promise(r => image.onload = r);

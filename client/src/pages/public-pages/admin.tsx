@@ -177,7 +177,7 @@ export default function AdminPage() {
               </Button>
             </a>
           </li>
-<li>
+          <li>
             <a href="/admin-academic-results">
               <Button variant="outline" className="w-full text-left">
                 Manage Academic Results
@@ -188,6 +188,13 @@ export default function AdminPage() {
             <a href="/admin-teachers-edit">
               <Button variant="outline" className="w-full text-left">
                 Manage Teacher's Section
+              </Button>
+            </a>
+          </li>
+          <li>
+            <a href="/admin-sports-champions">
+              <Button variant="outline" className="w-full text-left">
+                Manage Sports Section
               </Button>
             </a>
           </li>
