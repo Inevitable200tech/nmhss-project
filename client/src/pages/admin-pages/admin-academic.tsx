@@ -1,21 +1,22 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Trash2, Save, Upload, X, AlertTriangle, ArrowLeft } from "lucide-react"; import { useToast } from "@/hooks/use-toast";
+import { Loader2, Plus, Trash2, Save, Upload, X, AlertTriangle, ArrowLeft } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import Cropper from "react-easy-crop";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getCroppedImg } from "@/lib/crop-image";
+// Removed: import Cropper from "react-easy-crop";
+// Removed: import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+// Removed: import { getCroppedImg } from "@/lib/crop-image";
 
 type PendingImage = {
   file: File;
   preview: string;
-  croppedBlob?: Blob;
+  // Removed: croppedBlob?: Blob;
 };
 
 type TopStudent = {
@@ -48,13 +49,13 @@ export default function AdminAcademicResults() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  // Cropper state
-  const [cropOpen, setCropOpen] = useState(false);
-  const [cropImage, setCropImage] = useState("");
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-  const [cropTarget, setCropTarget] = useState<{ type: "HS" | "HSS"; index: number } | null>(null);
+  // Removed Cropper state variables:
+  // const [cropOpen, setCropOpen] = useState(false);
+  // const [cropImage, setCropImage] = useState("");
+  // const [crop, setCrop] = useState({ x: 0, y: 0 });
+  // const [zoom, setZoom] = useState(1);
+  // const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  // const [cropTarget, setCropTarget] = useState<{ type: "HS" | "HSS"; index: number } | null>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") || "" : "";
 
@@ -146,21 +147,19 @@ export default function AdminAcademicResults() {
     setHasUnsavedChanges(true);
   };
 
-  const openCropper = (file: File, type: "HS" | "HSS", index: number) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCropImage(reader.result as string);
-      setCropTarget({ type, index });
-      setCropOpen(true);
-    };
-    reader.readAsDataURL(file);
+  // NEW function to handle image upload without cropping
+  const handleImageUpload = (file: File, type: "HS" | "HSS", index: number) => {
+    updateStudent(type, index, {
+      pendingImage: {
+        file: file,
+        preview: URL.createObjectURL(file),
+      }
+    });
+    setHasUnsavedChanges(true);
+    toast({ title: "Image Selected", description: "Image ready for upload. Click Save to upload permanently." });
   };
 
-  const onCropComplete = (_: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  };
-
-
+  // Removed: onCropComplete
 
   const saveAll = async () => {
     if (!data || !selectedYear) return;
@@ -178,7 +177,8 @@ export default function AdminAcademicResults() {
           ...currentData.topHSSStudents.map((s, i) => ({ ...s, _type: "HSS" as const, _index: i }))
         ];
 
-        const pendingStudents = allStudents.filter(s => s.pendingImage?.croppedBlob);
+        // Filter by the new structure: pendingImage.file (instead of croppedBlob)
+        const pendingStudents = allStudents.filter(s => s.pendingImage?.file);
 
         for (const student of pendingStudents) {
           // Delete old image
@@ -190,7 +190,8 @@ export default function AdminAcademicResults() {
           }
 
           const formData = new FormData();
-          formData.append("file", student.pendingImage!.croppedBlob!, `${student.name}.jpg`);
+          // Use pendingImage.file for upload (instead of croppedBlob)
+          formData.append("file", student.pendingImage!.file!, `${student.name}.jpg`);
 
           const res = await fetch("/api/media", {
             method: "POST",
@@ -231,6 +232,7 @@ export default function AdminAcademicResults() {
       // STEP 2: Save to DB — now 100% guaranteed to have photoUrl
       const payload = {
         ...currentData,
+        // Remove pendingImage before saving
         topHSStudents: currentData.topHSStudents.map(({ pendingImage, ...s }) => s),
         topHSSStudents: currentData.topHSSStudents.map(({ pendingImage, ...s }) => s),
       };
@@ -248,6 +250,12 @@ export default function AdminAcademicResults() {
 
       toast({ title: "Success!", description: `Academic results for ${selectedYear} saved with photos!` });
       setHasUnsavedChanges(false);
+      // Reload years if a new year was created
+      if (!years.includes(selectedYear)) {
+         fetch("/api/academic-results/years")
+          .then(r => r.json())
+          .then(setYears)
+      }
     } catch (err: any) {
       toast({
         title: "Failed",
@@ -261,6 +269,7 @@ export default function AdminAcademicResults() {
 
   const hasPendingImages = () => {
     if (!data) return false;
+    // Check for the existence of the pendingImage object
     return [...data.topHSStudents, ...data.topHSSStudents].some(s => s.pendingImage);
   };
 
@@ -281,7 +290,7 @@ export default function AdminAcademicResults() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="614flex gap-3">
+            <div className="flex gap-3">
               <Input
                 placeholder="e.g. 2026"
                 value={customYear}
@@ -349,7 +358,7 @@ export default function AdminAcademicResults() {
             <Alert className="mb-6 border-amber-400 bg-amber-50 dark:bg-amber-950/50">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
               <AlertDescription className="text-amber-800 dark:text-amber-200 font-medium">
-                You have cropped images ready. Click "Save All Changes" to upload them permanently.
+                You have images ready for upload. Click "Save All Changes" to upload them permanently.
               </AlertDescription>
             </Alert>
           )}
@@ -408,7 +417,7 @@ export default function AdminAcademicResults() {
                     index={i}
                     updateStudent={updateStudent}
                     removeStudent={removeStudent}
-                    openCropper={openCropper}
+                    handleImageUpload={handleImageUpload} // Changed prop
                   />
                 ))
               )}
@@ -440,7 +449,7 @@ export default function AdminAcademicResults() {
                     index={i}
                     updateStudent={updateStudent}
                     removeStudent={removeStudent}
-                    openCropper={openCropper}
+                    handleImageUpload={handleImageUpload} // Changed prop
                   />
                 ))
               )}
@@ -448,54 +457,20 @@ export default function AdminAcademicResults() {
           </Card>
         </div>
       </div>
-
-      {/* Cropper Dialog */}
-      <Dialog open={cropOpen} onOpenChange={setCropOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Crop Student Photo</DialogTitle>
-          </DialogHeader>
-          <div className="relative h-96 bg-black rounded-lg overflow-hidden">
-            <Cropper
-              image={cropImage}
-              crop={crop}
-              zoom={zoom}
-              aspect={1}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={onCropComplete}
-            />
-          </div>
-          <div className="flex gap-3 mt-4">
-            <Button variant="outline" onClick={() => setCropOpen(false)}>Cancel</Button>
-            <Button
-              className="flex-1"
-              onClick={async () => {
-                if (!cropTarget || !croppedAreaPixels) return;
-                const blob = await getCroppedImg(cropImage, croppedAreaPixels);
-                updateStudent(cropTarget.type, cropTarget.index, {
-                  pendingImage: {
-                    file: new File([blob], "photo.jpg"),
-                    preview: URL.createObjectURL(blob),
-                    croppedBlob: blob
-                  }
-                });
-                setCropOpen(false);
-                setCropImage("");
-                setCropTarget(null);
-                toast({ title: "Cropped!", description: "Image ready. Click Save to upload permanently." });
-              }}
-            >
-              Apply Crop
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Removed: Cropper Dialog */}
     </>
   );
 }
 
-function StudentRow({ student, type, index, updateStudent, removeStudent, openCropper }: any) {
+// Updated StudentRow signature and logic to use direct file upload
+function StudentRow({ student, type, index, updateStudent, removeStudent, handleImageUpload }: {
+  student: TopStudent,
+  type: "HS" | "HSS",
+  index: number,
+  updateStudent: (type: "HS" | "HSS", index: number, updates: Partial<TopStudent>) => void,
+  removeStudent: (type: "HS" | "HSS", index: number) => void,
+  handleImageUpload: (file: File, type: "HS" | "HSS", index: number) => void
+}) {
   return (
     <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
@@ -523,7 +498,7 @@ function StudentRow({ student, type, index, updateStudent, removeStudent, openCr
 
         {type === "HSS" && (
           <div className="md:col-span-3">
-            <Select value={student.stream || ""} onValueChange={v => updateStudent(type, index, { stream: v })}>
+            <Select value={student.stream || ""} onValueChange={v => updateStudent(type, index, { stream: v as any })}>
               <SelectTrigger><SelectValue placeholder="Select stream" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Commerce">Commerce</SelectItem>
@@ -543,6 +518,7 @@ function StudentRow({ student, type, index, updateStudent, removeStudent, openCr
                 className="w-20 h-20 rounded-full object-cover ring-4 ring-green-500 shadow-lg"
               />
               <button
+                // Clear the image and pending state
                 onClick={() => updateStudent(type, index, {
                   pendingImage: undefined,
                   photoUrl: undefined,
@@ -559,7 +535,8 @@ function StudentRow({ student, type, index, updateStudent, removeStudent, openCr
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={e => e.target.files?.[0] && openCropper(e.target.files[0], type, index)}
+                // Direct call to the image handler, skipping the cropper
+                onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], type, index)}
               />
               <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 border-2 border-dashed border-gray-400 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                 <Upload className="h-8 w-8 text-gray-500" />

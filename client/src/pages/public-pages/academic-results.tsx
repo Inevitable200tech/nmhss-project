@@ -11,6 +11,7 @@ import {
   Clock,
   Users,
   BookOpen,
+  X, // ADDED: Icon for the dialog close button
 } from "lucide-react";
 
 import {
@@ -111,7 +112,7 @@ function useAcademicResults(year: number) {
 }
 
 // --------------------------------------------------------------------
-// 3. UI COMPONENTS – Updated for mediaId
+// 3. UI COMPONENTS – Updated for mediaId & onClick
 // --------------------------------------------------------------------
 
 const Badge: React.FC<{ children: React.ReactNode; className?: string }> = ({
@@ -129,6 +130,8 @@ interface StudentGridCardProps {
   mediaId?: string;
   maxAplus: number;
   stream?: string;
+  // NEW PROP
+  onClick: () => void;
 }
 
 const StudentGridCard: React.FC<StudentGridCardProps> = ({
@@ -137,13 +140,17 @@ const StudentGridCard: React.FC<StudentGridCardProps> = ({
   mediaId,
   maxAplus,
   stream,
+  onClick, // ADDED
 }) => {
   const imageUrl = mediaId
     ? `/api/media/${mediaId}`
     : `https://placehold.co/100x100/1E40AF/FFFFFF?text=${name.charAt(0)}`;
 
   return (
-    <div className="relative p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg transition-transform duration-200 hover:scale-[1.02] border border-gray-100 dark:border-gray-700">
+    <div 
+      className="relative p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg transition-transform duration-200 hover:scale-[1.02] border border-gray-100 dark:border-gray-700 cursor-pointer"
+      onClick={onClick} // ADDED CLICK HANDLER
+    >
       <img
         src={imageUrl}
         alt={name}
@@ -258,6 +265,13 @@ export default function AcademicResultsPage() {
   const [year, setYear] = useState(currentYear);
   const { data, isLoading, error, years, isLoadingYears } = useAcademicResults(year);
 
+  // NEW TYPES AND STATE FOR DIALOG
+  interface StudentDetail extends TopStudent {
+    section: 'HS' | 'HSS';
+    maxAplus: number;
+  }
+  const [selectedStudent, setSelectedStudent] = useState<StudentDetail | null>(null);
+
   const groupStudents = (students: TopStudent[] = []) => {
     const grouped = students.reduce((acc, s) => {
       acc[s.aPlusCount] = acc[s.aPlusCount] || [];
@@ -282,6 +296,66 @@ export default function AcademicResultsPage() {
     : [];
 
   const maxPercentage = Math.max(...streamPerformanceData.map(d => d.percentage), 100);
+
+  // NEW DIALOG COMPONENT
+  const StudentDetailDialog = () => {
+    if (!selectedStudent) return null;
+    
+    const { name, aPlusCount, section, maxAplus, stream, mediaId } = selectedStudent;
+    const imageUrl = mediaId
+        ? `/api/media/${mediaId}`
+        : `https://placehold.co/150x150/1E40AF/FFFFFF?text=${name.charAt(0)}`;
+        
+    return (
+        // Backdrop click handler
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setSelectedStudent(null)}>
+            <div 
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all duration-300 scale-100"
+                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+            >
+                <div className="flex justify-between items-start border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Student Details</h3>
+                    <button onClick={() => setSelectedStudent(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <X className="h-6 w-6" />
+                    </button>
+                </div>
+
+                <div className="flex flex-col items-center space-y-4">
+                    <img
+                        src={imageUrl}
+                        alt={name}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = `https://placehold.co/150x150/1E40AF/FFFFFF?text=${name.charAt(0)}`;
+                        }}
+                        className="w-28 h-28 rounded-full object-cover border-4 border-indigo-500 dark:border-indigo-400 shadow-md"
+                    />
+                    <h4 className="text-3xl font-extrabold text-gray-900 dark:text-white text-center">{name}</h4>
+                    
+                    <div className="w-full space-y-3 pt-4">
+                        <div className="flex justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                            <span className="font-semibold text-gray-700 dark:text-gray-300">Class Section:</span>
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400 text-lg">{section}</span>
+                        </div>
+                        {stream && (
+                            <div className="flex justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                                <span className="font-semibold text-gray-700 dark:text-gray-300">Stream:</span>
+                                <span className="font-bold text-teal-600 dark:text-teal-400 text-lg">{stream}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between p-3 bg-yellow-100 dark:bg-yellow-900/40 rounded-lg border border-yellow-300 dark:border-yellow-700">
+                            <span className="font-semibold text-gray-700 dark:text-gray-300">Total A+ Grades:</span>
+                            <span className="font-bold text-2xl text-yellow-700 dark:text-yellow-400 flex items-center">
+                                {aPlusCount} / {maxAplus} <Award className="h-6 w-6 ml-2 fill-yellow-600 dark:fill-yellow-400 text-yellow-600 dark:text-yellow-400" />
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  };
+  // END NEW DIALOG COMPONENT
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-inter">
@@ -358,6 +432,7 @@ export default function AcademicResultsPage() {
                       aPlusCount={s.aPlusCount}
                       mediaId={s.mediaId}
                       maxAplus={10}
+                      onClick={() => setSelectedStudent({ ...s, section: 'HS', maxAplus: 10 })} // ADDED CLICK HANDLER
                     />
                   ))}
                 </div>
@@ -446,6 +521,7 @@ export default function AcademicResultsPage() {
                       mediaId={s.mediaId}
                       maxAplus={6}
                       stream={s.stream}
+                      onClick={() => setSelectedStudent({ ...s, section: 'HSS', maxAplus: 6 })} // ADDED CLICK HANDLER
                     />
                   ))}
                 </div>
@@ -455,6 +531,7 @@ export default function AcademicResultsPage() {
         </section>
       </div>
       <Footer />
+      {selectedStudent && <StudentDetailDialog />} {/* RENDER THE DIALOG */}
     </div>
   );
 }

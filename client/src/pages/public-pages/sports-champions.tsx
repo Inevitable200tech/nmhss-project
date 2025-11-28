@@ -1,10 +1,10 @@
-// src/pages/public-pages/sports-champions.tsx
+// src/pages/public-pages/sports-champions.tsx - FINALIZED CLEAN THEME
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import Footer from "@/components/static-pages/footer";
 import Navigation from "@/components/static-pages/navigation";
-import { Calendar, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown, Trophy, Star, X, Users, Zap } from 'lucide-react'; // ADDED: X, Users, Zap icons
 import {
   ResponsiveContainer,
   BarChart,
@@ -34,7 +34,7 @@ type SportsResult = {
   champions: Champion[];
 };
 
-// MOCK DATA — used as fallback when real data is missing
+// MOCK DATA (Retained for functionality)
 const MOCK_DATA: Record<number, SportsResult> = {
   2025: {
     year: 2025,
@@ -82,19 +82,118 @@ const groupByPosition = (champs: Champion[]): Record<1 | 2 | 3, Champion[]> => (
 });
 
 const medalEmoji = (pos: 1 | 2 | 3) => {
-    switch (pos) {
-        case 1: return '🥇';
-        case 2: return '🥈';
-        case 3: return '🥉';
-        default: return '🏅';
-    }
+  switch (pos) {
+    case 1: return '🥇';
+    case 2: return '🥈';
+    case 3: return '🥉';
+    default: return '🏅';
+  }
 }
+
+// Helper to determine medal background styles (Retained basic structure for glass contrast)
+const getMedalStyles = (pos: 1 | 2 | 3) => {
+  switch (pos) {
+    case 1:
+      return {
+        borderClass: 'border-yellow-500/50',
+        textColor: 'text-yellow-700 dark:text-yellow-400'
+      };
+    case 2:
+      return {
+        borderClass: 'border-gray-500/50',
+        textColor: 'text-gray-700 dark:text-gray-400'
+      };
+    case 3:
+      return {
+        borderClass: 'border-red-500/50',
+        textColor: 'text-red-700 dark:text-red-400'
+      };
+    default:
+      return {
+        borderClass: 'border-gray-300/50',
+        textColor: 'text-gray-700 dark:text-gray-400'
+      };
+  }
+};
+
+// --- NEW DIALOG COMPONENT ---
+const ChampionDetailDialog: React.FC<{
+  champion: Champion;
+  onClose: () => void;
+}> = ({ champion, onClose }) => {
+  const { name, event, position, level, teamMembers, photoUrl } = champion;
+  const styles = getMedalStyles(position);
+  
+  const medalText = position === 1 ? 'Gold' : position === 2 ? 'Silver' : 'Bronze';
+  const positionColor = position === 1 ? 'border-yellow-500' : position === 2 ? 'border-gray-400' : 'border-red-500';
+
+  return (
+      // Backdrop click handler
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onClose}>
+          <div 
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all duration-300 scale-100"
+              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+          >
+              <div className="flex justify-between items-start border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Champion Details</h3>
+                  <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <X className="h-6 w-6" />
+                  </button>
+              </div>
+
+              <div className="flex flex-col items-center space-y-4">
+                  <img
+                      src={photoUrl}
+                      alt={name}
+                      className={`w-28 h-28 rounded-full object-cover border-4 ${positionColor} shadow-md`}
+                  />
+                  <h4 className="text-3xl font-extrabold text-gray-900 dark:text-white text-center">{name}</h4>
+                  
+                  <div className="w-full space-y-3 pt-4">
+                      <div className="flex justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Level:</span>
+                          <span className="font-bold text-indigo-600 dark:text-indigo-400 text-lg">{level}</span>
+                      </div>
+                      
+                      <div className="flex justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Event:</span>
+                          <span className="font-bold text-teal-600 dark:text-teal-400 text-lg">{event}</span>
+                      </div>
+
+                      {teamMembers && teamMembers.length > 0 && (
+                          <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                              <span className="flex items-center font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                  <Users className="h-5 w-5 mr-2" /> Team Members:
+                              </span>
+                              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 ml-2">
+                                  {teamMembers.join(' • ')}
+                              </p>
+                          </div>
+                      )}
+
+                      <div className={`flex justify-between p-3 rounded-lg border border-3 ${styles.borderClass} ${position === 1 ? 'bg-yellow-100 dark:bg-yellow-900/40' : position === 2 ? 'bg-gray-100 dark:bg-gray-700/40' : 'bg-red-100 dark:bg-red-900/40'}`}>
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">Position:</span>
+                          <span className={`font-bold text-2xl flex items-center ${styles.textColor}`}>
+                              {medalText} ({position}) {medalEmoji(position)}
+                          </span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  );
+};
+// --- END NEW DIALOG COMPONENT ---
+
 
 export default function SportsChampionsPage() {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [data, setData] = useState<SportsResult | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // NEW STATE FOR DIALOG
+  const [selectedChampion, setSelectedChampion] = useState<Champion | null>(null);
 
   // Fetch available years
   useEffect(() => {
@@ -133,8 +232,10 @@ export default function SportsChampionsPage() {
 
   if (loading || !data || !selectedYear) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-gray-950 dark:to-black flex items-center justify-center">
-        <div className="text-2xl font-semibold text-orange-600">Loading champions...</div>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 dark:from-gray-950 dark:to-black flex items-center justify-center">
+        <div className="text-3xl font-extrabold text-red-700 dark:text-orange-400 flex items-center gap-3">
+          <Trophy className="w-8 h-8 animate-pulse" /> Loading Navamukunda HSS records...
+        </div>
       </div>
     );
   }
@@ -142,69 +243,104 @@ export default function SportsChampionsPage() {
   // 1. Extract all champion levels
   const { HSS, HS, State, District } = groupByLevel(data.champions);
 
-  const renderFeatured = (champs: Champion[]) => {
+  // --- Render Featured Champion as Static Hero Text (Themed) ---
+  const renderFeaturedHero = (champs: Champion[], level: 'HSS' | 'HS') => {
     const featured = champs.find(c => c.featured) ?? champs[0];
     if (!featured) return null;
 
+    const levelText = level === 'HSS' ? 'Higher Secondary' : 'High School';
+    const primaryColor = 'text-red-800 dark:text-red-500';
+    const secondaryColor = 'text-yellow-600 dark:text-yellow-400';
+
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
-        <div className="p-6 sm:p-8 lg:p-12 flex flex-col lg:flex-row items-center gap-8">
-          <img src={featured.photoUrl} alt={featured.name} className="w-48 h-48 sm:w-64 sm:h-64 rounded-full object-fill border-8 border-white dark:border-gray-700 shadow-xl" />
-          <div className="text-center lg:text-left flex-1 space-y-4">
-            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white">
-              {featured.name}
-              {featured.teamMembers && <span className="block text-xl sm:text-2xl font-medium text-orange-600 dark:text-orange-400 mt-2">Team Captain</span>}
-            </h3>
-            <p className="text-xl sm:text-2xl font-semibold text-orange-600 dark:text-orange-400">{featured.event}</p>
-            {featured.teamMembers && (
-              <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300">
-                Team: <span className="font-medium">{featured.teamMembers.join(' • ')}</span>
-              </p>
-            )}
-            <p className="text-lg sm:text-xl font-medium text-gray-700 dark:text-gray-300 mt-6">
-              Outstanding achievement at the National Level!
-            </p>
+      <div className="py-12 px-4 sm:px-8 lg:px-12 text-center relative z-10">
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className='flex justify-center'>
+            <Star className={`w-12 h-12 ${secondaryColor} fill-current drop-shadow-lg`} />
           </div>
+
+          <h3 className="text-xl sm:text-2xl font-bold uppercase tracking-widest text-gray-800 dark:text-gray-300">
+            {levelText} Top Champion
+          </h3>
+
+          <h2 className="text-4xl sm:text-6xl lg:text-7xl font-black text-gray-900 dark:text-white leading-tight drop-shadow-xl">
+            PROUD MOMENT FOR NAVAMUKUNDA HSS!
+          </h2>
+
+          <p className="text-2xl sm:text-3xl font-semibold text-gray-700 dark:text-gray-300">
+            Student <span className={primaryColor}>{featured.name.toUpperCase()}</span> secured Gold in the <span className={primaryColor + ' font-extrabold'}>{featured.event}</span> Event!
+          </p>
+
+          {featured.teamMembers && (
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 italic">
+              Leading Team: <span className="font-medium">{featured.teamMembers.join(' • ')}</span>
+            </p>
+          )}
+
+          <img
+            src={featured.photoUrl}
+            alt={featured.name}
+            className={`w-36 h-36 rounded-full object-cover border-4 border-red-700 shadow-xl mx-auto mt-6 cursor-pointer`}
+            onClick={() => setSelectedChampion(featured)} // ADDED CLICK HANDLER
+          />
         </div>
       </div>
     );
   };
 
+  // --- Render Medal Grid with Glass Style (Themed) ---
   const renderMedalGrid = (champs: Champion[]) => {
     if (champs.length === 0) {
       return (
-        <p className="text-center text-gray-500 dark:text-gray-400 py-6 italic">
+        <p className="text-center text-gray-500 dark:text-gray-400 py-6 italic text-xl">
           No champions recorded at this level for the selected year.
         </p>
       );
     }
     const byPos = groupByPosition(champs);
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10">
         {([1, 2, 3] as const).map(pos => {
           const winners = byPos[pos];
           const count = winners.length;
+          const styles = getMedalStyles(pos);
+          const glassBgClass = 'bg-white/20 dark:bg-gray-800/20 backdrop-blur-md border border-white/30 dark:border-gray-700/30';
+
           return (
-            <div key={pos} className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 text-center flex flex-col">
-              
-              {/* --- START: Champion List (Modified for Tooltip/Touch Reveal) --- */}
-              <div className="flex-1 space-y-4 mb-6">
+            <div key={pos} className={`rounded-3xl shadow-2xl p-6 text-center flex flex-col ${glassBgClass} border-4 ${styles.borderClass}`}>
+
+              {/* Medal Count Title */}
+              <div className="pt-2 pb-6 flex flex-col items-center justify-center">
+                <div className="text-5xl">{medalEmoji(pos)}</div>
+                <h4 className={`text-2xl font-black tracking-wide uppercase text-gray-900 dark:text-white mt-2`}>
+                  {pos === 1 ? 'Gold Medals' : pos === 2 ? 'Silver Medals' : 'Bronze Medals'}
+                </h4>
+                <p className="text-5xl font-extrabold text-gray-900 dark:text-white mt-2 drop-shadow-sm">{count}</p>
+              </div>
+
+              {/* Champion List Items */}
+              <div className="flex-1 space-y-4 border-t border-white/50 dark:border-gray-700/50 pt-6">
                 {winners.slice(0, 4).map((c, i) => (
-                  <div key={i} className="flex items-center gap-6 p-5 bg-gray-50 dark:bg-gray-900 rounded-xl transition-shadow hover:shadow-lg">
-                    {/* Updated photo size to w-20 h-20 and reduced padding for better fit */}
-                    <img src={c.photoUrl} alt={c.name} className="w-20 h-20 rounded-full object-fill border-3 border-current" />
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 p-3 bg-white/10 dark:bg-gray-900/10 backdrop-blur-sm rounded-xl transition-all duration-200 shadow-inner hover:shadow-lg cursor-pointer" // ADDED CURSOR-POINTER
+                    onClick={() => setSelectedChampion(c)} // ADDED CLICK HANDLER
+                  >
+                    <img
+                      src={c.photoUrl}
+                      alt={c.name}
+                      className={`w-14 h-14 rounded-full object-cover border-2 ${pos === 1 ? 'border-yellow-500' : pos === 2 ? 'border-gray-400' : 'border-red-500'}`}
+                    />
                     <div className="text-left flex-1 min-w-0">
-                      {/* Removed 'truncate' class and added 'title' attribute for hover/touch reveal */}
-                      <div 
-                        className="font-extrabold text-xl overflow-hidden whitespace-nowrap text-ellipsis text-gray-900 dark:text-white" 
-                        title={c.name} // Full text revealed on hover/touch
+                      <div
+                        className="font-bold text-lg overflow-hidden whitespace-nowrap text-ellipsis text-gray-900 dark:text-white"
+                        title={c.name}
                       >
                         {c.name}
                       </div>
-                      {/* Removed 'truncate' class and added 'title' attribute for hover/touch reveal */}
-                      <div 
-                        className="text-base overflow-hidden whitespace-nowrap text-ellipsis text-orange-600 dark:text-orange-400"
-                        title={c.event} // Full text revealed on hover/touch
+                      <div
+                        className="text-sm overflow-hidden whitespace-nowrap text-ellipsis text-red-600 dark:text-red-400 font-medium"
+                        title={c.event}
                       >
                         {c.event}
                       </div>
@@ -212,22 +348,9 @@ export default function SportsChampionsPage() {
                   </div>
                 ))}
                 {count === 0 && (
-                     <p className="text-sm text-gray-400 italic pt-2">None in this category.</p>
+                  <p className="text-base text-gray-400 italic pt-2">None in this category.</p>
                 )}
-                {count > 4 && <p className="text-sm text-gray-500 pt-2 font-medium">+{count - 4} more champions</p>}
-              </div>
-              {/* --- END: Champion List --- */}
-
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
-                  {/* --- START: Medal Count (Smaller) --- */}
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <div className="text-3xl">{medalEmoji(pos)}</div>
-                    <h4 className={`text-xl font-extrabold ${pos === 1 ? 'text-amber-600' : pos === 2 ? 'text-gray-500' : 'text-orange-600'}`}>
-                      {pos === 1 ? 'GOLD' : pos === 2 ? 'SILVER' : 'BRONZE'}
-                    </h4>
-                  </div>
-                  <p className="text-4xl font-extrabold text-gray-900 dark:text-white">{count} Medals</p>
-                  {/* --- END: Medal Count --- */}
+                {count > 4 && <p className="text-base text-gray-600 dark:text-gray-400 pt-2 font-semibold">+{count - 4} more champions</p>}
               </div>
             </div>
           );
@@ -237,120 +360,140 @@ export default function SportsChampionsPage() {
   };
 
   const renderSubNationalChampions = (level: 'State' | 'District', champs: Champion[]) => {
-    const title = level === 'State' ? 'State Level Champions' : 'District Level Champions';
-    
-    // Only render the section if there are champions at this level
+    const title = level === 'State' ? 'State Level' : 'District Level';
+
     if (champs.length === 0) return null;
 
     return (
-      <section className="space-y-10">
+      <section className="space-y-10 pt-12">
+        {/* MODIFICATION: Underline removed */}
         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-center text-gray-900 dark:text-white mt-12">
-          {title}
+          <span className="pb-2">{title} Champions</span>
         </h2>
-        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 sm:p-10">
-           {renderMedalGrid(champs)}
+        <div className="p-6 sm:p-10">
+          {renderMedalGrid(champs)}
         </div>
       </section>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-gray-950 dark:to-black">
+    <div className="min-h-screen bg-gradient-to-br from-red-100 via-yellow-100 to-green-100 dark:from-gray-900 dark:to-black">
       <Navigation />
 
       <main className="container mx-auto px-4 py-8 pt-24 sm:pt-32">
-        <div className="max-w-7xl mx-auto space-y-16">
+        <div className="max-w-7xl mx-auto space-y-20">
 
           {/* Header and Year Selector */}
-          <header className="text-center space-y-8">
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-orange-600 via-red-600 to-pink-600">
-              Sports Champions 🏆
+          <header className="text-center space-y-10">
+            {/* MODIFICATION: Location/Icon removed */}
+
+            {/* MODIFICATION: Reduced heading size from lg:text-8xl to lg:text-7xl and sm:text-6xl to sm:text-5xl */}
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black bg-clip-text text-transparent bg-gradient-to-r from-red-700 via-yellow-600 to-green-700 drop-shadow-xl">
+              NAVAMUKUNDA HSS
             </h1>
-            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 flex items-center justify-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Academic Year {selectedYear}–{selectedYear + 1}
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white -mt-4">
+              SPORTS ACHIEVEMENTS
+            </h2>
+
+            <p className="text-xl sm:text-2xl font-medium text-gray-700 dark:text-gray-300 flex items-center justify-center gap-3">
+              <Calendar className="w-6 h-6 text-red-700" />
+              Academic Year <span className='font-extrabold'>{selectedYear}–{selectedYear + 1}</span>
             </p>
 
+            {/* Year Selector */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <span className="text-lg font-medium text-gray-700 dark:text-gray-300">Viewing Data For</span>
+              <span className="text-xl font-bold text-gray-800 dark:text-gray-200">View Year:</span>
               <div className="relative">
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="appearance-none bg-white dark:bg-gray-800 border-2 border-orange-300 dark:border-orange-600 rounded-2xl px-8 py-4 pr-12 text-xl font-bold text-orange-700 dark:text-orange-400 focus:outline-none focus:ring-4 focus:ring-orange-300 cursor-pointer shadow-lg"
+                  className="appearance-none bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm border-4 border-red-700/50 dark:border-red-700/50 rounded-full px-10 py-4 pr-16 text-2xl font-black text-red-800 dark:text-red-400 shadow-2xl focus:outline-none focus:ring-4 focus:ring-red-300 transition-all duration-300 cursor-pointer"
                 >
                   {availableYears.map(year => (
                     <option key={year} value={year}>{year} – {year + 1}</option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-orange-600 pointer-events-none" />
+                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 text-red-700 pointer-events-none" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              <div className="bg-gradient-to-br from-yellow-100 to-amber-100 dark:from-yellow-900/40 dark:to-amber-900/40 rounded-3xl p-8 shadow-xl border border-yellow-200 dark:border-yellow-800">
-                <div className="text-5xl mb-3">🥇</div>
-                <div className="text-6xl font-extrabold text-amber-600 dark:text-amber-400">{data.gold}</div>
-                <div className="text-lg font-bold mt-2">National Gold</div>
+            {/* Medal Summary Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-5xl mx-auto pt-6">
+              <div className="bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-3xl p-8 shadow-2xl border-b-8 border-yellow-700 transform hover:scale-[1.03] transition-transform duration-300">
+                <div className="text-6xl mb-3">🥇</div>
+                <div className="text-7xl font-black text-yellow-900 drop-shadow-md">{data.gold}</div>
+                <div className="text-xl font-bold mt-3 text-yellow-800">TOTAL GOLD</div>
               </div>
-              <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 rounded-3xl p-8 shadow-xl border border-gray-300 dark:border-gray-700">
-                <div className="text-5xl mb-3">🥈</div>
-                <div className="text-6xl font-extrabold text-gray-500 dark:text-gray-400">{data.silver}</div>
-                <div className="text-lg font-bold mt-2">National Silver</div>
+              <div className="bg-gradient-to-br from-gray-300 to-gray-500 rounded-3xl p-8 shadow-2xl border-b-8 border-gray-700 transform hover:scale-[1.03] transition-transform duration-300">
+                <div className="text-6xl mb-3">🥈</div>
+                <div className="text-7xl font-black text-gray-800 drop-shadow-md">{data.silver}</div>
+                <div className="text-xl font-bold mt-3 text-gray-700">TOTAL SILVER</div>
               </div>
-              <div className="bg-gradient-to-br from-orange-100 to-amber-100 dark:from-orange-900/40 dark:to-amber-900/40 rounded-3xl p-8 shadow-xl border border-orange-200 dark:border-orange-800">
-                <div className="text-5xl mb-3">🥉</div>
-                <div className="text-6xl font-extrabold text-orange-600 dark:text-orange-400">{data.bronze}</div>
-                <div className="text-lg font-bold mt-2">National Bronze</div>
+              <div className="bg-gradient-to-br from-red-300 to-red-500 rounded-3xl p-8 shadow-2xl border-b-8 border-red-700 transform hover:scale-[1.03] transition-transform duration-300">
+                <div className="text-6xl mb-3">🥉</div>
+                <div className="text-7xl font-black text-red-900 drop-shadow-md">{data.bronze}</div>
+                <div className="text-xl font-bold mt-3 text-red-800">TOTAL BRONZE</div>
               </div>
             </div>
-            <p className="text-xl font-semibold text-gray-700 dark:text-gray-300 pt-4">Total Participants: {data.totalParticipants}</p>
+            <p className="text-2xl font-bold text-gray-800 dark:text-gray-200 pt-8">Total Participants: <span className='text-red-700'>{data.totalParticipants}</span></p>
 
           </header>
 
-          {/* National Level Sections */}
+          {/* HSS Section */}
           {HSS.length > 0 && (
-            <section className="space-y-10">
+            <section className="space-y-10 pt-12">
+              {/* MODIFICATION: Reduced heading size and removed underline */}
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-center text-gray-900 dark:text-white">
-                Higher Secondary School (HSS) - National
+                <span className="pb-2">Higher Secondary School (HSS)</span>
               </h2>
-              {renderFeatured(HSS)}
+              {renderFeaturedHero(HSS, 'HSS')}
               {renderMedalGrid(HSS)}
             </section>
           )}
 
+          {/* HS Section */}
           {HS.length > 0 && (
-            <section className="space-y-10">
+            <section className="space-y-10 pt-12">
+              {/* MODIFICATION: Reduced heading size and removed underline */}
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-center text-gray-900 dark:text-white">
-                High School (HS) - National
+                <span className="pb-2">High School (HS)</span>
               </h2>
-              {renderFeatured(HS)}
+              {renderFeaturedHero(HS, 'HS')}
               {renderMedalGrid(HS)}
             </section>
           )}
 
           {/* Medal Tally Graph */}
-          <section className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-6 sm:p-10">
-            <h3 className="text-2xl sm:text-3xl font-bold text-center mb-8 text-gray-900 dark:text-white">
-              National Medal Tally {selectedYear}–{selectedYear + 1}
+          <section className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-lg rounded-3xl shadow-2xl p-6 sm:p-10 border-4 border-red-700/50 dark:border-red-700/50">
+            <h3 className="text-3xl sm:text-4xl font-bold text-center mb-10 text-gray-900 dark:text-white">
+              Overall Medal Tally {selectedYear}–{selectedYear + 1}
             </h3>
-            <div className="h-64 sm:h-80">
+            <div className="h-64 sm:h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
-                  { name: 'Gold', count: data.gold, fill: '#FCD34D' },
-                  { name: 'Silver', count: data.silver, fill: '#94A3B8' },
-                  { name: 'Bronze', count: data.bronze, fill: '#FB923C' },
+                  { name: 'Gold', count: data.gold, fill: '#FFD700' },
+                  { name: 'Silver', count: data.silver, fill: '#C0C0C0' },
+                  { name: 'Bronze', count: data.bronze, fill: '#800000' },
                 ]}>
-                  <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
-                  <XAxis dataKey="name" tick={{ fill: '#6b7280' }} />
-                  <YAxis tick={{ fill: '#6b7280' }} />
-                  <Tooltip />
-                  <Bar dataKey="count" radius={[12, 12, 0, 0]} />
+                  <CartesianGrid strokeDasharray="6 6" stroke="#e5e7eb" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: '#6b7280', fontSize: '14px' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    labelStyle={{ fontWeight: 'bold' }}
+                  />
+                  <Bar dataKey="count" radius={[10, 10, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </section>
-          
+
           {/* State and District Sections */}
           {renderSubNationalChampions('State', State)}
           {renderSubNationalChampions('District', District)}
@@ -359,6 +502,7 @@ export default function SportsChampionsPage() {
       </main>
 
       <Footer />
+      {selectedChampion && <ChampionDetailDialog champion={selectedChampion} onClose={() => setSelectedChampion(null)} />} {/* RENDER THE DIALOG */}
     </div>
   );
 }

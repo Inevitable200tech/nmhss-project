@@ -622,12 +622,103 @@ export type InsertOrUpdateSportsResult = z.infer<
   typeof insertOrUpdateSportsResultSchema
 >;
 
+// ---------------- ARTS & SCIENCE RESULTS ----------------
 
-// Now export the model (after schema is defined!)
 
-export const SportsResultModel =
-  (mongoose.models && mongoose.models.SportsResult) || // Check if mongoose.models exists
-  mongoose.model<SportsResultDocument>("SportsResult", SportsResultSchema);
+export interface Achievement {
+  name: string;
+  item: string; // e.g., Classical Dance (Bharathanatyam), Water Purification Model
+  grade: "A" | "B" | "C";
+  schoolSection: "HSS" | "HS" | "UP";
+  competitionLevel: "State" | "District" | "Sub-District";
+  groupMembers?: string[];
+  mediaId?: string;
+  photoUrl?: string; // Signed R2 URL
+  featured?: boolean;
+}
+
+// Embeddable interface for Kalolsavam or Sasthrosavam event summary
+export interface ArtsScienceEventResult {
+  totalA: number;
+  totalB: number;
+  totalC: number;
+  totalParticipants: number;
+  achievements: Achievement[];
+}
+
+export interface ArtsScienceResultDocument extends Document {
+  year: number;
+  kalolsavam: ArtsScienceEventResult;
+  sasthrosavam: ArtsScienceEventResult;
+  lastUpdated: Date;
+}
+
+// ---------------- MONGOOSE SCHEMAS ----------------
+
+const AchievementSchema = new Schema<Achievement>({
+  name: { type: String, required: true },
+  item: { type: String, required: true },
+  grade: { type: String, enum: ["A", "B", "C"], required: true },
+  schoolSection: { type: String, enum: ["HSS", "HS", "UP"], required: true },
+  competitionLevel: {
+    type: String,
+    enum: ["State", "District", "Sub-District"],
+    required: true,
+  },
+  groupMembers: [{ type: String }],
+  mediaId: { type: String },
+  photoUrl: { type: String },
+  featured: { type: Boolean },
+});
+
+const ArtsScienceEventResultSchema = new Schema<ArtsScienceEventResult>({
+  totalA: { type: Number, required: true, min: 0 },
+  totalB: { type: Number, required: true, min: 0 },
+  totalC: { type: Number, required: true, min: 0 },
+  totalParticipants: { type: Number, required: true, min: 0 },
+  achievements: [AchievementSchema],
+}, { _id: false }); // Do not create a separate _id for the embedded schema
+
+
+export const ArtsScienceResultSchema = new Schema<ArtsScienceResultDocument>({
+  year: { type: Number, required: true, unique: true },
+  kalolsavam: { type: ArtsScienceEventResultSchema, required: true },
+  sasthrosavam: { type: ArtsScienceEventResultSchema, required: true },
+  lastUpdated: { type: Date, default: Date.now },
+}, { timestamps: false });
+
+// ---------------- ZOD VALIDATION SCHEMAS ----------------
+
+export const AchievementZodSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  item: z.string().min(1, "Event/Item name is required"),
+  grade: z.enum(["A", "B", "C"]),
+  schoolSection: z.enum(["HSS", "HS", "UP"]),
+  competitionLevel: z.enum(["State", "District", "Sub-District"]),
+  groupMembers: z.array(z.string()).optional(),
+  mediaId: z.string().optional(),
+  photoUrl: z.string().optional(),
+  featured: z.boolean().optional(),
+});
+
+export const ArtsScienceEventResultZodSchema = z.object({
+  totalA: z.number().int().min(0),
+  totalB: z.number().int().min(0),
+  totalC: z.number().int().min(0),
+  totalParticipants: z.number().int().min(0),
+  achievements: z.array(AchievementZodSchema),
+});
+
+export const insertOrUpdateArtsScienceResultSchema = z.object({
+  year: z.number().int().min(2000).max(2100),
+  kalolsavam: ArtsScienceEventResultZodSchema,
+  sasthrosavam: ArtsScienceEventResultZodSchema,
+});
+
+export type InsertOrUpdateArtsScienceResult = z.infer<
+  typeof insertOrUpdateArtsScienceResultSchema
+>;
+
 
 // ---------------- EXPORT MODELS & TYPES ----------------
 
@@ -636,10 +727,19 @@ export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type InsertNews = z.infer<typeof insertNewsSchema>;
 export type InsertSection = z.infer<typeof insertSectionSchema>;
 export type FacultySectionInput = z.infer<typeof FacultySectionSchema>;
-// Models (Using singleton pattern for Next.js/Serverless)
-// ---------------- EXPORT MODELS & TYPES ----------------
 
 // Models (Using singleton pattern for Next.js/Serverless)
+
+export const SportsResultModel =
+  (mongoose.models && mongoose.models.SportsResult) || // Check if mongoose.models exists
+  mongoose.model<SportsResultDocument>("SportsResult", SportsResultSchema);
+
+// This is the model export needed for Mongoose operations
+export const ArtsScienceResultModel=
+  (mongoose.models && mongoose.models.ArtsScienceResult) ||
+  mongoose.model<ArtsScienceResultDocument>("ArtsScienceResult", ArtsScienceResultSchema);
+
+
 export const AcademicResultModel =
   (mongoose.models && mongoose.models.AcademicResult) ||
   mongoose.model<AcademicResultDocument>("AcademicResult", AcademicResultSchema);

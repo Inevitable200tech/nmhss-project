@@ -31,7 +31,11 @@ import {
   type InsertOrUpdateSportsResult,
   SportsResultDocument,
   InsertOrUpdateAcademicResult,
-  Champion
+  Champion,
+  ArtsScienceResultDocument,
+  ArtsScienceResultSchema,
+  type InsertOrUpdateArtsScienceResult,
+  Achievement
 } from "@shared/schema";
 
 
@@ -48,6 +52,10 @@ const AcademicResultModelInstance: Model<AcademicResultDocument> =
 const SportsResultModelInstance: Model<SportsResultDocument> =
   mongoose.models.SportsResult || model<SportsResultDocument>("SportsResult", SportsResultSchema);
 
+// --- NEW ARTS & SCIENCE MODEL INSTANCE ---
+const ArtsScienceResultModelInstance: Model<ArtsScienceResultDocument> =
+  mongoose.models.ArtsScienceResult || model<ArtsScienceResultDocument>("ArtsScienceResult", ArtsScienceResultSchema);
+// -----------------------------------------
 export interface IStorage {
   getEvents(): Promise<Event[]>;
   createEvent(event: InsertEvent): Promise<Event>;
@@ -86,6 +94,10 @@ export interface IStorage {
   getAllSportsYears(): Promise<number[]>;
   createOrUpdateSportsResult(data: InsertOrUpdateSportsResult): Promise<SportsResultDocument>;
   deleteSportsResult(year: number): Promise<SportsResultDocument | null>;
+  getArtsScienceResultByYear(year: number): Promise<ArtsScienceResultDocument | null>;
+  getAllArtsScienceYears(): Promise<number[]>;
+  createOrUpdateArtsScienceResult(data: InsertOrUpdateArtsScienceResult): Promise<ArtsScienceResultDocument>;
+  deleteArtsScienceResult(year: number): Promise<ArtsScienceResultDocument | null>;
 }
 
 export class MongoStorage implements IStorage {
@@ -743,6 +755,89 @@ export class MongoStorage implements IStorage {
         featured: c.featured,
       })),
     } as unknown as SportsResultDocument;
+  }
+
+  // Helper method for ArtsScienceResult
+private mapArtsScienceResult(doc: any): ArtsScienceResultDocument {
+    // Helper to map embedded array types (like achievements)
+    const mapAchievements = (event: any) => ({
+        totalA: event.totalA,
+        totalB: event.totalB,
+        totalC: event.totalC,
+        totalParticipants: event.totalParticipants,
+        achievements: (event.achievements || []).map((a: any) => ({
+            name: a.name,
+            item: a.item,
+            grade: a.grade,
+            schoolSection: a.schoolSection,
+            competitionLevel: a.competitionLevel,
+            groupMembers: a.groupMembers || [],
+            mediaId: a.mediaId,
+            photoUrl: a.photoUrl,
+            featured: a.featured,
+        })),
+    });
+
+    return {
+        ...doc,
+        id: doc._id.toString(),
+        lastUpdated: new Date(doc.lastUpdated),
+        kalolsavam: mapAchievements(doc.kalolsavam),
+        sasthrosavam: mapAchievements(doc.sasthrosavam),
+    } as unknown as ArtsScienceResultDocument;
+}
+
+
+// ...
+  async getArtsScienceResultByYear(
+    year: number
+  ): Promise<ArtsScienceResultDocument | null> {
+    const doc = await ArtsScienceResultModelInstance.findOne({ year }).lean().exec();
+    if (!doc) return null;
+    return this.mapArtsScienceResult(doc as any);
+  }
+
+  /** R: Read all available years */
+  async getAllArtsScienceYears(): Promise<number[]> {
+    const docs = await ArtsScienceResultModelInstance.find({}, { year: 1 })
+      .sort({ year: -1 })
+      .lean()
+      .exec();
+    return docs.map((d) => d.year);
+  }
+
+  /** C/U: Create or Update results for a year */
+  async createOrUpdateArtsScienceResult(
+    data: InsertOrUpdateArtsScienceResult
+  ): Promise<ArtsScienceResultDocument> {
+    const result = await ArtsScienceResultModelInstance.findOneAndUpdate(
+      { year: data.year },
+      {
+        ...data,
+        lastUpdated: new Date(),
+      },
+      // new: returns the updated document. upsert: creates if not found.
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    )
+      .lean()
+      .exec();
+
+    if (!result) throw new Error("Failed to save arts and science result");
+
+    return this.mapArtsScienceResult(result as any);
+  }
+
+  /** D: Delete result for a year */
+  async deleteArtsScienceResult(
+    year: number
+  ): Promise<ArtsScienceResultDocument | null> {
+    const doc = await ArtsScienceResultModelInstance.findOneAndDelete({ year })
+      .lean()
+      .exec();
+    if (!doc) return null;
+
+    // Since we deleted it, just map and return the deleted document structure
+    return this.mapArtsScienceResult(doc as any);
   }
 }
 

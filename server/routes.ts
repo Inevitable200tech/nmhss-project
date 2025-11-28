@@ -9,7 +9,8 @@ import {
   insertSectionSchema,
   insertTeacherSchema,
   StudentMediaZodSchema,
-  insertOrUpdateSportsResultSchema
+  insertOrUpdateSportsResultSchema,
+  insertOrUpdateArtsScienceResultSchema
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
@@ -1504,6 +1505,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (err) {
       console.error("Failed to delete sports result:", err);
+      res.status(500).json({ error: "Failed to delete result" });
+    }
+  });
+
+  // ---------------- ARTS & SCIENCE RESULTS ENDPOINTS ----------------
+
+  // GET: Fetch all available years (Public)
+  app.get("/api/arts-science-results/years", async (req, res) => {
+    try {
+      const years = await storage.getAllArtsScienceYears();
+      res.json(years);
+    } catch (err) {
+      console.error("Failed to fetch all arts and science years:", err);
+      res.status(500).json({ error: "Failed to fetch years" });
+    }
+  });
+
+  // GET: Fetch results for a specific year (Public)
+  app.get("/api/arts-science-results/:year", async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) {
+      return res.status(400).json({ error: "Invalid year parameter" });
+    }
+
+    try {
+      const result = await storage.getArtsScienceResultByYear(year);
+      if (!result) {
+        return res.status(404).json({ error: "Results not found for this year" });
+      }
+      res.json(result);
+    } catch (err) {
+      console.error(`Failed to fetch arts and science result for year ${year}:`, err);
+      res.status(500).json({ error: "Failed to fetch result" });
+    }
+  });
+
+  // POST: Create or Update an Arts & Science result (Admin Protected)
+  app.post("/api/arts-science-results", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertOrUpdateArtsScienceResultSchema.parse(req.body);
+      const result = await storage.createOrUpdateArtsScienceResult(validatedData);
+
+      res.json({
+        success: true,
+        message: `Arts & Science result for ${result.year} saved successfully`,
+        result,
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: "Validation failed", details: err.errors });
+      }
+      console.error("Failed to save arts and science result:", err);
+      res.status(500).json({ error: "Failed to save result" });
+    }
+  });
+
+
+  // DELETE: Delete a result and associated media (Admin Protected)
+  app.delete("/api/arts-science-results/:year", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) {
+      return res.status(400).json({ error: "Invalid year parameter" });
+    }
+
+    try {
+      // 1. Fetch document to get all associated media IDs
+      const docToDelete = await storage.getArtsScienceResultByYear(year);
+      if (!docToDelete) {
+        return res.status(404).json({ error: `Arts & Science result for ${year} not found` });
+      }
+
+      // Gather all mediaIds from Kalolsavam and Sasthrosavam achievements
+      const kalolsavamMediaIds = docToDelete.kalolsavam.achievements
+        .map(a => a.mediaId)
+        .filter((id): id is string => !!id);
+      const sasthrosavamMediaIds = docToDelete.sasthrosavam.achievements
+        .map(a => a.mediaId)
+        .filter((id): id is string => !!id);
+
+      const mediaIds = [...kalolsavamMediaIds, ...sasthrosavamMediaIds];
+
+      // 2. Delete associated media from R2 and MongoDB
+      if (mediaIds.length > 0) {
+        await Promise.all(
+          mediaIds.map(async (id) => {
+            try {
+              const media = await MediaModel.findById(id);
+              if (media) {
+                // Delete from R2
+                await s3Client.send(
+                  new DeleteObjectCommand({
+                    Bucket: R2_BUCKET_NAME,
+                    Key: media.filename,
+                  })
+                );
+                // Delete from MongoDB
+                await MediaModel.findByIdAndDelete(id);
+              }
+            } catch (err) {
+              console.warn(`Failed to delete media ${id}:`, err);
+              // We ignore individual media deletion failures to ensure the main document is still deleted
+            }
+          })
+        );
+      }
+
+      // 3. Delete the arts and science result document
+      await storage.deleteArtsScienceResult(year);
+
+      res.json({
+        success: true,
+        message: `Arts & Science result ${year} and ${mediaIds.length} associated photos deleted successfully`,
+        deletedPhotos: mediaIds.length,
+      });
+    } catch (err) {
+      console.error("Failed to delete arts and science result:", err);
       res.status(500).json({ error: "Failed to delete result" });
     }
   });

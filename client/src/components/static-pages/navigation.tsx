@@ -123,7 +123,7 @@ export default function Navigation() {
                       Academic
                     </a>
                     <a
-                      href="/students-upload"
+                      href="/arts-science"
                       onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsExcellenceOpen(false); }}
                       className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium border-t border-white/20 dark:border-gray-700/30"
                     >
@@ -231,7 +231,7 @@ export default function Navigation() {
               {isExcellenceOpen && (
                 <div className="pl-6 space-y-2 bg-white/40 dark:bg-gray-800/40 rounded-xl py-3">
                   <a href="/academic-results" onClick={(e) => { handleLinkClick(e, "/academic-results"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Academic</a>
-                  <a href="/students-upload" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Arts & Science Fair</a>
+                  <a href="/arts-science" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Arts & Science Fair</a>
                   <a href="/sports-champions" onClick={(e) => { handleLinkClick(e, "/sports-champions"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Sports</a>
 
                 </div>
