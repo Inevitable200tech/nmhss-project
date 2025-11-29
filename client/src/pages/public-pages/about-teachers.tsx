@@ -15,7 +15,7 @@ export default function AboutTeachers() {
       return res.json();
     },
   });
-
+  
   if (isLoading) {
     return (
       <div className="relative min-h-screen flex flex-col mt-8">

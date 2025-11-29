@@ -162,19 +162,12 @@ export default function Navigation() {
                   <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/30 dark:border-gray-700/50 overflow-hidden">
                     <a
                       href="/nss-page"
-                      onClick={(e) => { handleLinkClick(e, "/students"); setIsClubOpen(false); }}
+                      onClick={(e) => { handleLinkClick(e, "/nss-page"); setIsClubOpen(false); }}
                       className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium"
                     >
                       N.S.S
                     </a>
-                    <a
-                      href="/souhrida-club"
-                      onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsClubOpen(false); }}
-                      className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium border-t border-white/20 dark:border-gray-700/30"
-                    >
-                      Souhrida Club
-                    </a>
-
+                    
                   </div>
                 </div>
               </div>
@@ -231,7 +224,7 @@ export default function Navigation() {
               {isExcellenceOpen && (
                 <div className="pl-6 space-y-2 bg-white/40 dark:bg-gray-800/40 rounded-xl py-3">
                   <a href="/academic-results" onClick={(e) => { handleLinkClick(e, "/academic-results"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Academic</a>
-                  <a href="/arts-science" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Arts & Science Fair</a>
+                  <a href="/arts-science" onClick={(e) => { handleLinkClick(e, "/arts-science"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Arts & Science Fair</a>
                   <a href="/sports-champions" onClick={(e) => { handleLinkClick(e, "/sports-champions"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Sports</a>
 
                 </div>
@@ -247,7 +240,6 @@ export default function Navigation() {
               {isClubOpen && (
                 <div className="pl-6 space-y-2 bg-white/40 dark:bg-gray-800/40 rounded-xl py-3">
                   <a href="/academic-results" onClick={(e) => { handleLinkClick(e, "/students"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">N.S.S</a>
-                  <a href="/students-upload" onClick={(e) => { handleLinkClick(e, "/students-upload"); setIsMobileMenuOpen(false); }} className="block py-2.5 text-foreground hover:text-primary">Souhrida Club</a>
 
                 </div>
               )}
