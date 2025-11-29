@@ -109,10 +109,10 @@ export default function AcademicsSection() {
             data-testid="malayalam-medium"
           >
             <h3 className="text-2xl font-bold text-foreground mb-6">
-              {"Malayalam Medium Instruction"}
+              {"Malayalam / English Medium "}
             </h3>
             <p className="text-muted-foreground mb-4">
-              {"Our Malayalam medium education strengthens cultural roots while providing quality learning, ensuring students excel in both local and global contexts."}
+              {"Our Malayalam and English medium education strengthens cultural roots while providing quality learning, ensuring students excel in both local and global contexts."}
             </p>
             <div className="space-y-3">
 

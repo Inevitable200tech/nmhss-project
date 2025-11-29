@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import heroImage from "@assets/icon.png";
-import { isNodeOrChild } from "framer-motion";
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -44,7 +43,7 @@ export default function Navigation() {
             />
             <div className="animate-fade-out mr-1">
               <h1 className="font-bold text-[16px] sm:text-[18px] md:text-[17px] text-foreground">
-                Navamukunda HSS
+                Navamukunda School
               </h1>
               <p className="text-[10px] sm:text-[14px] md:text-[14px] text-foreground">
                 Thirunavaya

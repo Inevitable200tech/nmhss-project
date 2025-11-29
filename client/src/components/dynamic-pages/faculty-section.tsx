@@ -136,12 +136,12 @@ export default function FacultySection() {
               <p className="text-sm text-muted-foreground">Language skills and global communication</p>
             </div>
             <div
-              className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift"
+              className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift "
               data-aos="zoom-in"
               data-aos-delay="300"
               data-testid="math-dept"
             >
-              <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mb-4 ">
                 <Calculator className="w-6 h-6 text-white" />
               </div>
               <h4 className="text-lg font-semibold text-foreground mb-2">Mathematics Department</h4>
@@ -151,7 +151,7 @@ export default function FacultySection() {
               className="bg-background p-6 rounded-xl shadow-lg border border-border hover-lift"
               data-testid="science-dept"
             >
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mb-4 hover-lift">
                 <FlaskConical className="w-6 h-6 text-primary-foreground" />
               </div>
               <h4 className="text-lg font-semibold text-foreground mb-2">Science Department</h4>

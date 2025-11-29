@@ -86,7 +86,7 @@ export default function HeroSection() {
           data-aos-delay="200"
           data-testid="hero-title"
         >
-          Navamukunda HSS
+          Navamukunda School
         </h1>
         <p
           className="text-xl md:text-2xl mb-4"
@@ -94,7 +94,7 @@ export default function HeroSection() {
           data-aos-delay="400"
           data-testid="hero-subtitle"
         >
-          Thirunavaya
+          Thirunavaya 
         </p>
         <p
           className="text-lg md:text-xl mb-8 max-w-2xl mx-auto"
@@ -102,7 +102,7 @@ export default function HeroSection() {
           data-aos-delay="600"
           data-testid="hero-description"
         >
-          Excellence in Education Since 1946 • Grades 5-12 • Malayalam Medium • Co-Educational
+          Excellence in Education Since 1946 • Grades 5-12 • Malayalam | English Medium • Co-Educational
         </p>
         <div
           className="flex flex-col sm:flex-row gap-4 justify-center"
