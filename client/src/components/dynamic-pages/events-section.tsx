@@ -203,19 +203,22 @@ export default function EventsSection() {
               return (
                 <div
                   key={event.id || index}
-                  className={`flex items-center p-4 bg-background rounded-lg border-l-4 ${getCategoryColor(event.category)} hover-lift`}
+                  // Removed hardcoded bg color from here, using bg-background from component styles
+                  className={`flex items-center p-4 rounded-lg border-l-4 ${getCategoryColor(event.category)} hover-lift bg-background`}
                   data-testid={`event-item-${index}`}
                 >
                   <div
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-white mr-4 ${getCategoryColor(event.category)}`}
+                    // The date box uses a specific color as a background, so text-white is appropriate here.
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg flex flex-col items-center justify-center text-white mr-4 ${getCategoryColor(event.category).split(' ')[1]}`} // Using only the BG class part
                   >
                     <span className="text-sm font-semibold">{month.toUpperCase()}</span>
                     <span className="text-lg font-bold">{day}</span>
                   </div>
                   <div className="flex-grow">
-                    <h4 className="font-semibold text-white mb-1">{event.title}</h4>
-                    <p className="text-sm text-white">{event.description}</p>
-                    <div className="flex items-center mt-2 text-xs text-white">
+                    {/* Replaced text-white with text-card-foreground or text-foreground */}
+                    <h4 className="font-semibold text-foreground mb-1">{event.title}</h4>
+                    <p className="text-sm text-muted-foreground">{event.description}</p>
+                    <div className="flex items-center mt-2 text-xs text-muted-foreground">
                       <Clock className="w-4 h-4 mr-1" />
                       <span>{event.time}</span>
                     </div>
@@ -227,35 +230,35 @@ export default function EventsSection() {
         </div>
 
         {/* Event Categories (unchanged) */}
-        <div className="grid md:grid-cols-4 gap-6 mb-12" data-aos="fade-up" data-testid="event-categories">
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-              {getCategoryIcon("academic")}
+
+        <div className="grid md:grid-cols-3 gap-6 mb-12" data-aos="fade-up" data-testid="event-categories">
+          <a href="/academic-results">
+            <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
+                {getCategoryIcon("academic")}
+              </div>
+              <h4 className="font-semibold text-foreground mb-2">Science Fair</h4>
+              <p className="text-sm text-muted-foreground">Exhibitions, competitions, assessments</p>
             </div>
-            <h4 className="font-semibold text-foreground mb-2">Academic</h4>
-            <p className="text-sm text-muted-foreground">Exhibitions, competitions, assessments</p>
-          </div>
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
-            <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
-              {getCategoryIcon("sports")}
+          </a>
+          <a href="/sports-champions">
+            <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+              <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mx-auto mb-4">
+                {getCategoryIcon("sports")}
+              </div>
+              <h4 className="font-semibold text-foreground mb-2">Sports</h4>
+              <p className="text-sm text-muted-foreground">Athletic meets, tournaments, fitness</p>
             </div>
-            <h4 className="font-semibold text-foreground mb-2">Sports</h4>
-            <p className="text-sm text-muted-foreground">Athletic meets, tournaments, fitness</p>
-          </div>
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
-            <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mx-auto mb-4">
-              {getCategoryIcon("cultural")}
+          </a>
+          <a href="/arts-science">
+            <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
+              <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center mx-auto mb-4">
+                {getCategoryIcon("cultural")}
+              </div>
+              <h4 className="font-semibold text-foreground mb-2">Cultural</h4>
+              <p className="text-sm text-muted-foreground">Arts, music, dance, drama</p>
             </div>
-            <h4 className="font-semibold text-foreground mb-2">Cultural</h4>
-            <p className="text-sm text-muted-foreground">Arts, music, dance, drama</p>
-          </div>
-          <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-              {getCategoryIcon("community")}
-            </div>
-            <h4 className="font-semibold text-foreground mb-2">Community</h4>
-            <p className="text-sm text-muted-foreground">Parent meetings, social activities</p>
-          </div>
+          </a>
         </div>
 
         {/* News & Announcements */}
