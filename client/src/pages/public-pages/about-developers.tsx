@@ -10,8 +10,8 @@ const developers = [
     name: "Pranav P",
     role: "Frontend Developer",
     bio: "Crafting futuristic UIs with React, animations, and modern design principles. As a creator, Pranav focuses on seamless user experiences.",
-    photo: "https://avatars.githubusercontent.com/Orewaluffy4", // Replace with valid URL
-    social: { github: "https://github.com/Orewaluffy4" },
+    photo: "https://avatars.githubusercontent.com/pranav-pradeesh", // Replace with valid URL
+    social: { github: "https://github.com/pranav-pradeesh" },
     techStack: ["React", "TypeScript", "Framer Motion", "Tailwind CSS"],
   },
   {
