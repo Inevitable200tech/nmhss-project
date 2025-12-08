@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, ArrowRight, X, Calendar, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, X, Calendar, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Navigation from "@/components/static-pages/navigation";
 import Footer from "@/components/static-pages/footer";
 import Plyr from "plyr";
 import "plyr/dist/plyr.css"; // Plyr styles
 
+const ITEMS_PER_PAGE = 2; // Number of items (or date groups) to show per page
 
 const fallbackVideos = [
   "https://www.w3schools.com/html/mov_bbb.mp4",
@@ -13,6 +14,9 @@ const fallbackVideos = [
 ];
 
 const fallbackImages = [
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
   "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
   "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
   "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&h=600",
@@ -31,6 +35,7 @@ const fallbackTimeline = [
 export default function GalleryPage() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [mediaType, setMediaType] = useState<"images" | "videos">("images");
+  const [currentPage, setCurrentPage] = useState(1);
   const videoPlayerRef = useRef<Plyr | null>(null);
   const lightboxVideoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -42,6 +47,11 @@ export default function GalleryPage() {
       return res.json();
     },
   });
+
+  // Reset pagination when media type changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [mediaType]);
 
   function LazyVideo({ src, className }: { src: string; className?: string }) {
     const ref = useRef<HTMLVideoElement | null>(null);
@@ -141,13 +151,38 @@ export default function GalleryPage() {
     });
   };
 
-  // Prepare flat arrays for lightbox navigation
+  // Prepare full flat arrays for lightbox navigation (keeps lightbox working across all pages)
   const images = data?.images?.length > 0 ? data.images : fallbackImages.map((url) => ({ url, uploadedAt: new Date() }));
   const videos = data?.videos?.length > 0 ? data.videos : fallbackVideos.map((url) => ({ url, uploadedAt: new Date() }));
   const timelineItems = data?.stats?.length > 0 ? data.stats : fallbackTimeline;
 
+  // Prepare grouped data
   const groupedImages = data?.images?.length > 0 ? groupByDate(data.images) : [];
   const groupedVideos = data?.videos?.length > 0 ? groupByDate(data.videos) : [];
+
+  // --- Pagination Logic ---
+  const activeDataset = mediaType === "images"
+    ? (groupedImages.length > 0 ? groupedImages : images)
+    : (groupedVideos.length > 0 ? groupedVideos : videos);
+
+  const totalPages = Math.ceil(activeDataset.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+
+  // Sliced data for rendering
+  const displayedGroupedImages = groupedImages.slice(startIndex, endIndex);
+  const displayedFlatImages = images.slice(startIndex, endIndex);
+  const displayedGroupedVideos = groupedVideos.slice(startIndex, endIndex);
+  const displayedFlatVideos = videos.slice(startIndex, endIndex);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      // Optional: scroll back to top of gallery on page change
+      document.getElementById('gallery-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+  // -------------------------
 
   const showMedia = (index: number) => {
     if (videoPlayerRef.current && lightboxVideoRef.current) {
@@ -272,16 +307,17 @@ export default function GalleryPage() {
           </div>
 
           {/* Media Display (glassy container + cards) */}
-          <div className="relative rounded-3xl p-6 bg-white/60 dark:bg-white/5 backdrop-blur-xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden">
+          <div id="gallery-grid" className="relative rounded-3xl p-6 bg-white/60 dark:bg-white/5 backdrop-blur-xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute w-24 h-24 bg-blue-500/20 rounded-full top-10 left-10 blur-3xl" />
               <div className="absolute w-32 h-32 bg-indigo-500/10 rounded-full bottom-10 right-10 blur-3xl" />
             </div>
 
-            <div className="relative z-10 space-y-8">
+            <div className="relative z-10 space-y-8 min-h-[400px]">
               {mediaType === "images" ? (
                 groupedImages.length > 0 ? (
-                  groupedImages.map(([date, items], index) => (
+                  // Display PAGINATED grouped images
+                  displayedGroupedImages.map(([date, items], index) => (
                     <div key={index} className="relative bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 rounded-xl p-4">
                       <div className="absolute -top-3 left-4 text-xs uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-gray-800 dark:text-gray-200">
                         {date}
@@ -291,13 +327,14 @@ export default function GalleryPage() {
                           <div
                             key={idx}
                             className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition-transform duration-300 hover:scale-[1.02] group cursor-pointer"
+                            // NOTE: findIndex searches the FULL 'images' array so lightbox works correctly
                             onClick={() => showMedia(images.findIndex((img: any) => (typeof img === "string" ? img : img.url) === item.url))}
                           >
                             <img
                               src={item.url}
                               alt={`Media ${idx + 1}`}
                               className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
-                              loading={idx > 1 ? "lazy" : "eager"}
+                              loading="lazy"
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
                               <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
@@ -308,27 +345,33 @@ export default function GalleryPage() {
                     </div>
                   ))
                 ) : (
+                  // Display PAGINATED flat images
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {images.map((item: any, index: number) => (
-                      <div
-                        key={index}
-                        className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition-transform duration-300 hover:scale-[1.02] group cursor-pointer"
-                        onClick={() => showMedia(index)}
-                      >
-                        <img
-                          src={typeof item === "string" ? item : item.url}
-                          alt={`Media ${index + 1}`}
-                          className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
-                          <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
+                    {displayedFlatImages.map((item: any, index: number) => {
+                      // Calculate actual index relative to full array for Lightbox
+                      const actualIndex = startIndex + index;
+                      return (
+                        <div
+                          key={index}
+                          className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition-transform duration-300 hover:scale-[1.02] group cursor-pointer"
+                          onClick={() => showMedia(actualIndex)}
+                        >
+                          <img
+                            src={typeof item === "string" ? item : item.url}
+                            alt={`Media ${actualIndex + 1}`}
+                            className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                            <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )
               ) : groupedVideos.length > 0 ? (
-                groupedVideos.map(([date, items], index) => (
+                // Display PAGINATED grouped videos
+                displayedGroupedVideos.map(([date, items], index) => (
                   <div key={index} className="relative bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 rounded-xl p-4">
                     <div className="absolute -top-3 left-4 text-xs uppercase tracking-wider px-2 py-1 rounded-full bg-white/70 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-gray-800 dark:text-gray-200">
                       {date}
@@ -338,6 +381,7 @@ export default function GalleryPage() {
                         <div
                           key={idx}
                           className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition-transform duration-300 hover:scale-[1.02] group cursor-pointer"
+                          // NOTE: findIndex searches the FULL 'videos' array
                           onClick={() => showMedia(videos.findIndex((vid: any) => (typeof vid === "string" ? vid : vid.url) === item.url))}
                         >
                           <LazyVideo
@@ -353,25 +397,54 @@ export default function GalleryPage() {
                   </div>
                 ))
               ) : (
+                // Display PAGINATED flat videos
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {videos.map((item: any, index: number) => (
-                    <div
-                      key={index}
-                      className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition-transform duration-300 hover:scale-[1.02] group cursor-pointer"
-                      onClick={() => showMedia(index)}
-                    >
-                      <LazyVideo
-                        src={typeof item === "string" ? item : item.url}
-                        className="w-full h-64 object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
-                        <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
+                  {displayedFlatVideos.map((item: any, index: number) => {
+                    const actualIndex = startIndex + index;
+                    return (
+                      <div
+                        key={index}
+                        className="relative overflow-hidden rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition-transform duration-300 hover:scale-[1.02] group cursor-pointer"
+                        onClick={() => showMedia(actualIndex)}
+                      >
+                        <LazyVideo
+                          src={typeof item === "string" ? item : item.url}
+                          className="w-full h-64 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                          <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">View</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-8 pt-4 border-t border-black/5 dark:border-white/5">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-full bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/10 transition"
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+                </button>
+
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-white/60 dark:bg-white/5 backdrop-blur-xl px-4 py-2 rounded-full border border-black/5 dark:border-white/10 shadow">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-full bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black/5 dark:hover:bg-white/10 transition"
+                >
+                  <ChevronRight className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>

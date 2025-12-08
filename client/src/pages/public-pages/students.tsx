@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, X, ArrowLeft, ArrowRight } from "lucide-react";
 import Navigation from "@/components/static-pages/navigation";
@@ -15,6 +15,9 @@ type StudentMedia = {
   description?: string;
 };
 
+// Constant for items per page in the grid
+const ITEMS_PER_PAGE = 4;
+
 export default function StudentsPage() {
   const [batch, setBatch] = useState<"+1" | "+2" | "">("");
   const [year, setYear] = useState("");
@@ -25,6 +28,9 @@ export default function StudentsPage() {
   const [isInteracting, setIsInteracting] = useState(false);
   const [scale, setScale] = useState(1);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Refs
   const lightboxWrapperRef = useRef<HTMLDivElement | null>(null); // single stable container ref
   // Use a broader HTMLElement type so the same ref can point to an <img> or a <video>
@@ -34,7 +40,7 @@ export default function StudentsPage() {
   const pinchInitialScaleRef = useRef<number>(1);
   const touchStartXRef = useRef<number | null>(null);
 
-  const { data, isLoading } = useQuery<StudentMedia[]>({
+  const { data: allMedia, isLoading } = useQuery<StudentMedia[]>({
     queryKey: ["students", batch, year, type],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -49,6 +55,26 @@ export default function StudentsPage() {
     },
     enabled: filtersApplied,
   });
+
+  // Calculate total pages and slice data for the current page
+  const totalPages = useMemo(() => {
+    if (!allMedia || allMedia.length === 0) return 1;
+    return Math.ceil(allMedia.length / ITEMS_PER_PAGE);
+  }, [allMedia]);
+
+  const paginatedMedia = useMemo(() => {
+    if (!allMedia) return [];
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return allMedia.slice(startIndex, endIndex);
+  }, [allMedia, currentPage]);
+
+  // Reset currentPage when filters change and data is fetched
+  useEffect(() => {
+    if (filtersApplied) {
+      setCurrentPage(1);
+    }
+  }, [filtersApplied, batch, year, type]);
 
   // Responsive detection
   useEffect(() => {
@@ -75,9 +101,11 @@ export default function StudentsPage() {
 
   // Initialize Plyr when the selected media is a video
   useEffect(() => {
-    if (selectedIndex === null || !data) return;
+    if (selectedIndex === null || !allMedia) return;
 
-    const selected = data[selectedIndex];
+    // IMPORTANT: The selected index is relative to the *full* data set (allMedia),
+    // because the navigation (showNext/showPrev) needs to wrap around the whole set.
+    const selected = allMedia[selectedIndex];
     if (!selected || selected.type !== "video") return;
 
     // mount plyr on the actual <video> element
@@ -104,11 +132,19 @@ export default function StudentsPage() {
         videoPlayerRef.current = null;
       }
     };
-  }, [selectedIndex, data]);
+  }, [selectedIndex, allMedia]);
 
-  // Show one media item
-  const showMedia = useCallback((index: number) => {
-    setSelectedIndex(index);
+  /**
+   * Calculates the index of the item in the full `allMedia` array
+   * based on the clicked item's index in the `paginatedMedia` array and the current page.
+   */
+  const getFullIndex = useCallback((indexInPage: number) => {
+    return (currentPage - 1) * ITEMS_PER_PAGE + indexInPage;
+  }, [currentPage]);
+
+  // Show one media item (index is relative to the full data set)
+  const showMedia = useCallback((fullIndex: number) => {
+    setSelectedIndex(fullIndex);
     setScale(1);
     setIsInteracting(true);
     setTimeout(() => setIsInteracting(false), 3000);
@@ -129,7 +165,7 @@ export default function StudentsPage() {
   }, []);
 
   const showNext = useCallback(() => {
-    if (selectedIndex === null || !data || data.length === 0) return;
+    if (selectedIndex === null || !allMedia || allMedia.length === 0) return;
     if (videoPlayerRef.current) {
       try {
         videoPlayerRef.current.destroy();
@@ -138,15 +174,15 @@ export default function StudentsPage() {
       }
       videoPlayerRef.current = null;
     }
-    const nextIndex = (selectedIndex + 1) % data.length;
+    const nextIndex = (selectedIndex + 1) % allMedia.length;
     setSelectedIndex(nextIndex);
     setScale(1);
     setIsInteracting(true);
     setTimeout(() => setIsInteracting(false), 3000);
-  }, [selectedIndex, data]);
+  }, [selectedIndex, allMedia]);
 
   const showPrev = useCallback(() => {
-    if (selectedIndex === null || !data || data.length === 0) return;
+    if (selectedIndex === null || !allMedia || allMedia.length === 0) return;
     if (videoPlayerRef.current) {
       try {
         videoPlayerRef.current.destroy();
@@ -155,12 +191,22 @@ export default function StudentsPage() {
       }
       videoPlayerRef.current = null;
     }
-    const prevIndex = selectedIndex === 0 ? data.length - 1 : selectedIndex - 1;
+    const prevIndex = selectedIndex === 0 ? allMedia.length - 1 : selectedIndex - 1;
     setSelectedIndex(prevIndex);
     setScale(1);
     setIsInteracting(true);
     setTimeout(() => setIsInteracting(false), 3000);
-  }, [selectedIndex, data]);
+  }, [selectedIndex, allMedia]);
+
+  // Pagination handlers
+  const goToNextPage = useCallback(() => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
+
+  const goToPrevPage = useCallback(() => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  }, []);
+
 
   // Touch/pinch handlers attached to the lightbox wrapper (single ref)
   useEffect(() => {
@@ -301,36 +347,64 @@ export default function StudentsPage() {
             </div>
           )}
 
-          {!isLoading && data && data.length === 0 && filtersApplied && (
+          {!isLoading && allMedia && allMedia.length === 0 && filtersApplied && (
             <p className="text-center text-gray-600 dark:text-gray-400">No media found.</p>
           )}
 
-          {!isLoading && data && data.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {data.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="relative overflow-hidden rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-lg border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition cursor-pointer group"
-                  onClick={() => showMedia(index)}
-                >
-                  {item.type === "image" ? (
-                    <img src={item.url} alt={item.description || "student media"} className="w-full h-64 object-cover" />
-                  ) : (
-                    <video src={item.url} className="w-full h-64 object-cover" muted loop playsInline />
-                  )}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center">
-                    <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-                      View
-                    </p>
+          {!isLoading && paginatedMedia && paginatedMedia.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginatedMedia.map((item, indexInPage) => (
+                  <div
+                    key={item.id}
+                    className="relative overflow-hidden rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-lg border border-black/5 dark:border-white/10 shadow hover:shadow-xl transition cursor-pointer group"
+                    onClick={() => showMedia(getFullIndex(indexInPage))}
+                  >
+                    {item.type === "image" ? (
+                      <img src={item.url} alt={item.description || "student media"} className="w-full h-64 object-cover" />
+                    ) : (
+                      <video src={item.url} className="w-full h-64 object-cover" muted loop playsInline />
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center">
+                      <p className="text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+                        View
+                      </p>
+                    </div>
                   </div>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center space-x-4 mt-10">
+                  <button
+                    onClick={goToPrevPage}
+                    disabled={currentPage === 1}
+                    className="p-3 rounded-full text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-800/50 hover:bg-white/90 dark:hover:bg-gray-700/90 disabled:opacity-50 transition"
+                  >
+                    <ArrowLeft className="w-6 h-6" />
+                  </button>
+
+                  <span className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
+                    className="p-3 rounded-full text-gray-700 dark:text-gray-300 bg-white/50 dark:bg-gray-800/50 hover:bg-white/90 dark:hover:bg-gray-700/90 disabled:opacity-50 transition"
+                  >
+                    <ArrowRight className="w-6 h-6" />
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
 
         {/* Lightbox */}
-        {selectedIndex !== null && data && (
+        {/* The lightbox uses 'allMedia' and 'selectedIndex' (full index) for correct data retrieval and navigation */}
+        {selectedIndex !== null && allMedia && (
           <div
             className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={closeLightbox}
@@ -397,18 +471,18 @@ export default function StudentsPage() {
                     transition: isMobile ? "none" : "transform 0.15s ease-out",
                   }}
                 >
-                  {data[selectedIndex].type === "image" ? (
+                  {allMedia[selectedIndex].type === "image" ? (
                     <img
                       ref={(el) => (mediaElementRef.current = el)}
-                      src={data[selectedIndex].url}
-                      alt={data[selectedIndex].description || "student media"}
+                      src={allMedia[selectedIndex].url}
+                      alt={allMedia[selectedIndex].description || "student media"}
                       className="max-h-[86vh] max-w-full object-contain rounded-xl"
                       style={{ display: "block" }}
                     />
                   ) : (
                     <video
                       ref={(el) => (mediaElementRef.current = el)}
-                      src={data[selectedIndex].url}
+                      src={allMedia[selectedIndex].url}
                       controls
                       className="max-h-[86vh] max-w-full object-contain rounded-xl"
                       playsInline
@@ -417,13 +491,13 @@ export default function StudentsPage() {
                 </div>
 
                 {/* Description overlay */}
-                {data[selectedIndex].description && (
+                {allMedia[selectedIndex].description && (
                   <div
                     className={`absolute bottom-6 w-full px-6 text-center bg-black/70 transition-opacity duration-300 ${
                       isInteracting ? "opacity-100" : "opacity-0"
                     }`}
                   >
-                    <p className="text-white text-lg font-medium">{data[selectedIndex].description}</p>
+                    <p className="text-white text-lg font-medium">{allMedia[selectedIndex].description}</p>
                   </div>
                 )}
               </div>

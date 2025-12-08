@@ -81,9 +81,9 @@ export default function HeroSection() {
       {/* Foreground content */}
       <div className="relative z-10 text-center px-4 max-w-4xl mx-auto text-white">
         <h1
-          className="text-5xl md:text-7xl font-bold mb-6 drop-shadow-lg"
+          className="text-4xl md:text-7xl font-bold mb-6 drop-shadow-lg"
           data-aos="fade-up"
-          data-aos-delay="200"
+          data-aos-delay="400"
           data-testid="hero-title"
         >
           Navamukunda School
@@ -102,7 +102,7 @@ export default function HeroSection() {
           data-aos-delay="600"
           data-testid="hero-description"
         >
-          Excellence in Education Since 1946 • Grades 5-12 • Malayalam | English Medium • Co-Educational
+          Excellence in Education Since 1998 • Grades 5-12 • Malayalam | English Medium • Co-Educational
         </p>
         <div
           className="flex flex-col sm:flex-row gap-4 justify-center"

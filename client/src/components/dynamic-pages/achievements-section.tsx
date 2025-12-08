@@ -28,7 +28,7 @@ interface ArtsScienceResult {
 // ------------------------------------------
 
 // Dynamically set the current year for the API endpoints
-const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_YEAR = new Date().getFullYear() ;
 
 export default function AchievementsSection() {
   // null: data received successfully but empty/no champion. undefined: initial loading state.
@@ -39,7 +39,7 @@ export default function AchievementsSection() {
 
   useEffect(() => {
     // --- 1. Fetch Academic Excellence Average Result ---
-    axios.get<AcademicResult>(`/api/academic-results/${CURRENT_YEAR}`)
+    axios.get<AcademicResult>(`/api/academic-results/${CURRENT_YEAR - 1}`)
       .then(response => {
         const average = response.data.hssTotalAveragePercentage;
         if (typeof average === 'number') setHssAverageResult(Math.round(average));
@@ -201,7 +201,7 @@ export default function AchievementsSection() {
             Achievements & Success Stories
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200" data-testid="achievements-subtitle">
-            Celebrating 77 years of student excellence and community impact
+            Celebrating { new Date().getFullYear() - 2000}+ years of student excellence and community impact
           </p>
         </div>
 
@@ -209,26 +209,26 @@ export default function AchievementsSection() {
         <div className="grid md:grid-cols-4 gap-6 mb-16">
           <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift enhanced-card" data-aos="flip-left" data-aos-delay="100" data-testid="years-stat">
             <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl font-bold text-primary-foreground">77+</span>
+              <span className="text-2xl font-bold text-primary-foreground">{ new Date().getFullYear() - 1998}</span>
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">Years of Excellence</h3>
-            <p className="text-sm text-muted-foreground">Since 1946</p>
+            <p className="text-sm text-muted-foreground">Since 1998</p>
           </div>
 
           <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift enhanced-card" data-aos="flip-left" data-aos-delay="200" data-testid="pass-rate-stat">
             <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-xl font-bold text-white">95%</span>
+              <span className="text-xl font-bold text-white">100%</span>
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">Pass Rate</h3>
-            <p className="text-sm text-muted-foreground">Board Examinations</p>
+            <p className="text-sm text-muted-foreground">SSLC Board Examinations</p>
           </div>
 
           <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift enhanced-card" data-aos="flip-left" data-aos-delay="300" data-testid="sports-stat">
             <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
               <Trophy className="w-6 h-6 text-accent-foreground" />
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">35+ State Titles</h3>
-            <p className="text-sm text-muted-foreground">In Sports & Arts</p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">2+ State Titles</h3>
+            <p className="text-sm text-muted-foreground">In Sports</p>
           </div>
 
           <div className="bg-card p-6 rounded-xl shadow-lg border border-border text-center hover-lift enhanced-card" data-aos="flip-left" data-aos-delay="400" data-testid="alumni-stat">
@@ -301,7 +301,7 @@ export default function AchievementsSection() {
               </div>
               <div>
                 <h4 className="font-semibold text-foreground">Dr. Alumni Success</h4>
-                <p className="text-sm text-muted-foreground">Class of 1995</p>
+                <p className="text-sm text-muted-foreground">Class of 2000</p>
               </div>
             </div>
             <p className="text-muted-foreground">

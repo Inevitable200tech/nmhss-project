@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Phone, Mail, Clock, FileText, DollarSign, BookOpen, Calendar } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { MapPin, Phone, Mail, Clock, FileText, DollarSign, BookOpen, NotebookPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,6 @@ export default function ContactSection() {
   });
 
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const contactMutation = useMutation({
     mutationFn: async (data: InsertContactMessage) => {
@@ -288,7 +287,7 @@ export default function ContactSection() {
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-calendar"
                 >
-                  <Calendar className="w-5 h-5 text-primary mr-3" />
+                  <NotebookPen className="w-5 h-5 text-primary mr-3" />
                   <span className="font-medium text-foreground group-hover:text-primary transition-colors">Our Teacher's</span>
                 </a>
               </div>
