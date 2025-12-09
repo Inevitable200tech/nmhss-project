@@ -118,17 +118,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Gmail transporter (App Password required!)
       const transporter = nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 587,             // Explicitly use port 587
+        secure: false,         // Set to false for port 587 (uses STARTTLS)
+        requireTLS: true,      // Enforce the use of STARTTLS
         auth: {
           user: process.env.EMAIL_SENDER,
           pass: process.env.EMAIL_SENDER_ID,
         },
-        // -----------------------------------------------------
-        // 🛠️ THE FIX: Enable Verbose Logging Directly in Config
-        // -----------------------------------------------------
-        logger: true, // Enables logging
-        debug: true,  // Logs the raw SMTP communication
-        // -----------------------------------------------------
+        logger: true,
+        debug: true,
       });
 
       // Send the email
@@ -159,8 +158,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, message: "Message sent successfully!" });
     } catch (error: any) {
-       // --- VERBOSE LOGGING START ---
-            console.log("--- Contact API Log ---");
+      // --- VERBOSE LOGGING START ---
+      console.log("--- Contact API Log ---");
       console.log(`EMAIL_SENDER: ${process.env.EMAIL_SENDER ? 'Loaded' : 'NOT FOUND'}`);
       const maskedPass = process.env.EMAIL_SENDER_ID;
       console.log(`EMAIL_SENDER_ID (App Password): ${maskedPass}`);
