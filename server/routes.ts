@@ -108,20 +108,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const contactData = insertContactMessageSchema.parse(req.body);
 
+      // --- VERBOSE LOGGING START ---
+      console.log("--- Contact API Log ---");
+      console.log(`EMAIL_SENDER: ${process.env.EMAIL_SENDER ? 'Loaded' : 'NOT FOUND'}`);
+      const maskedPass = process.env.EMAIL_SENDER_ID;
+      console.log(`EMAIL_SENDER_ID (App Password): ${maskedPass}`);
+      console.log("-------------------------");
+      // --- VERBOSE LOGGING END ---
+
       // Gmail transporter (App Password required!)
       const transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
-          user: process.env.EMAIL_SENDER,     // Gmail address
-          pass: process.env.EMAIL_SENDER_ID, // Gmail App Password
+          user: process.env.EMAIL_SENDER,
+          pass: process.env.EMAIL_SENDER_ID,
         },
+        // -----------------------------------------------------
+        // 🛠️ THE FIX: Enable Verbose Logging Directly in Config
+        // -----------------------------------------------------
+        logger: true, // Enables logging
+        debug: true,  // Logs the raw SMTP communication
+        // -----------------------------------------------------
       });
 
       // Send the email
       await transporter.sendMail({
+        // ... (rest of your mail options)
         from: process.env.EMAIL_SENDER,
-        replyTo: contactData.email, // so replies go to the user
-        to: process.env.EMAIL_DESTINATION, // destination (your inbox)
+        replyTo: contactData.email,
+        to: process.env.EMAIL_DESTINATION,
         subject: `Contact Us Message: ${contactData.subject}`,
         text: `Name: ${contactData.firstName} ${contactData.lastName}
         Email: ${contactData.email}
@@ -129,26 +144,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Message:${contactData.message}`,
         html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
-          <h2 style="color: #444;">📩 New Contact Form Submission</h2>
-          <p><strong>Name:</strong> ${contactData.firstName} ${contactData.lastName}</p>
-          <p><strong>Email:</strong> <a href="mailto:${contactData.email}">${contactData.email}</a></p>
-          <p><strong>Phone:</strong> ${contactData.phone || "N/A"}</p>
-          <hr />
-          <p><strong>Message:</strong></p>
-          <p style="white-space: pre-line; background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #eee;">
+            <h2 style="color: #444;">📩 New Contact Form Submission</h2>
+            <p><strong>Name:</strong> ${contactData.firstName} ${contactData.lastName}</p>
+            <p><strong>Email:</strong> <a href="mailto:${contactData.email}">${contactData.email}</a></p>
+            <p><strong>Phone:</strong> ${contactData.phone || "N/A"}</p>
+            <hr />
+            <p><strong>Message:</strong></p>
+            <p style="white-space: pre-line; background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #eee;">
             ${contactData.message}
-          </p>
+            </p>
         </div>
-      `,
+        `,
       });
 
       res.json({ success: true, message: "Message sent successfully!" });
     } catch (error: any) {
+       // --- VERBOSE LOGGING START ---
+            console.log("--- Contact API Log ---");
+      console.log(`EMAIL_SENDER: ${process.env.EMAIL_SENDER ? 'Loaded' : 'NOT FOUND'}`);
+      const maskedPass = process.env.EMAIL_SENDER_ID;
+      console.log(`EMAIL_SENDER_ID (App Password): ${maskedPass}`);
+      console.log("-------------------------");
       console.error("Gmail API error:", error);
       res.status(500).json({ error: "Failed to send message" });
     }
   });
-
 
 
   //------------------- EVENTS ROUTES ----------------
