@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import heroVideoFallback from "@assets/hero-section.mp4"; // fallback video
-
+import imagefallback from "@assets/school.jpg"
+import imagefallback2 from "@assets/fb.jpg"
 // Cache variable (lives across component mounts)
 let cachedHeroVideoUrl: string | null = null;
 
