@@ -1,4 +1,4 @@
-import { Facebook, Linkedin } from "lucide-react";
+import { Facebook, Linkedin,Instagram  } from "lucide-react";
 import heroImage from "@assets/icon.png"; // replace with your actual img path 
 export default function Footer() {
   const quickLinks = [
@@ -16,8 +16,8 @@ export default function Footer() {
   ];
 
   const socialLinks = [
-    { href: "https://facebook.com", label: "Facebook", icon: Facebook, testId: "social-facebook" },
-    { href: "https://linkedin.com", label: "LinkedIn", icon: Linkedin, testId: "social-linkedin" },
+    { href: "https://www.facebook.com/NMHSSchool/", label: "Facebook", icon: Facebook, testId: "social-facebook" },
+    { href: "https://www.instagram.com/nmhssthirunavaya_official/", label: "Instagram ", icon: Instagram , testId: "social-linkedin" },
   ];
 
   return (
@@ -101,14 +101,12 @@ export default function Footer() {
             <h4 className="font-semibold text-lg mb-6">Contact Info</h4>
             <div className="space-y-3">
               <p className="text-sm opacity-80">
-                Navamukunda HSS Thirunavaya
-                <br />
-                TIRUR Block, Malappuram District
-                <br />
-                Kerala, India
+                Navamukunda HSS<br />
+                Thazhathara, Thirunavaya.676301<br />
+                Malappuram v.Dist
               </p>
-              <p className="text-sm opacity-80">Phone: +91 494 2XX XXXX</p>
-              <p className="text-sm opacity-80">Email: info@navamukunda.edu.in</p>
+              <p className="text-sm opacity-80">Phone: +91 0494 260 1534</p>
+              <p className="text-sm opacity-80">Email: navamukundahss@gmail.com</p>
             </div>
           </div>
         </div>
@@ -119,7 +117,7 @@ export default function Footer() {
           data-testid="footer-bottom"
         >
           <p className="text-sm opacity-80">
-            &copy; { new Date().getFullYear()} Navamukunda HSS Thirunavaya. All rights reserved.
+            &copy; {new Date().getFullYear()} Navamukunda HSS Thirunavaya. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a

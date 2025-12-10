@@ -102,7 +102,7 @@ export default function HeroSection() {
           data-aos-delay="600"
           data-testid="hero-description"
         >
-          Excellence in Education Since 1998 • Grades 5-12 • Malayalam | English Medium • Co-Educational
+          Excellence in Education Since 1998 • Grades 5-12  <br /> • Malayalam | English Medium • Co-Educational
         </p>
         <div
           className="flex flex-col sm:flex-row gap-4 justify-center"
