@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { MapPin, Phone, Mail, Clock, FileText, DollarSign, BookOpen, NotebookPen } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, FileText, DollarSign, BookOpen, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import type { InsertContactMessage } from "@shared/schema";
 
+// --- CONFIGURATION FOR WEB3FORMS ---
+// Ensure VITE_WEB3FORMS_KEY is set in your .env file
+const WEB3FORMS_ACCESS_KEY = import.meta.env.VITE_WEB3FORMS_KEY;
+const WEB3FORMS_ENDPOINT = "https://api.web3forms.com/submit";
+// ------------------------------------
+
 export default function ContactSection() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<InsertContactMessage>({
     firstName: "",
     lastName: "",
     email: "",
@@ -20,38 +24,23 @@ export default function ContactSection() {
     message: "",
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { toast } = useToast();
 
-  const contactMutation = useMutation({
-    mutationFn: async (data: InsertContactMessage) => {
-      return await apiRequest("POST", "/api/contact", data);
-    },
-    onSuccess: () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Check if the key was correctly loaded
+    if (!WEB3FORMS_ACCESS_KEY || typeof WEB3FORMS_ACCESS_KEY !== 'string') {
       toast({
-        title: "Message sent successfully!",
-        description: "We will get back to you soon.",
-      });
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        subject: "",
-        message: "",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to send message",
-        description: error.message || "Please try again later.",
+        title: "Configuration Error",
+        description: "Contact service key is missing. Ensure VITE_WEB3FORMS_KEY is set.",
         variant: "destructive",
       });
-    },
-  });
+      return;
+    }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
     // Basic validation
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.subject || !formData.message) {
       toast({
@@ -61,10 +50,100 @@ export default function ContactSection() {
       return;
     }
 
-    contactMutation.mutate(formData);
+    setIsSubmitting(true);
+
+    // --- 1. CONSTRUCT THE PLAIN TEXT MESSAGE WITH SYMBOLS AND SEPARATORS for reliable styling ---
+
+    // The custom introduction text using Plain Text/Emojis for reliable formatting
+    const customIntroMessage = `
+
+
+=====================================================
+    ✨ NEW CONTACT FORM MESSAGE RECEIVED ✨
+=====================================================
+
+Dear Principal,
+A new person has submitted a message in our website with subject being "${formData.subject}".
+Below are the details of the submission:
+
+-----------------------------------------------------
+👤 FULL NAME: ${formData.firstName} ${formData.lastName}
+📧 EMAIL: ${formData.email} (Please Reply To This Email)
+📝 SUBJECT: Regarding ${formData.subject}
+📞 PHONE: ${formData.phone || "N/A"}
+-----------------------------------------------------
+
+MESSAGE BODY:
+-----------------------------------------------------
+${formData.message}
+-----------------------------------------------------
+
+This submission was made on school's website at nhmms.onrender.com by ${formData.firstName} ${formData.lastName}.
+`;
+
+    // Prepare data for Web3Forms
+    const submissionPayload = {
+      // --- Required Web3Forms Fields ---
+      access_key: WEB3FORMS_ACCESS_KEY,
+      subject: `An Enquiry By ${formData.firstName} on school's ${formData.subject} : ${formData.subject}`,
+
+      // --- Custom Introductory Text (This will be the main body of the email) ---
+      message_intro: customIntroMessage,
+
+      // --- Honeypot Anti-Spam Field (Web3Forms feature) ---
+      "bot-field": "",
+
+      // Removed individual fields like "Full Name", "Email", "Phone", etc.
+      // The data is now only present in the message_intro for clean email notifications.
+    };
+
+    try {
+      const response = await fetch(WEB3FORMS_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(submissionPayload),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "Message sent successfully!",
+          description: "We will get back to you soon.",
+        });
+        // Reset form data
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          subject: "",
+          message: "",
+        });
+      } else {
+        // Web3Forms returns errors in the result.message field
+        toast({
+          title: "Failed to send message",
+          description: result.message || "An unknown error occurred. Please check the console.",
+          variant: "destructive",
+        });
+        console.error("Web3Forms Error Details:", result);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Network Error",
+        description: "Could not connect to the submission service. Check your connection.",
+        variant: "destructive",
+      });
+      console.error("Client-side Fetch Error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: keyof InsertContactMessage, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -80,7 +159,7 @@ export default function ContactSection() {
             We're here to answer your questions and help you connect with our school community
           </p>
         </div>
-        
+
         <div className="grid lg:grid-cols-2 gap-12">
           {/* Contact Form */}
           <div className="bg-background p-8 rounded-2xl shadow-lg border border-border" data-testid="contact-form-container">
@@ -116,7 +195,7 @@ export default function ContactSection() {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
                   Email Address *
@@ -131,7 +210,7 @@ export default function ContactSection() {
                   data-testid="input-email"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="phone" className="block text-sm font-medium text-foreground mb-2">
                   Phone Number
@@ -145,7 +224,7 @@ export default function ContactSection() {
                   data-testid="input-phone"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="subject" className="block text-sm font-medium text-foreground mb-2">
                   Subject *
@@ -163,7 +242,7 @@ export default function ContactSection() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="message" className="block text-sm font-medium text-foreground mb-2">
                   Message *
@@ -178,18 +257,18 @@ export default function ContactSection() {
                   data-testid="textarea-message"
                 />
               </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={contactMutation.isPending}
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting}
                 data-testid="button-submit"
               >
-                {contactMutation.isPending ? "Sending..." : "Send Message"}
+                {isSubmitting ? "Sending..." : "Send Message"}
               </Button>
             </form>
           </div>
-          
+
           {/* Contact Information */}
           <div className="space-y-8">
             {/* School Information */}
@@ -203,13 +282,13 @@ export default function ContactSection() {
                   <div>
                     <h4 className="font-semibold text-foreground mb-1">Address</h4>
                     <p className="text-muted-foreground">
-                      Navamukunda HSS Thirunavaya<br />
-                      TIRUR Block, Malappuram District<br />
-                      Kerala, India
+                      Navamukunda HSS<br />
+                      Thazhathara, Thirunavaya.676301<br />
+                      Malappuram v.Dist
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start" data-testid="school-phone">
                   <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
                     <Phone className="w-5 h-5 text-white" />
@@ -217,12 +296,11 @@ export default function ContactSection() {
                   <div>
                     <h4 className="font-semibold text-foreground mb-1">Phone</h4>
                     <p className="text-muted-foreground">
-                      +91 494 2XX XXXX<br />
-                      +91 494 2XX XXXX
+                      +91 0494 260 1534
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start" data-testid="school-email">
                   <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
                     <Mail className="w-5 h-5 text-white" />
@@ -230,12 +308,11 @@ export default function ContactSection() {
                   <div>
                     <h4 className="font-semibold text-foreground mb-1">Email</h4>
                     <p className="text-muted-foreground">
-                      info@navamukunda.edu.in<br />
-                      principal@navamukunda.edu.in
+                      navamukundahss@gmail.com<br />
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start" data-testid="office-hours">
                   <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
                     <Clock className="w-5 h-5 text-primary-foreground" />
@@ -243,51 +320,50 @@ export default function ContactSection() {
                   <div>
                     <h4 className="font-semibold text-foreground mb-1">Office Hours</h4>
                     <p className="text-muted-foreground">
-                      Monday - Friday: 9:00 AM - 4:00 PM<br />
-                      Saturday: 9:00 AM - 1:00 PM
+                      Monday - Friday: 9:00 AM - 4:00 PM
                     </p>
                   </div>
                 </div>
               </div>
             </div>
-            
+
             {/* Quick Links */}
             <div className="bg-background p-8 rounded-2xl shadow-lg border border-border" data-aos="slide-left" data-aos-delay="200" data-testid="quick-links">
               <h3 className="text-2xl font-bold text-foreground mb-6">Quick Links</h3>
               <div className="grid grid-cols-2 gap-4">
-                <a 
-                  href="/gallery" 
+                <a
+                  href="/gallery"
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-admission"
                 >
                   <FileText className="w-5 h-5 text-primary mr-3" />
                   <span className="font-medium text-foreground group-hover:text-primary transition-colors">Gallery</span>
                 </a>
-                
-                <a 
-                  href="/about-us" 
+
+                <a
+                  href="/about-us"
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-fees"
                 >
                   <DollarSign className="w-5 h-5 text-primary mr-3" />
                   <span className="font-medium text-foreground group-hover:text-primary transition-colors">About Devs</span>
                 </a>
-                
-                <a 
-                  href="/students" 
+
+                <a
+                  href="/students"
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-handbook"
                 >
                   <BookOpen className="w-5 h-5 text-primary mr-3" />
                   <span className="font-medium text-foreground group-hover:text-primary transition-colors">Student's Gallery</span>
                 </a>
-                
-                <a 
-                  href="/about-teachers" 
+
+                <a
+                  href="/about-teachers"
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-calendar"
                 >
-                  <NotebookPen className="w-5 h-5 text-primary mr-3" />
+                  <Calendar className="w-5 h-5 text-primary mr-3" />
                   <span className="font-medium text-foreground group-hover:text-primary transition-colors">Our Teacher's</span>
                 </a>
               </div>

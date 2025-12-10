@@ -27,12 +27,31 @@ import nodemailer from "nodemailer";
 import { s3Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from "./s3.ts";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { rateLimit } from 'express-rate-limit';
+import fetch from 'node-fetch';
 
 type UploadTracker = {
   count: number;
   month: number; // track month (1-12)
   lastUpload: number;
 };
+
+const contactFormLimiter = rateLimit({
+  // windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 60 * 60 * 1000, // Set to 1 hour to be more conservative
+  max: 5, // Limit each IP to 5 requests per hour. Adjust this based on traffic.
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "Too many contact form requests. Please try again in an hour."
+  },
+  statusCode: 429 // Too Many Requests
+});
+
+interface Web3FormsResult {
+  success: boolean;
+  message?: string; // Optional message field for errors or success
+}
 
 const userUploadTracker = new Map<string, UploadTracker>();
 const rootEnvPath = path.resolve("cert.env");
@@ -104,70 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Token is valid" });
   });
 
-  app.post("/api/contact", async (req, res) => {
-    try {
-      const contactData = insertContactMessageSchema.parse(req.body);
-
-      // --- VERBOSE LOGGING START ---
-      console.log("--- Contact API Log ---");
-      console.log(`EMAIL_SENDER: ${process.env.EMAIL_SENDER ? 'Loaded' : 'NOT FOUND'}`);
-      const maskedPass = process.env.EMAIL_SENDER_ID;
-      console.log(`EMAIL_SENDER_ID (App Password): ${maskedPass}`);
-      console.log("-------------------------");
-      // --- VERBOSE LOGGING END ---
-
-      // Gmail transporter (App Password required!)
-      const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 2525,             // Explicitly use port 587
-        secure: false,         // Set to false for port 587 (uses STARTTLS)
-        requireTLS: true,      // Enforce the use of STARTTLS
-        auth: {
-          user: process.env.EMAIL_SENDER,
-          pass: process.env.EMAIL_SENDER_ID,
-        },
-        logger: true,
-        debug: true,
-      });
-
-      // Send the email
-      await transporter.sendMail({
-        // ... (rest of your mail options)
-        from: process.env.EMAIL_SENDER,
-        replyTo: contactData.email,
-        to: process.env.EMAIL_DESTINATION,
-        subject: `Contact Us Message: ${contactData.subject}`,
-        text: `Name: ${contactData.firstName} ${contactData.lastName}
-        Email: ${contactData.email}
-        Phone: ${contactData.phone || "N/A"}
-        Message:${contactData.message}`,
-        html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
-            <h2 style="color: #444;">📩 New Contact Form Submission</h2>
-            <p><strong>Name:</strong> ${contactData.firstName} ${contactData.lastName}</p>
-            <p><strong>Email:</strong> <a href="mailto:${contactData.email}">${contactData.email}</a></p>
-            <p><strong>Phone:</strong> ${contactData.phone || "N/A"}</p>
-            <hr />
-            <p><strong>Message:</strong></p>
-            <p style="white-space: pre-line; background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #eee;">
-            ${contactData.message}
-            </p>
-        </div>
-        `,
-      });
-
-      res.json({ success: true, message: "Message sent successfully!" });
-    } catch (error: any) {
-      // --- VERBOSE LOGGING START ---
-      console.log("--- Contact API Log ---");
-      console.log(`EMAIL_SENDER: ${process.env.EMAIL_SENDER ? 'Loaded' : 'NOT FOUND'}`);
-      const maskedPass = process.env.EMAIL_SENDER_ID;
-      console.log(`EMAIL_SENDER_ID (App Password): ${maskedPass}`);
-      console.log("-------------------------");
-      console.error("Gmail API error:", error);
-      res.status(500).json({ error: "Failed to send message" });
-    }
-  });
+ 
 
 
   //------------------- EVENTS ROUTES ----------------
