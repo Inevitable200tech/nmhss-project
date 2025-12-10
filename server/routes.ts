@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Gmail transporter (App Password required!)
       const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
-        port: 587,             // Explicitly use port 587
+        port: 2525,             // Explicitly use port 587
         secure: false,         // Set to false for port 587 (uses STARTTLS)
         requireTLS: true,      // Enforce the use of STARTTLS
         auth: {
