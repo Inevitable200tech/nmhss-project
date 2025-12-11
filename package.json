@@ -139,7 +139,8 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.3",
     "vite": "^6.3.5",
-    "vite-plugin-sitemap": "^0.8.2"
+    "vite-plugin-sitemap": "^0.8.2",
+    "vite-prerender-plugin": "^0.5.12"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

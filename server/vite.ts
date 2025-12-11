@@ -45,51 +45,19 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
-      let template = await fs.promises.readFile(
-        path.resolve(import.meta.dirname, "..", "client", "index.html"),
-        "utf-8"
+      const clientTemplate = path.resolve(
+        import.meta.dirname,
+        "..",
+        "client",
+        "index.html",
       );
 
-      // This regex is used by Google PageSpeed Insights, Next.js, Nuxt, Astro, and 99% of real-world sites
-      const isBot = /(googlebot|google-inspectiontool|bingbot|slurp|duckduckbot|baiduspider|facebookexternalhit|yandexbot|twitterbot|linkedinbot|whatsapp|telegrambot|chrome-lighthouse|lighthouse)/i.test(
-        req.headers["user-agent"] || ""
-      );
-
-      // Lighthouse 13 (the one that just tested you) sends exactly this string:
-      // "Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 ... Chrome/137...
-      // → contains "chrome-lighthouse" in the real request headers (not visible in the screenshot)
-      // → so the regex above catches it 100%
-
-      if (isBot) {
-        template = template
-          .replace(
-            "<title></title>",
-            "<title>Navamukunda Higher Secondary School – Official Website</title>"
-          )
-          .replace(
-            "</head>",
-            `<meta name="description" content="Navamukunda HSS – Excellence in Education, Events, News, Gallery, Achievements">
-          </head>`
-          )
-          .replace(
-            '<div id="root"></div>',
-            `<div id="root">
-            <div style="padding:2rem 1rem; font-family:system-ui; max-width:1200px; margin:auto; line-height:1.7">
-              <h1 style="font-size:2.5rem; margin:0">Navamukunda Higher Secondary School</h1>
-              <p style="font-size:1.2rem; color:#444; margin:0.5rem 0 2rem">
-                Official school website – Loading full interactive experience…
-              </p>
-            </div>
-          </div>`
-          );
-      }
-
-      // Keep your cache-buster
+      // always reload the index.html file from disk incase it changes
+      let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`
+        `src="/src/main.tsx?v=${nanoid()}"`,
       );
-
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
