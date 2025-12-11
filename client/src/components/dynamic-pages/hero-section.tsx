@@ -7,6 +7,8 @@ import imagefallback2 from "@assets/fb.jpg"
 let cachedHeroVideoUrl: string | null = null;
 
 export default function HeroSection() {
+  imagefallback ;
+  imagefallback2;
   const [videoUrl, setVideoUrl] = useState<string | null>(cachedHeroVideoUrl);
 
   useEffect(() => {

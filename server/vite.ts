@@ -45,19 +45,95 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html",
+      let template = await fs.promises.readFile(
+        path.resolve(import.meta.dirname, "..", "client", "index.html"),
+        "utf-8"
       );
 
-      // always reload the index.html file from disk incase it changes
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      // Give Googlebot real content so it finally gets an LCP
+      const isBot = /googlebot|bingbot|slurp|duckduckbot|baiduspider|facebookexternalhit/i.test(
+        req.headers["user-agent"] || ""
+      );
+
+      if (isBot) {
+        template = template
+          .replace("<title>", "<title>Navamukunda Higher Secondary School – Official Website")
+          .replace(
+            "</head>",
+            `<meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="google-site-verification" content="YUtvOOVkyVlIM_jSQBbM2HQV5pPoFKDb946nKtMDoJo" />
+  <!-- 🏷 Primary SEO -->
+  <title>NMHSS Thirunavaya | Navamukunda Higher Secondary School Kerala</title>
+  <meta name="description"
+    content="NMHSS Thirunavaya (Navamukunda Higher Secondary School) is a leading institution in Kerala offering quality education, higher secondary programs, and excellent campus facilities." />
+  <meta name="keywords"
+    content="NMHSS, Navamukunda HSS, Thirunavaya School, Kerala Schools, Higher Secondary School Kerala, Best Schools in Malappuram" />
+
+  <!-- Canonical for Search Engines -->
+  <link rel="canonical" href="https://nmhss.onrender.com/" />
+
+  <!-- Open Graph (Facebook / WhatsApp / LinkedIn Preview) -->
+  <meta property="og:title" content="NMHSS Thirunavaya - Excellence in Education" />
+  <meta property="og:description"
+    content="Explore admission details, departments, events, faculty, and campus life at NMHSS Thirunavaya Kerala." />
+  <meta property="og:image"
+    content="https://nmhss.onrender.com/assets/school.jpg" />
+  <meta property="og:url" content="https://nmhss.onrender.com" />
+  <meta property="og:type" content="website" />
+
+  <!-- Twitter Preview -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="NMHSS Thirunavaya" />
+  <meta name="twitter:description" content="A premier Higher Secondary School in Kerala shaping future leaders." />
+  <meta name="twitter:image" content="https://nmhss.onrender.com/assets/fb.jpg" />
+
+  <!-- Favicon -->
+
+  <!-- Schema.org for Google Rich Results -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "name": "NMHSS Thirunavaya",
+    "alternateName": "Navamukunda Higher Secondary School",
+    "url": "https://nmhss.onrender.com",
+    "logo": "https://nmhss.onrender.com/assets/logo.png",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Thirunavaya",
+      "addressLocality": "Malappuram",
+      "addressRegion": "Kerala",
+      "postalCode": "676301",
+      "addressCountry": "IN"
+    },
+    "sameAs": [
+      "https://facebook.com/",
+      "https://instagram.com/",
+      "https://maps.google.com/"
+    ]
+  }
+  </script>
+  <link rel="icon" href="icon.png" type="image/png" />
+  <link rel="icon" href="icon.png" sizes="any">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Fira+Code:wght@300..700&family=Geist+Mono:wght@100..900&family=Geist:wght@100..900&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Outfit:wght@100..900&family=Oxanium:wght@200..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100..900;1,100..900&family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=Space+Grotesk:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+    rel="stylesheet">
+</head>`
+          )
+          .replace(
+            '<div id="root"></div>',
+            '<div id="root"><div style="padding:2rem 1rem;font-family:system-ui;max-width:1200px;margin:auto"><h1>Navamukunda Higher Secondary School</h1><p>Official school website – Loading interactive content…</p></div></div>'
+          );
+      }
+
       template = template.replace(
         `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
+        `src="/src/main.tsx?v=${nanoid()}"`
       );
+
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
