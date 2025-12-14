@@ -76,7 +76,7 @@ Thanks to these amazing people:
 
 | Name | Role | Profile |  
 |------|------|---------|  
-| ![](https://avatars.githubusercontent.com/Orewaluffy4) <br> **Pranav Pradeesh** | 👨‍💻 Frontend-Developer | [GitHub](https://github.com/Orewaluffy4) |  
+| ![](https://avatars.githubusercontent.com/pranav-pradeesh) <br> **Pranav Pradeesh** | 👨‍💻 Frontend-Developer | [GitHub](https://github.com/pranav-pradeesh) |  
 | ![](https://avatars.githubusercontent.com/Inevitable200tech) <br> **Abhishek.P Aka (Inevitable)** | 👨‍💻 Backend-Developer | [GitHub](https://github.com/Inevitable200tech) |  
 
 
