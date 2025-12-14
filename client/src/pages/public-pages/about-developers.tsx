@@ -11,7 +11,7 @@ const developers = [
     role: "Frontend Developer",
     bio: "Crafting futuristic UIs with React, animations, and modern design principles. As a creator, Pranav focuses on seamless user experiences.",
     photo: "https://avatars.githubusercontent.com/pranav-pradeesh", // Replace with valid URL
-    social: { github: "https://github.com/pranav-pradeesh" },
+    social: { github: "https://pranav-pradeesh.github.io/pranav-pradeesh" },
     techStack: ["React", "TypeScript", "Framer Motion", "Tailwind CSS"],
   },
   {
@@ -19,7 +19,7 @@ const developers = [
     role: "Backend Developer",
     bio: "Building scalable, secure backend systems and APIs that power next-gen applications. As a creator, Abhishek ensures robust performance.",
     photo: "https://avatars.githubusercontent.com/Inevitable200tech", // Replace with valid URL
-    social: { github: "https://github.com/Inevitable200tech" },
+    social: { github: "https://inevitable200tech.github.io/Inevitable200tech/" },
     techStack: ["Node.js", "Express", "MongoDB", "TypeScript"],
   },
 ];
