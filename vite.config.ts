@@ -27,7 +27,7 @@ const prerenderPlugin = (): PluginOption => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="google-site-verification" content="YUtvOOVkyVlIM_jSQBbM2HQV5pPoFKDb946nKtMDoJo" />
   <!-- 🏷 Primary SEO -->
-  <title>NMHSS Thirunavaya | Navamukunda Higher Secondary School Kerala</title>
+  <title>NMHSS Thirunavaya Offical Website | Navamukunda Higher Secondary School Kerala</title>
   <meta name="description"
     content="NMHSS Thirunavaya (Navamukunda Higher Secondary School) is a leading institution in Kerala offering quality education, higher secondary programs, and excellent campus facilities." />
   <meta name="keywords"
@@ -41,7 +41,7 @@ const prerenderPlugin = (): PluginOption => {
   <meta property="og:description"
     content="Explore admission details, departments, events, faculty, and campus life at NMHSS Thirunavaya Kerala." />
   <meta property="og:image"
-    content="icon.jpg" />
+    content="https://nmhss.onrender.com/assets/icon-DpoUQw9L.png" />
   <meta property="og:url" content="https://nmhss.onrender.com" />
   <meta property="og:type" content="website" />
 
@@ -49,7 +49,7 @@ const prerenderPlugin = (): PluginOption => {
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="NMHSS Thirunavaya" />
   <meta name="twitter:description" content="A premier Higher Secondary School in Kerala shaping future leaders." />
-  <meta name="twitter:image" content="icon.jpg" />
+  <meta name="twitter:image" content="https://nmhss.onrender.com/assets/icon-DpoUQw9L.png" />
 
   <!-- Favicon -->
 
@@ -61,7 +61,7 @@ const prerenderPlugin = (): PluginOption => {
     "name": "NMHSS Thirunavaya",
     "alternateName": "Navamukunda Higher Secondary School",
     "url": "https://nmhss.onrender.com",
-    "logo": "icon.png",
+    "logo": "https://nmhss.onrender.com/assets/icon-DpoUQw9L.png",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Thirunavaya",
