@@ -79,8 +79,8 @@ const prerenderPlugin = (): PluginOption => {
     ]
   }
   </script>
-  <link rel="icon" href="icon.png" type="image/png" />
-  <link rel="icon" href="icon.png" sizes="any">
+  <link rel="icon" href="https://nmhss.onrender.com/assets/icon-DpoUQw9L.png" type="image/png" />
+  <link rel="icon" href="https://nmhss.onrender.com/assets/icon-DpoUQw9L.png" sizes="any">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
