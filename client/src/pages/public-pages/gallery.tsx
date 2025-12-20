@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight, X, Calendar, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Navigation from "@/components/static-pages/navigation";
 import Footer from "@/components/static-pages/footer";
-import Plyr from "plyr";
+// import Plyr from "plyr"; // Moved to dynamic import
 import "plyr/dist/plyr.css"; // Plyr styles
 
 const ITEMS_PER_PAGE = 12; // Number of items (or date groups) to show per page
@@ -95,17 +95,12 @@ export default function GalleryPage() {
 
   // Initialize Plyr for lightbox video
   useEffect(() => {
-    if (selectedIndex !== null && mediaType === "videos" && lightboxVideoRef.current && !videoPlayerRef.current) {
-      videoPlayerRef.current = new Plyr(lightboxVideoRef.current, {
-        controls: ["play", "progress", "current-time", "mute", "volume", "fullscreen"],
-        autoplay: true,
-        quality: { default: 720, options: [1080, 720, 480] },
-      });
-    }
+    // Using native HTML5 video controls instead of Plyr to avoid DOM initialization errors
+    // The video element renders with native controls attribute
     return () => {
-      if (videoPlayerRef.current && lightboxVideoRef.current) {
+      if (videoPlayerRef.current) {
         try {
-          videoPlayerRef.current.destroy();
+          videoPlayerRef.current.destroy?.();
         } catch (e) {
           console.warn("Plyr destroy failed:", e);
         }

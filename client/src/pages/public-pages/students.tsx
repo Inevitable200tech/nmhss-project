@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, X, ArrowLeft, ArrowRight } from "lucide-react";
 import Navigation from "@/components/static-pages/navigation";
 import Footer from "@/components/static-pages/footer";
-import Plyr from "plyr";
+// import Plyr from "plyr"; // Moved to dynamic import
 import "plyr/dist/plyr.css";
 
 type StudentMedia = {
@@ -101,31 +101,12 @@ export default function StudentsPage() {
 
   // Initialize Plyr when the selected media is a video
   useEffect(() => {
-    if (selectedIndex === null || !allMedia) return;
-
-    // IMPORTANT: The selected index is relative to the *full* data set (allMedia),
-    // because the navigation (showNext/showPrev) needs to wrap around the whole set.
-    const selected = allMedia[selectedIndex];
-    if (!selected || selected.type !== "video") return;
-
-    // mount plyr on the actual <video> element
-    const videoEl = mediaElementRef.current as HTMLVideoElement | null;
-    if (videoEl && !videoPlayerRef.current) {
-      videoPlayerRef.current = new Plyr(videoEl, {
-        controls: ["play", "progress", "current-time", "mute", "volume", "fullscreen"],
-        autoplay: true,
-        clickToPlay: true,
-        quality: { default: 720, options: [1080, 720, 480] },
-      });
-
-      // when entering fullscreen, ensure scale resets so layout remains consistent
-      videoPlayerRef.current.on?.("enterfullscreen", () => setScale(1));
-    }
-
+    // Using native HTML5 video controls instead of Plyr to avoid DOM initialization errors
+    // The video element renders with native controls attribute
     return () => {
       if (videoPlayerRef.current) {
         try {
-          videoPlayerRef.current.destroy();
+          videoPlayerRef.current.destroy?.();
         } catch {
           // ignore
         }

@@ -29,6 +29,11 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
     () => {
+      // Check if we're on the client side
+      if (typeof window === 'undefined') {
+        return defaultTheme;
+      }
+      
       const storedValue = localStorage.getItem(storageKey);
       
       // FIX for Type 'string' is not assignable to type 'Theme':
@@ -42,6 +47,9 @@ export function ThemeProvider({
   );
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     const root = window.document.documentElement;
 
     root.classList.remove("light", "dark");
@@ -68,7 +76,9 @@ export function ThemeProvider({
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(storageKey, theme);
+      }
       setTheme(theme);
     },
   };
