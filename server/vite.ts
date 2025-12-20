@@ -45,22 +45,35 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     try {
-      const clientTemplate = path.resolve(
-        import.meta.dirname,
-        "..",
-        "client",
-        "index.html",
+      // 1. Read index.html
+      let template = fs.readFileSync(
+        path.resolve(import.meta.dirname, "..", "client", "index.html"),
+        "utf-8"
       );
 
-      // always reload the index.html file from disk incase it changes
-      let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
-      );
-      const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      // 2. Apply Vite HTML transforms. This injects the Vite HMR client, and
+      //    also applies HTML transforms from Vite plugins, e.g. global
+      //    <script> tags from @vitejs/plugin-react
+      template = await vite.transformIndexHtml(url, template);
+
+      // 3. Load the server entry. ssrLoadModule automatically transforms
+      //    ESM source code to be usable in Node.js! There is no bundling
+      //    required, and provides efficient invalidation similar to HMR.
+      const { render } = await vite.ssrLoadModule("/src/entry-server.tsx");
+
+      // 4. render the app HTML. This assumes entry-server.js's exported
+      //     `render` function calls appropriate framework SSR APIs,
+      //    e.g. ReactDOMServer.renderToString()
+      const appHtml = await render(url);
+
+      // 5. Inject the app-rendered HTML into the template.
+      const html = template.replace(`<div id="root"></div>`, `<div id="root">${appHtml}</div>`);
+
+      // 6. Send the rendered HTML back.
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
     } catch (e) {
+      // If an error is caught, let Vite fix the stack trace so it maps back
+      // to your actual source code.
       vite.ssrFixStacktrace(e as Error);
       next(e);
     }
@@ -76,10 +89,34 @@ export function serveStatic(app: Express) {
     );
   }
 
+  // Serve static assets
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // SSR handler for all routes
+  app.use("*", async (req, res, next) => {
+    try {
+      const url = req.originalUrl;
+
+      // Read the template
+      const template = fs.readFileSync(
+        path.resolve(distPath, "index.html"),
+        "utf-8"
+      );
+
+      // Load the server entry
+      const { render } = await import(path.resolve(import.meta.dirname, "..", "client", "dist", "server", "entry-server.js"));
+
+      // Render the app
+      const appHtml = await render(url);
+      log(`SSR: Rendered HTML length: ${appHtml.length}`);
+
+      // Inject the app HTML
+      const html = template.replace(`<div id="root"></div>`, `<div id="root">${appHtml}</div>`);
+
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    } catch (e) {
+      log(`SSR Error: ${(e as Error).message}`);
+      next(e);
+    }
   });
 }

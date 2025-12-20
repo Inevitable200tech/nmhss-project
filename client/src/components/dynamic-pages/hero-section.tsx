@@ -12,6 +12,9 @@ export default function HeroSection() {
   const [videoUrl, setVideoUrl] = useState<string | null>(cachedHeroVideoUrl);
 
   useEffect(() => {
+    // Only fetch on client side
+    if (typeof window === 'undefined') return;
+    
     if (cachedHeroVideoUrl) return; // Already cached → no need to fetch
 
     const fetchHeroVideo = async () => {
@@ -41,6 +44,8 @@ export default function HeroSection() {
 
   // Preload video once we know the URL
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     if (videoUrl) {
       const link = document.createElement("link");
       link.rel = "preload";
