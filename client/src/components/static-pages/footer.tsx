@@ -31,12 +31,12 @@ export default function Footer() {
                 <img
                   src={heroImage}
                   alt="Navamukunda HSS Logo"
-                  className="w-12 h-12 object-contain"
+                  className="w-12 h-12 object-contain z-10"
                 />
               </div>
               <div>
-                <h3 className="font-bold text-xl">Navamukunda HSS</h3>
-                <p className="text-sm opacity-80">Thirunavaya</p>
+                <h3 className="font-bold text-xl relative z-10">Navamukunda HSS</h3>
+                <p className="text-sm opacity-80 z-10">Thirunavaya</p>
               </div>
             </div>
             <p className="text-sm opacity-80 leading-relaxed mb-4">

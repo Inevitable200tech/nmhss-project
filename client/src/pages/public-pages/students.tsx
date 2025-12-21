@@ -279,6 +279,7 @@ export default function StudentsPage() {
         <meta property="og:title" content="Student Gallery - NMHSS Thirunavaya" />
         <meta property="og:description" content="Browse student memories and achievements in the NMHSS Thirunavaya student gallery." />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://nmhss.onrender.com/students" />
       </Helmet>
       <Navigation />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-20 px-6">

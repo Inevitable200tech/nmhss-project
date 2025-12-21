@@ -69,7 +69,8 @@ export default function AboutDevelopers() {
         <meta property="og:title" content="About Developers - NMHSS Thirunavaya" />
         <meta property="og:description" content="Meet the talented developers who created the NMHSS Thirunavaya website." />
         <meta property="og:type" content="website" />
-        
+        <link rel="canonical" href="https://nmhss.onrender.com/about-us" />
+
       </Helmet>
       {/* Starry night background */}
       <div
@@ -127,9 +128,9 @@ export default function AboutDevelopers() {
         <div className="container mx-auto px-6 lg:px-12">
           <motion.div
             className="text-center mb-16"
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
+            initial={{ opacity: 0, y: -100 }}
+            animate={{ opacity: 1, y: 0, animationDelay: "0.2" }}
+            transition={{ duration: 1.25, ease: "easeOut" }}
           >
             <h2 className="text-5xl font-extrabold text-purple-400 md:text-6xl">
               Introducing Our Creators

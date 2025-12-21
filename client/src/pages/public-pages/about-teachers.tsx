@@ -16,7 +16,7 @@ export default function AboutTeachers() {
       return res.json();
     },
   });
-  
+
   if (isLoading) {
     return (
       <div className="relative min-h-screen flex flex-col mt-8">
@@ -42,6 +42,8 @@ export default function AboutTeachers() {
         <meta property="og:title" content="Teachers - NMHSS Thirunavaya" />
         <meta property="og:description" content="Meet the experienced faculty members of NMHSS Thirunavaya dedicated to academic excellence." />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://nmhss.onrender.com/about-teachers" />
+
       </Helmet>
       {/* Navigation */}
       <Navigation />
