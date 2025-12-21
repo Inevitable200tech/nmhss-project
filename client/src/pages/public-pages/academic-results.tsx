@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { Helmet } from "react-helmet";
 
 import {
   Loader2,
@@ -359,6 +360,14 @@ export default function AcademicResultsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-inter">
+      <Helmet>
+        <title>Academic Results - NMHSS Thirunavaya</title>
+        <meta name="description" content="View academic results and performance statistics of NMHSS Thirunavaya students. Explore year-wise results, top performers, and detailed analytics." />
+        <meta name="keywords" content="academic results, exam results, NMHSS, Thirunavaya, student performance, top students" />
+        <meta property="og:title" content="Academic Results - NMHSS Thirunavaya" />
+        <meta property="og:description" content="View academic results and performance statistics of NMHSS Thirunavaya students." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <Navigation />
       <div className="container mx-auto px-4 py-8 pt-24 sm:pt-28">
         {/* Summary Card */}

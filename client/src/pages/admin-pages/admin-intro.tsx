@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
 type HeroVideo = { id: string; mediaId: string; url: string; uploadedAt: Date };
 

@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet';
 import Footer from "@/components/static-pages/footer";
 import Navigation from "@/components/static-pages/navigation";
 import { Calendar, ChevronDown, Trophy, Star, X, Users, Zap } from 'lucide-react'; // ADDED: X, Users, Zap icons
@@ -379,6 +380,14 @@ export default function SportsChampionsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-100 via-yellow-100 to-green-100 dark:from-gray-900 dark:to-black">
+      <Helmet>
+        <title>Sports Champions - NMHSS Thirunavaya</title>
+        <meta name="description" content="Celebrate the athletic achievements of NMHSS Thirunavaya sports champions. Discover our award-winning athletes and their accomplishments." />
+        <meta name="keywords" content="sports, champions, athletics, NMHSS, Thirunavaya, awards, sports achievements" />
+        <meta property="og:title" content="Sports Champions - NMHSS Thirunavaya" />
+        <meta property="og:description" content="Celebrate the athletic achievements of NMHSS Thirunavaya sports champions." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <Navigation />
 
       <main className="container mx-auto px-4 py-8 pt-24 sm:pt-32">

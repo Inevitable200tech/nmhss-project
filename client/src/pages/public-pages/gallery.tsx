@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, ArrowRight, X, Calendar, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Navigation from "@/components/static-pages/navigation";
 import Footer from "@/components/static-pages/footer";
-// import Plyr from "plyr"; // Moved to dynamic import
+import { Helmet } from "react-helmet";
+import Plyr from "plyr"; // Moved to dynamic import
 import "plyr/dist/plyr.css"; // Plyr styles
 
 const ITEMS_PER_PAGE = 12; // Number of items (or date groups) to show per page
@@ -233,6 +234,14 @@ export default function GalleryPage() {
 
   return (
     <>
+      <Helmet>
+        <title>Gallery - NMHSS Thirunavaya</title>
+        <meta name="description" content="Explore the photo and video gallery of NMHSS Thirunavaya. Browse school events, achievements, campus life, and memorable moments." />
+        <meta name="keywords" content="gallery, photos, videos, NMHSS, Thirunavaya, school events, campus" />
+        <meta property="og:title" content="Gallery - NMHSS Thirunavaya" />
+        <meta property="og:description" content="Explore photos and videos of NMHSS Thirunavaya school events and campus life." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <Navigation />
       <section id="gallery" className="py-20 bg-gray-50 dark:bg-gray-900 mt-16">
         <div className="container mx-auto px-4 lg:px-8">
@@ -480,6 +489,8 @@ export default function GalleryPage() {
                 src={typeof videos[selectedIndex] === "string" ? (videos[selectedIndex] as string) : (videos[selectedIndex] as any).url}
                 className="w-full h-auto max-h-[80vh] object-contain"
                 preload="auto"
+                controls 
+                autoPlay
               />
             )}
           </div>

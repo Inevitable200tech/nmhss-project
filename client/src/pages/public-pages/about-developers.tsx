@@ -3,6 +3,7 @@ import Footer from "@/components/static-pages/footer";
 import { Github as GithubIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";
+import { Helmet } from "react-helmet";
 
 // Developer data with tech stack
 const developers = [
@@ -61,6 +62,15 @@ export default function AboutDevelopers() {
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
+      <Helmet>
+        <title>About Developers - NMHSS Thirunavaya</title>
+        <meta name="description" content="Meet the talented developers who created the NMHSS Thirunavaya website. Learn about their expertise, tech stack, and contributions." />
+        <meta name="keywords" content="developers, web development, NMHSS, Thirunavaya, frontend, backend" />
+        <meta property="og:title" content="About Developers - NMHSS Thirunavaya" />
+        <meta property="og:description" content="Meet the talented developers who created the NMHSS Thirunavaya website." />
+        <meta property="og:type" content="website" />
+        
+      </Helmet>
       {/* Starry night background */}
       <div
         className="absolute inset-0 -z-0"

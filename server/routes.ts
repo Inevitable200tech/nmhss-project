@@ -401,9 +401,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-      const maxSize = 100 * 1024 * 1024; // 100MB limit
+      const maxSize = 2000 * 1024 * 1024; // 2GB limit
       if (req.file.size > maxSize) {
-        return res.status(400).json({ error: "File size exceeds 100MB limit" });
+        return res.status(400).json({ error: "File size exceeds 2GB limit" });
       }
 
       const uploadedAt = z
@@ -586,9 +586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-      const maxSize = 100 * 1024 * 1024; // 100MB limit
+      const maxSize = 2000 * 1024 * 1024; // 2GB limit
       if (req.file.size > maxSize) {
-        return res.status(400).json({ error: "File size exceeds 100MB limit" });
+        return res.status(400).json({ error: "File size exceeds 2GB limit" });
       }
 
       // Validate MIME type

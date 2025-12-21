@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { Helmet } from "react-helmet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -177,6 +178,14 @@ export default function StudentsUploadPage(): JSX.Element {
 
     return (
         <>
+            <Helmet>
+                <title>Student Media Upload - NMHSS Thirunavaya</title>
+                <meta name="description" content="Upload your student memories and achievements to the NMHSS Thirunavaya platform. Share photos and videos from your school life." />
+                <meta name="keywords" content="student upload, media, photos, videos, NMHSS, Thirunavaya, students" />
+                <meta property="og:title" content="Student Media Upload - NMHSS Thirunavaya" />
+                <meta property="og:description" content="Upload your student memories and achievements to the NMHSS Thirunavaya platform." />
+                <meta property="og:type" content="website" />
+            </Helmet>
             <Navigation />
             <div className="p-6 max-w-2xl mx-auto mt-16 mb-16">
                 <Card className="shadow-lg">
