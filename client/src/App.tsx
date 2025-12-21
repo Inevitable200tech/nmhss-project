@@ -11,7 +11,6 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import AOS from "aos";
-import "aos/dist/aos.css";
 
 // Lazy load components that use browser APIs to prevent SSR hydration issues
 const GallerySection = lazy(() => import("@/pages/public-pages/gallery"));
@@ -39,16 +38,13 @@ const AdminSportsChampions = lazy(() => import("@/pages/admin-pages/admin-sports
 
 function App() {
   useEffect(() => {
-    // Only initialize AOS on the client side
-    if (typeof window !== 'undefined') {
-      AOS.init({
-        duration: 1000,
-        easing: 'ease-in-out-sine',
-        once: true,
-        offset: 100,
-      });
-    }
-  }, []);
+  if (typeof window === 'undefined') return;
+
+  import("aos/dist/aos.css");
+  import("aos").then((AOS) => {
+    AOS.init({ duration: 1000, easing: 'ease-in-out-sine', once: true, offset: 100 });
+  });
+}, []);
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="navamukunda-theme">

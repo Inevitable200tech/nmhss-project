@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Navigation from "@/components/static-pages/navigation";
 import Footer from "@/components/static-pages/footer";
 import { ClientTeacher } from "@shared/schema";
+import { Helmet } from "react-helmet";
 
 export default function AboutTeachers() {
   const { data: teachers, isLoading } = useQuery<ClientTeacher[]>({
@@ -34,6 +35,14 @@ export default function AboutTeachers() {
 
   return (
     <div className="relative min-h-screen flex flex-col mt-8">
+      <Helmet>
+        <title>Teachers - NMHSS Thirunavaya</title>
+        <meta name="description" content="Meet the experienced faculty members of NMHSS Thirunavaya. Our teachers are dedicated educators committed to academic excellence and student development." />
+        <meta name="keywords" content="teachers, faculty, NMHSS, Thirunavaya, education, staff" />
+        <meta property="og:title" content="Teachers - NMHSS Thirunavaya" />
+        <meta property="og:description" content="Meet the experienced faculty members of NMHSS Thirunavaya dedicated to academic excellence." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       {/* Navigation */}
       <Navigation />
 

@@ -43,6 +43,20 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1600, // Suppress warning for vendor
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("lucide-react")) return "icons";
+            if (id.includes("@tanstack")) return "query";
+            if (id.includes("aos")) return "aos";
+            if (id.includes("react-helmet-async")) return "helmet";
+            return "vendor";
+          }
+        },
+      },
+    },
   },
 
   server: {

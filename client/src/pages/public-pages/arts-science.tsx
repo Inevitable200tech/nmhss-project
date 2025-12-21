@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet';
 import Footer from "@/components/static-pages/footer";
 import Navigation from "@/components/static-pages/navigation";
 import { Calendar, ChevronDown, Palette, FlaskConical, Zap, Star, LayoutGrid, X, Users } from 'lucide-react'; // ADDED: X, Users icons
@@ -435,6 +436,14 @@ export default function ArtsSciencePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-100 via-yellow-100 to-green-100 dark:from-gray-900 dark:to-black">
+      <Helmet>
+        <title>Arts & Science Achievements - NMHSS Thirunavaya</title>
+        <meta name="description" content="Celebrate the achievements of NMHSS Thirunavaya students in Kalolsavam and Sasthrosavam competitions. View awards, recognitions, and cultural excellence." />
+        <meta name="keywords" content="arts, science, achievements, Kalolsavam, Sasthrosavam, NMHSS, Thirunavaya, competitions" />
+        <meta property="og:title" content="Arts & Science Achievements - NMHSS Thirunavaya" />
+        <meta property="og:description" content="Celebrate the achievements of NMHSS Thirunavaya students in cultural and scientific competitions." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <Navigation />
 
       <main className="container mx-auto px-4 py-8 pt-24 sm:pt-32">

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, X, ArrowLeft, ArrowRight } from "lucide-react";
 import Navigation from "@/components/static-pages/navigation";
 import Footer from "@/components/static-pages/footer";
+import { Helmet } from "react-helmet";
 // import Plyr from "plyr"; // Moved to dynamic import
 import "plyr/dist/plyr.css";
 
@@ -271,6 +272,14 @@ export default function StudentsPage() {
 
   return (
     <>
+      <Helmet>
+        <title>Student Gallery - NMHSS Thirunavaya</title>
+        <meta name="description" content="Browse student memories and achievements in the NMHSS Thirunavaya student gallery. View photos and videos from various batches and events." />
+        <meta name="keywords" content="student gallery, student photos, student videos, NMHSS, Thirunavaya, student life" />
+        <meta property="og:title" content="Student Gallery - NMHSS Thirunavaya" />
+        <meta property="og:description" content="Browse student memories and achievements in the NMHSS Thirunavaya student gallery." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <Navigation />
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-20 px-6">
         <div className="max-w-6xl mx-auto">
