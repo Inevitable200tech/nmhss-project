@@ -367,6 +367,7 @@ export default function AcademicResultsPage() {
         <meta property="og:title" content="Academic Results - NMHSS Thirunavaya" />
         <meta property="og:description" content="View academic results and performance statistics of NMHSS Thirunavaya students." />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://nmhss.onrender.com/academic-results" />
       </Helmet>
       <Navigation />
       <div className="container mx-auto px-4 py-8 pt-24 sm:pt-28">

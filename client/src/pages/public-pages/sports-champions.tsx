@@ -387,6 +387,7 @@ export default function SportsChampionsPage() {
         <meta property="og:title" content="Sports Champions - NMHSS Thirunavaya" />
         <meta property="og:description" content="Celebrate the athletic achievements of NMHSS Thirunavaya sports champions." />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://nmhss.onrender.com/sports-champions" />
       </Helmet>
       <Navigation />
 

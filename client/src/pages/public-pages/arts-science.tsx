@@ -443,6 +443,7 @@ export default function ArtsSciencePage() {
         <meta property="og:title" content="Arts & Science Achievements - NMHSS Thirunavaya" />
         <meta property="og:description" content="Celebrate the achievements of NMHSS Thirunavaya students in cultural and scientific competitions." />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://nmhss.onrender.com/arts-science" />
       </Helmet>
       <Navigation />
 

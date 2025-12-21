@@ -241,6 +241,7 @@ export default function GalleryPage() {
         <meta property="og:title" content="Gallery - NMHSS Thirunavaya" />
         <meta property="og:description" content="Explore photos and videos of NMHSS Thirunavaya school events and campus life." />
         <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://nmhss.onrender.com/gallery" />
       </Helmet>
       <Navigation />
       <section id="gallery" className="py-20 bg-gray-50 dark:bg-gray-900 mt-16">

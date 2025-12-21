@@ -42,7 +42,7 @@ function App() {
 
   import("aos/dist/aos.css");
   import("aos").then((AOS) => {
-    AOS.init({ duration: 1000, easing: 'ease-in-out-sine', once: true, offset: 100 });
+    AOS.init({ duration: 750, easing: 'ease-out', once: true, offset: 50 });
   });
 }, []);
 
