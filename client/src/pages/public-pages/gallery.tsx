@@ -7,7 +7,7 @@ import { Helmet } from "react-helmet";
 import Plyr from "plyr"; // Moved to dynamic import
 import "plyr/dist/plyr.css"; // Plyr styles
 
-const ITEMS_PER_PAGE = 12; // Number of items (or date groups) to show per page
+const ITEMS_PER_PAGE = 6; // Number of items (or date groups) to show per page
 
 const fallbackVideos = [
   "https://www.w3schools.com/html/mov_bbb.mp4",

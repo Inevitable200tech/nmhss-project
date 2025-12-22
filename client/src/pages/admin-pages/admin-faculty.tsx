@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Save, User, Upload, Trash2, BarChart3 } from "lucide-react";
+import { ArrowLeft, Save, User, Upload, Trash2, BarChart3, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,6 +69,11 @@ export default function AdminFaculty() {
     const { toast } = useToast();
     const [title, setTitle] = useState("");
     const [subtitle, setSubtitle] = useState("");
+
+    // New State for Loading and Progress
+    const [isSaving, setIsSaving] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
     const [stats, setStats] = useState<FacultyStat[]>([
         { label: "", value: "", description: "" },
         { label: "", value: "", description: "" },
@@ -81,7 +86,24 @@ export default function AdminFaculty() {
     ]);
     const [tempPreviews, setTempPreviews] = useState<(string | null)[]>([null, null, null]);
     const [tempFiles, setTempFiles] = useState<(File | null)[]>([null, null, null]);
-    const token = localStorage.getItem("adminToken");
+
+    // 🛡️ Prevent Accidental Navigation
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isSaving) {
+                // Standard way to trigger the "Are you sure?" browser dialog
+                e.preventDefault();
+                e.returnValue = "";
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [isSaving]);
+
     useEffect(() => {
         (async () => {
             try {
@@ -121,8 +143,11 @@ export default function AdminFaculty() {
         setTempFiles(newFiles);
     };
 
-    // ✅ Modified handleSave to accept overrides
+    // ✅ Modified handleSave with Progress and Blocking
     const handleSave = async (overrides?: Partial<FacultySection>) => {
+        setIsSaving(true);
+        setUploadProgress(10); // Initial progress
+
         try {
             const payload: FacultySection = {
                 title,
@@ -132,25 +157,46 @@ export default function AdminFaculty() {
                 ...overrides,
             };
 
+            // Calculate how many files need uploading for progress math
+            const filesToUploadCount = payload.profiles.filter((_, i) => tempFiles[i]).length;
+            let filesCompleted = 0;
+
             // Upload new images if any
             const uploadedProfiles = await Promise.all(
                 payload.profiles.map(async (p, i) => {
                     if (tempFiles[i]) {
                         const formData = new FormData();
                         formData.append("file", tempFiles[i] as Blob);
-                        const uploadRes = await fetch("/api/media", {
-                            method: "POST",
-                            headers: {
-                                Authorization: `Bearer ${localStorage.getItem("adminToken")}`
-                            }, body: formData
-                        });
-                        if (!uploadRes.ok) throw new Error("Upload failed");
-                        const uploaded = await uploadRes.json();
-                        return { ...p, mediaId: uploaded.id, imageUrl: `/api/media/${uploaded.id}` };
+
+                        try {
+                            const uploadRes = await fetch("/api/media", {
+                                method: "POST",
+                                headers: {
+                                    Authorization: `Bearer ${localStorage.getItem("adminToken")}`
+                                },
+                                body: formData
+                            });
+
+                            if (!uploadRes.ok) throw new Error("Upload failed");
+                            const uploaded = await uploadRes.json();
+
+                            // Update progress
+                            filesCompleted++;
+                            // Scale upload progress between 10% and 80%
+                            const progressPercentage = 10 + Math.floor((filesCompleted / (filesToUploadCount || 1)) * 70);
+                            setUploadProgress(progressPercentage);
+
+                            return { ...p, mediaId: uploaded.id, imageUrl: `/api/media/${uploaded.id}` };
+                        } catch (e) {
+                            console.error("Image upload failed", e);
+                            throw e;
+                        }
                     }
                     return p;
                 })
             );
+
+            setUploadProgress(85); // Uploads done, starting save
 
             const finalPayload: FacultySection = {
                 ...payload,
@@ -167,23 +213,52 @@ export default function AdminFaculty() {
             });
 
             if (!res.ok) throw new Error("Save failed");
+
+            setUploadProgress(100);
             toast({ title: "✅ Faculty section saved" });
+
+            // Optional: Clear temp files after successful save
+            setTempFiles([null, null, null]);
+            setTempPreviews([null, null, null]);
+
         } catch (err) {
             console.error(err);
             toast({ title: "❌ Failed to save faculty section", variant: "destructive" });
+        } finally {
+            // Small delay to let the user see 100% before hiding
+            setTimeout(() => {
+                setIsSaving(false);
+                setUploadProgress(0);
+            }, 500);
         }
+
+        setTimeout(() => {
+            (async () => {
+                try {
+                    const res = await fetch("/api/faculty");
+                    if (res.ok) {
+                        const data: FacultySection = await res.json();
+                        setTitle(data.title);
+                        setSubtitle(data.subtitle);
+                        setStats(data.stats);
+                        setProfiles(data.profiles);
+                    }
+                } catch (err) {
+                    console.error("Failed to load faculty section", err);
+                }
+            })();
+        }, 1000);
     };
 
-    // ✅ Modified handleImageRemove
-    // ✅ Modified handleImageRemove
     const handleImageRemove = async (i: number) => {
+        if (isSaving) return; // Prevent removing while saving
+
         const confirmed = window.confirm(
             "⚠️ Are you sure you want to remove this image?\nThis action will delete the image from the database."
         );
         if (!confirmed) return;
 
         try {
-            // 🔥 Delete from DB if mediaId exists
             if (profiles[i].mediaId) {
                 await fetch(`/api/media/${profiles[i].mediaId}`, {
                     method: "DELETE",
@@ -191,7 +266,6 @@ export default function AdminFaculty() {
                 });
             }
 
-            // Clear local state
             const newPreviews = [...tempPreviews];
             const newFiles = [...tempFiles];
             newPreviews[i] = null;
@@ -203,7 +277,6 @@ export default function AdminFaculty() {
             newProfiles[i] = { ...newProfiles[i], mediaId: undefined, imageUrl: undefined };
             setProfiles(newProfiles);
 
-            // 🔥 Save immediately with updated profiles
             await handleSave({ profiles: newProfiles });
 
             toast({ title: "🗑️ Image removed successfully" });
@@ -213,14 +286,14 @@ export default function AdminFaculty() {
         }
     };
 
-    // ✅ Modified handleRestoreDefaults
     const handleRestoreDefaults = async () => {
+        if (isSaving) return;
+
         const confirmed = window.confirm(
             "⚠️ Are you sure you want to reset?\nThis action will delete the all image from the form and database and also reset everything to defaults!!!!"
         );
         if (!confirmed) return;
         try {
-            // Delete uploaded media if exists
             for (const profile of profiles) {
                 if (profile.mediaId) {
                     try {
@@ -231,7 +304,6 @@ export default function AdminFaculty() {
                 }
             }
 
-            // Reset fields
             const restoredTitle = "Our Faculty";
             const restoredSubtitle = "Meet our experienced and dedicated faculty team";
             const restoredStats = fallbackStats;
@@ -241,7 +313,7 @@ export default function AdminFaculty() {
                 role: p.role,
                 description: p.description,
                 mediaId: undefined,
-                imageUrl: undefined, // clear uploaded image
+                imageUrl: undefined,
             }));
 
             setTitle(restoredTitle);
@@ -251,7 +323,6 @@ export default function AdminFaculty() {
             setTempPreviews([null, null, null]);
             setTempFiles([null, null, null]);
 
-            // 🔥 Save immediately with restored defaults
             await handleSave({
                 title: restoredTitle,
                 subtitle: restoredSubtitle,
@@ -266,40 +337,61 @@ export default function AdminFaculty() {
         }
     };
 
-
-
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 p-6 space-y-6">
+
+            {/* 🟢 TOP FIXED PROGRESS BAR */}
+            {isSaving && (
+                <div className="fixed top-0 left-0 w-full h-1.5 bg-gray-800 z-50">
+                    <motion.div
+                        className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${uploadProgress}%` }}
+                        transition={{ ease: "easeInOut", duration: 0.3 }}
+                    />
+                </div>
+            )}
+
             {/* Top bar */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
-                {/* Back button */}
                 <Button
                     onClick={() => (window.location.href = "/admin")}
                     variant="secondary"
+                    disabled={isSaving} // Disable navigation while saving
                     className="flex items-center gap-2 w-full sm:w-auto"
                 >
                     <ArrowLeft className="w-4 h-4" /> Back to Admin
                 </Button>
 
-                {/* Right side buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <Button
                         onClick={handleRestoreDefaults}
                         variant="outline"
+                        disabled={isSaving}
                         className="flex items-center gap-2 w-full sm:w-auto"
                     >
                         <Trash2 className="w-4 h-4" /> Restore Defaults
                     </Button>
+
+                    {/* Updated Save Button */}
                     <Button
                         onClick={() => handleSave()}
-                        className="flex items-center gap-2 w-full sm:w-auto"
+                        disabled={isSaving}
+                        className="flex items-center gap-2 w-full sm:w-auto min-w-[100px]"
                     >
-                        <Save className="w-4 h-4" /> Save
+                        {isSaving ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                {uploadProgress < 85 ? "Uploading..." : "Saving..."}
+                            </>
+                        ) : (
+                            <>
+                                <Save className="w-4 h-4" /> Save
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>
-
-
 
             {/* Section Header */}
             <Card className="bg-gray-800 border-gray-700">
@@ -312,12 +404,14 @@ export default function AdminFaculty() {
                         placeholder="Section Title"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        disabled={isSaving}
                     />
                     <Textarea
                         className="bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         placeholder="Section Subtitle"
                         value={subtitle}
                         onChange={(e) => setSubtitle(e.target.value)}
+                        disabled={isSaving}
                     />
                 </CardContent>
             </Card>
@@ -344,19 +438,21 @@ export default function AdminFaculty() {
                                     placeholder="Label"
                                     value={s.label}
                                     onChange={(e) => handleStatChange(i, "label", e.target.value)}
+                                    disabled={isSaving}
                                 />
                                 <Input
                                     className="bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     placeholder="Value"
                                     value={s.value}
                                     onChange={(e) => handleStatChange(i, "value", e.target.value)}
+                                    disabled={isSaving}
                                 />
                                 <Textarea
-                                    className="bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 
-focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    className="bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     placeholder="Description"
                                     value={s.description}
                                     onChange={(e) => handleStatChange(i, "description", e.target.value)}
+                                    disabled={isSaving}
                                 />
                             </motion.div>
                         ))}
@@ -402,12 +498,13 @@ focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                         </div>
                                     )}
 
-                                    <Button asChild variant="secondary" size="sm" className="flex items-center gap-2">
-                                        <label className="cursor-pointer">
+                                    <Button asChild variant="secondary" size="sm" disabled={isSaving} className="flex items-center gap-2">
+                                        <label className={`cursor-pointer ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                             <Upload className="w-4 h-4" /> Upload
                                             <input
                                                 type="file"
                                                 accept="image/*"
+                                                disabled={isSaving}
                                                 className="hidden"
                                                 onChange={(e) =>
                                                     e.target.files && handleImageSelect(i, e.target.files[0])
@@ -421,6 +518,7 @@ focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                             type="button"
                                             variant="destructive"
                                             size="sm"
+                                            disabled={isSaving}
                                             className="flex items-center gap-2"
                                             onClick={() => handleImageRemove(i)}
                                         >
@@ -435,18 +533,21 @@ focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     placeholder="Name"
                                     value={p.name}
                                     onChange={(e) => handleProfileChange(i, "name", e.target.value)}
+                                    disabled={isSaving}
                                 />
                                 <Input
                                     className="bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     placeholder="Role"
                                     value={p.role}
                                     onChange={(e) => handleProfileChange(i, "role", e.target.value)}
+                                    disabled={isSaving}
                                 />
                                 <Textarea
                                     className="bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     placeholder="Description"
                                     value={p.description}
                                     onChange={(e) => handleProfileChange(i, "description", e.target.value)}
+                                    disabled={isSaving}
                                 />
                             </motion.div>
                         ))}
