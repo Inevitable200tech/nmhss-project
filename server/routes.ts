@@ -23,12 +23,10 @@ import fs from "fs";
 import path from "path";
 import { pendingUploads } from "@shared/memoryUploads";
 import { randomUUID } from "crypto";
-import nodemailer from "nodemailer";
-import { s3Client, R2_BUCKET_NAME, R2_PUBLIC_URL } from "./s3.ts";
+import { s3Client, R2_BUCKET_NAME } from "./s3.ts";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { rateLimit } from 'express-rate-limit';
-import fetch from 'node-fetch';
 
 type UploadTracker = {
   count: number;
@@ -123,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Token is valid" });
   });
 
- 
+
 
 
   //------------------- EVENTS ROUTES ----------------
@@ -308,7 +306,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   //---------------- GALLERY ROUTES ----------------
 
-  // Replace the GET /api/gallery route
+  // GET /api/gallery
+  // Returns all gallery items with URLs pointing to the secure media endpoint
   app.get("/api/gallery", async (req, res) => {
     try {
       const [images, videos, section] = await Promise.all([
@@ -316,11 +315,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getGalleryVideos(),
         storage.getSections("gallery"),
       ]);
+
+      const formatItem = (item: { id: any; _id: any; mediaId: any; uploadedAt: any; }) => ({
+        id: item.id || item._id,
+        url: `/api/media/${item.mediaId}`, // Redirects to the secure endpoint
+        uploadedAt: item.uploadedAt,
+      });
+
       res.json({
-        images: images.map((img) => ({ id: img.id, url: img.url, uploadedAt: img.uploadedAt })),
-        videos: videos.map((vid) => ({ id: vid.id, url: vid.url, uploadedAt: vid.uploadedAt })),
+        images: (images || []).map(formatItem),
+        videos: (videos || []).map(formatItem),
         title: section[0]?.title || "Photo Gallery & Timeline",
-        subtitle: section[0]?.subtitle || "Explore our school's history through timeline and captured moments",
+        subtitle: section[0]?.subtitle || "Captured moments",
         stats: section[0]?.stats || [],
       });
     } catch (error) {
@@ -330,209 +336,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/gallery/images
-  // POST /api/gallery/images
   app.post("/api/gallery/images", requireAuth, upload.single("file"), async (req, res) => {
     try {
-      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-
-      const maxSize = 100 * 1024 * 1024; // 100MB limit
-      if (req.file.size > maxSize) {
-        return res.status(400).json({ error: "File size exceeds 100MB limit" });
-      }
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
       const uploadedAt = z
-        .preprocess((val) => (val ? new Date(val as string) : undefined), z.date())
+        .preprocess((val) => {
+          // If val is missing, an empty object {}, or an empty string, return undefined
+          if (!val || (typeof val === 'object' && Object.keys(val).length === 0)) {
+            return undefined;
+          }
+          // Attempt to convert to a Date object
+          const date = new Date(val as string);
+          // Check if the date is valid
+          return isNaN(date.getTime()) ? undefined : date;
+        }, z.date({ required_error: "Please select a valid date" }))
         .parse(req.body.uploadedAt);
 
-      // --- R2 MODIFICATION START ---
-
-      // 1. Generate a unique ID and R2 Key
       const mediaId = new mongoose.Types.ObjectId().toString();
-      // Store file under a clean key path (the Key acts as the MediaModel.filename)
       const Key = `gallery/images/${mediaId}-${req.file.originalname}`;
-      // Construct the public URL (assuming R2_PUBLIC_URL is defined)
-      const url = `${R2_PUBLIC_URL}/${Key}`;
 
-      // 2. Upload to R2
-      const command = new PutObjectCommand({
-        Bucket: R2_BUCKET_NAME,
+      // 1. Upload to R2
+      await s3Client.send(new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
         Key,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
-        Metadata: {
-          type: "image",
-          uploadedat: uploadedAt.toISOString(),
-        },
-      });
+        Metadata: { type: "image" },
+      }));
 
-      await s3Client.send(command);
-
-      // 3. Store metadata in main DB (using the unique ID and R2 Key)
+      // 2. Create Media Metadata
       await MediaModel.create({
-        _id: mediaId, // Use the unique ID for easy lookups
-        filename: Key, // Store the R2 Key/path here
+        _id: mediaId,
+        filename: Key,
         contentType: req.file.mimetype,
         type: "image",
         uploadedAt,
-        dbName: "r2", // Tracking placeholder for storage type
+        dbName: "r2",
       });
 
-      // 4. Store gallery entry in main DB (using the unique ID and public URL)
-      const image = await storage.createGalleryImage(mediaId, url, uploadedAt);
+      // 3. Create Gallery Entry
+      const secureUrl = `/api/media/${mediaId}`;
+      const image = await storage.createGalleryImage(mediaId, secureUrl, uploadedAt);
 
-      // --- R2 MODIFICATION END ---
-
-      // 5. Respond
-      res.json({ id: image.id, url: image.url, uploadedAt: image.uploadedAt });
+      res.json({ id: image.id, url: secureUrl, uploadedAt: image.uploadedAt });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        console.log(error);
-        res.status(400).json({ error: "Validation failed", details: error.errors });
-      } else {
-        console.error(error);
-        res.status(500).json({ error: "Failed to upload image" });
-      }
+      console.error(error);
+      res.status(500).json({ error: "Failed to upload image" });
     }
   });
 
-  // POST /api/gallery/videos
   // POST /api/gallery/videos
   app.post("/api/gallery/videos", requireAuth, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-      const maxSize = 2000 * 1024 * 1024; // 2GB limit
-      if (req.file.size > maxSize) {
-        return res.status(400).json({ error: "File size exceeds 2GB limit" });
-      }
-
       const uploadedAt = z
-        .preprocess((val) => (val ? new Date(val as string) : undefined), z.date())
+        .preprocess((val) => {
+          // If val is missing, an empty object {}, or an empty string, return undefined
+          if (!val || (typeof val === 'object' && Object.keys(val).length === 0)) {
+            return undefined;
+          }
+          // Attempt to convert to a Date object
+          const date = new Date(val as string);
+          // Check if the date is valid
+          return isNaN(date.getTime()) ? undefined : date;
+        }, z.date({ required_error: "Please select a valid date" }))
         .parse(req.body.uploadedAt);
 
-      // --- R2 MODIFICATION START ---
-
-      // 1. Generate a unique ID and R2 Key
       const mediaId = new mongoose.Types.ObjectId().toString();
-      // Store file under a clean key path (the Key acts as the MediaModel.filename)
       const Key = `gallery/videos/${mediaId}-${req.file.originalname}`;
-      // Construct the public URL (assuming R2_PUBLIC_URL is defined)
-      const url = `${R2_PUBLIC_URL}/${Key}`;
 
-      // 2. Upload to R2
-      const command = new PutObjectCommand({
-        Bucket: R2_BUCKET_NAME,
+      // 1. Upload to R2
+      await s3Client.send(new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
         Key,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
-        Metadata: {
-          type: "video",
-          uploadedat: uploadedAt.toISOString(),
-        },
-      });
+      }));
 
-      await s3Client.send(command);
-
-      // 3. Store metadata in main DB (using the unique ID and R2 Key)
+      // 2. Create Media Metadata
       await MediaModel.create({
-        _id: mediaId, // Use the unique ID for easy lookups
-        filename: Key, // Store the R2 Key/path here
+        _id: mediaId,
+        filename: Key,
         contentType: req.file.mimetype,
         type: "video",
         uploadedAt,
-        dbName: "r2", // Tracking placeholder for storage type
+        dbName: "r2",
       });
 
-      // 4. Store gallery entry in main DB (using the unique ID and public URL)
-      const video = await storage.createGalleryVideo(mediaId, url, uploadedAt);
+      // 3. Create Gallery Entry
+      const secureUrl = `/api/media/${mediaId}`;
+      const video = await storage.createGalleryVideo(mediaId, secureUrl, uploadedAt);
 
-      // --- R2 MODIFICATION END ---
-
-      // 5. Respond
-      res.json({ id: video.id, url: video.url, uploadedAt: video.uploadedAt });
+      res.json({ id: video.id, url: secureUrl, uploadedAt: video.uploadedAt });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        console.log(error);
-        res.status(400).json({ error: "Validation failed", details: error.errors });
-      } else {
-        console.error(error);
-        res.status(500).json({ error: "Failed to upload video" });
-      }
+      console.error(error);
+      res.status(500).json({ error: "Failed to upload video" });
     }
   });
 
   // DELETE /api/gallery/images/:id
-  // DELETE /api/gallery/images/:id
   app.delete("/api/gallery/images/:id", requireAuth, async (req, res) => {
     try {
-      const deleted = await storage.deleteGalleryImage(req.params.id);
-      if (!deleted) return res.status(404).json({ error: "Image not found" });
+      // 1. Delete from Gallery collection and get returned doc
+      const deletedGalleryItem = await storage.deleteGalleryImage(req.params.id);
+      if (!deletedGalleryItem) return res.status(404).json({ error: "Item not found" });
 
-      // 1. Find Media metadata using the ID of the deleted gallery entry
-      const mediaDoc = await MediaModel.findById(deleted.mediaId);
-
-      // --- R2 MODIFICATION START ---
+      // 2. Find Media metadata using mediaId from the gallery item
+      const mediaDoc = await MediaModel.findById(deletedGalleryItem.mediaId);
 
       if (mediaDoc) {
-        // The R2 Key/path is stored in the filename field
-        const Key = mediaDoc.filename;
+        // 3. Delete from R2
+        await s3Client.send(new DeleteObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME,
+          Key: mediaDoc.filename,
+        }));
 
-        // 2. Delete file from R2
-        const deleteCommand = new DeleteObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: Key,
-        });
-
-        await s3Client.send(deleteCommand);
-
-        // 3. Delete Media metadata from main DB
+        // 4. Delete Media metadata
         await MediaModel.deleteOne({ _id: mediaDoc._id });
       }
-      // Note: If mediaDoc is not found, we assume the file was already cleaned up
-      // and only the gallery entry needed removal, which is handled above.
 
-      // --- R2 MODIFICATION END ---
-
-      res.json({ success: true, id: req.params.id });
+      res.json({ success: true, message: "Gallery image and source file deleted" });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Failed to delete image" });
     }
   });
 
-
-
-  // DELETE /api/gallery/videos/:id
   // DELETE /api/gallery/videos/:id
   app.delete("/api/gallery/videos/:id", requireAuth, async (req, res) => {
     try {
-      const deleted = await storage.deleteGalleryVideo(req.params.id);
-      if (!deleted) return res.status(404).json({ error: "Video not found" });
+      const deletedGalleryItem = await storage.deleteGalleryVideo(req.params.id);
+      if (!deletedGalleryItem) return res.status(404).json({ error: "Item not found" });
 
-      // 1. Find Media metadata using the ID of the deleted gallery entry
-      const mediaDoc = await MediaModel.findById(deleted.mediaId);
-
-      // --- R2 MODIFICATION START ---
+      const mediaDoc = await MediaModel.findById(deletedGalleryItem.mediaId);
 
       if (mediaDoc) {
-        // The R2 Key/path is stored in the filename field
-        const Key = mediaDoc.filename;
-
-        // 2. Delete file from R2
-        const deleteCommand = new DeleteObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: Key,
-        });
-
-        await s3Client.send(deleteCommand);
-
-        // 3. Delete Media metadata from main DB
+        await s3Client.send(new DeleteObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME,
+          Key: mediaDoc.filename,
+        }));
         await MediaModel.deleteOne({ _id: mediaDoc._id });
       }
-      // --- R2 MODIFICATION END ---
 
-      // 4. Respond
-      res.json({ success: true, id: req.params.id });
+      res.json({ success: true, message: "Gallery video and source file deleted" });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Failed to delete video" });
@@ -563,7 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 3. Generate a signed URL for the client to directly access the file from R2
       // We set a short expiration (e.g., 60 seconds) for security.
-      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 60 });
+      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 120 });
 
       // 4. Redirect the client to the signed R2 URL
       // REMOVED: res.set("Cache-Control", "public, max-age=31536000, immutable"); 
