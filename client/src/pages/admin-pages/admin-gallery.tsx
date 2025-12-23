@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, X, CheckSquare, Square } from "lucide-react";
+import { Trash2, X, CheckSquare, Square, Film, Calendar } from "lucide-react";
 
 type MediaItem = { id: string; url: string; uploadedAt: Date };
 
@@ -20,7 +20,7 @@ export default function AdminGalleryPage() {
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
 
-  // --- Form State (Uploads) ---
+  // --- Upload State ---
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -28,182 +28,138 @@ export default function AdminGalleryPage() {
   const [imageDate, setImageDate] = useState<string>("");
   const [videoDate, setVideoDate] = useState<string>("");
 
-  // --- Progress & Status ---
+  // --- Progress State ---
   const [imageUploadProgress, setImageUploadProgress] = useState<number>(0);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState<number>(0);
   const [isVideoUploading, setIsVideoUploading] = useState<boolean>(false);
 
-  // --- Refs for Cancellation ---
+  // --- Refs for Cancellation & Rollback ---
   const activeImageXHRs = useRef<XMLHttpRequest[]>([]);
   const activeVideoXHRs = useRef<XMLHttpRequest[]>([]);
+  const currentBatchImageIds = useRef<string[]>([]);
+  const currentBatchVideoIds = useRef<string[]>([]);
+  // 1. Add these lockout states at the top of your component
+  const [isImageLocked, setIsImageLocked] = useState(false);
+  const [isVideoLocked, setIsVideoLocked] = useState(false);
 
-  // --- Sorting Logic (Newest First) ---
-  const sortedImages = [...images].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
-  const sortedVideos = [...videos].sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
   // --- Filter State ---
   const [filterMonth, setFilterMonth] = useState<string>("all");
   const [filterYear, setFilterYear] = useState<string>("all");
 
-  // Helper arrays for the dropdowns
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
+  const MAX_IMAGES = 10;
+  const MAX_VIDEOS = 5;
 
-// Calculates the difference between now and 1998 to fill the menu automatically
-const startYear = 1998;
-const currentYear = new Date().getFullYear();
-const years = Array.from(
-  { length: currentYear - startYear + 1 }, 
-  (_, i) => (currentYear - i).toString()
-);
-  // --- Updated Sorting & Filtering Logic ---
-  const filteredImages = sortedImages.filter((img) => {
-    const date = new Date(img.uploadedAt);
-    const matchMonth = filterMonth === "all" || date.getMonth().toString() === filterMonth;
-    const matchYear = filterYear === "all" || date.getFullYear().toString() === filterYear;
-    return matchMonth && matchYear;
-  });
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const years = Array.from({ length: new Date().getFullYear() - 1998 + 1 }, (_, i) => (new Date().getFullYear() - i).toString());
 
-  const filteredVideos = sortedVideos.filter((vid) => {
-    const date = new Date(vid.uploadedAt);
-    const matchMonth = filterMonth === "all" || date.getMonth().toString() === filterMonth;
-    const matchYear = filterYear === "all" || date.getFullYear().toString() === filterYear;
-    return matchMonth && matchYear;
-  });
-  // --- Load Initial Data ---
+  // --- Load Data ---
   useEffect(() => {
     const loadGallery = async () => {
       try {
         const res = await fetch("/api/gallery");
-        if (!res.ok) throw new Error("Failed to fetch gallery data");
         const data = await res.json();
         setImages(data.images || []);
         setVideos(data.videos || []);
       } catch {
-        toast({ title: "Error", description: "Failed to load gallery data" });
+        toast({ title: "Error", description: "Failed to load gallery", variant: "destructive" });
       }
     };
     loadGallery();
   }, []);
 
-  // --- Prevent Page Reload/Close during Upload ---
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // If either images or videos are currently uploading
-      if (isImageUploading || isVideoUploading) {
-        e.preventDefault();
-        // Most modern browsers ignore the custom string and show a generic message
-        e.returnValue = "Upload in progress. Are you sure you want to leave?";
-        return e.returnValue;
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [isImageUploading, isVideoUploading]);
-
-  // --- Cleanup Previews ---
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
-      videoPreviews.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [imagePreviews, videoPreviews]);
-  // --- Cancellation Handlers ---
-  const cancelImageUpload = () => {
-    activeImageXHRs.current.forEach(xhr => xhr.abort());
-    activeImageXHRs.current = [];
-    setIsImageUploading(false);
-    setImageUploadProgress(0);
-    toast({ title: "Cancelled", description: "Image upload stopped." });
-  };
-
-  const cancelVideoUpload = () => {
-    activeVideoXHRs.current.forEach(xhr => xhr.abort());
-    activeVideoXHRs.current = [];
-    setIsVideoUploading(false);
-    setVideoUploadProgress(0);
-    toast({ title: "Cancelled", description: "Video upload stopped." });
-  };
-  // --- Resets ---
-  const resetImageForm = useCallback(() => {
-    imagePreviews.forEach((url) => URL.revokeObjectURL(url));
-    setSelectedImages([]);
-    setImagePreviews([]);
-    setImageDate("");
-    setImageUploadProgress(0);
-    setIsImageUploading(false);
-    activeImageXHRs.current = [];
-  }, [imagePreviews]);
-
-  const resetVideoForm = useCallback(() => {
-    videoPreviews.forEach((url) => URL.revokeObjectURL(url));
-    setSelectedVideos([]);
-    setVideoPreviews([]);
-    setVideoDate("");
-    setVideoUploadProgress(0);
-    setIsVideoUploading(false);
-    activeVideoXHRs.current = [];
-  }, [videoPreviews]);
-
   // --- Selection Handlers ---
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    const validFiles = files.filter(f => f.size <= 5 * 1024 * 1024); // 5MB
-    const newPreviews = validFiles.map(f => URL.createObjectURL(f));
-    setSelectedImages(prev => [...prev, ...validFiles]);
+    if (selectedImages.length + files.length > MAX_IMAGES) {
+      toast({ title: "Limit Reached", description: `Max ${MAX_IMAGES} images allowed.`, variant: "destructive" });
+      return;
+    }
+    const newPreviews = files.map(f => URL.createObjectURL(f));
+    setSelectedImages(prev => [...prev, ...files]);
     setImagePreviews(prev => [...prev, ...newPreviews]);
     e.target.value = "";
   };
 
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    const validFiles = files.filter(f => f.size <= 2000 * 1024 * 1024); // 2GB
-    const newPreviews = validFiles.map(f => URL.createObjectURL(f));
-    setSelectedVideos(prev => [...prev, ...validFiles]);
+    if (selectedVideos.length + files.length > MAX_VIDEOS) {
+      toast({ title: "Limit Reached", description: `Max ${MAX_VIDEOS} videos allowed.`, variant: "destructive" });
+      return;
+    }
+    const newPreviews = files.map(f => URL.createObjectURL(f));
+    setSelectedVideos(prev => [...prev, ...files]);
     setVideoPreviews(prev => [...prev, ...newPreviews]);
     e.target.value = "";
   };
 
-  const removeSelectedImage = (index: number) => {
-    URL.revokeObjectURL(imagePreviews[index]);
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  // --- Rollback & Cancel ---
+  const rollbackUploadedItems = async (type: 'image' | 'video') => {
+    const idsToRollback = type === 'image' ? currentBatchImageIds.current : currentBatchVideoIds.current;
+    if (idsToRollback.length === 0) return;
+    try {
+      await Promise.all(idsToRollback.map(id =>
+        fetch(`/api/gallery/${type}s/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+        })
+      ));
+      if (type === 'image') setImages(p => p.filter(img => !idsToRollback.includes(img.id)));
+      else setVideos(p => p.filter(vid => !idsToRollback.includes(vid.id)));
+    } catch (err) { console.error("Rollback failed", err); }
   };
 
-  const removeSelectedVideo = (index: number) => {
-    URL.revokeObjectURL(videoPreviews[index]);
-    setSelectedVideos(prev => prev.filter((_, i) => i !== index));
-    setVideoPreviews(prev => prev.filter((_, i) => i !== index));
+
+
+  const handleCancelUpload = async (type: 'image' | 'video') => {
+    // FIRST: Immediate UI feedback
+    if (type === 'image') {
+      setIsImageUploading(false); // Instantly hide progress
+      setIsImageLocked(true);     // Instantly disable buttons
+    } else {
+      setIsVideoUploading(false);
+      setIsVideoLocked(true);
+    }
+
+    // SECOND: Stop network requests
+    const refs = type === 'image' ? activeImageXHRs : activeVideoXHRs;
+    refs.current.forEach(xhr => xhr.abort());
+    refs.current = [];
+
+    // THIRD: Background cleanup (The slow part)
+    await rollbackUploadedItems(type);
+
+    // FOURTH: Reset progress and start the 2s timer
+    if (type === 'image') {
+      setImageUploadProgress(0);
+      currentBatchImageIds.current = [];
+      setTimeout(() => setIsImageLocked(false), 2000);
+    } else {
+      setVideoUploadProgress(0);
+      currentBatchVideoIds.current = [];
+      setTimeout(() => setIsVideoLocked(false), 2000);
+    }
+
+    toast({ title: "Cancelled", description: "Cleanup complete. Upload disabled for 2s." });
   };
 
-  // --- Sequential Upload Logic ---
+  // --- Upload Logic ---
   const handleBatchUpload = async (type: 'image' | 'video') => {
     const files = type === 'image' ? selectedImages : selectedVideos;
     const date = type === 'image' ? imageDate : videoDate;
-    const endpoint = type === 'image' ? "/api/gallery/images" : "/api/gallery/videos";
-    const setProgress = type === 'image' ? setImageUploadProgress : setVideoUploadProgress;
     const setIsUploading = type === 'image' ? setIsImageUploading : setIsVideoUploading;
+    const setProgress = type === 'image' ? setImageUploadProgress : setVideoUploadProgress;
     const activeRefs = type === 'image' ? activeImageXHRs : activeVideoXHRs;
+    const batchTracker = type === 'image' ? currentBatchImageIds : currentBatchVideoIds;
 
-    if (files.length === 0 || !date) {
-      toast({ title: "Error", description: "Select files and a date" });
-      return;
-    }
+    if (!files.length || !date) return toast({ title: "Error", description: "Select files and date." });
 
     setIsUploading(true);
     setProgress(0);
-    activeRefs.current = [];
+    batchTracker.current = [];
 
+    let uploadedBytes = 0;
     const totalBytes = files.reduce((acc, f) => acc + f.size, 0);
-    let uploadedBytesTotal = 0;
 
     try {
       for (const file of files) {
@@ -214,22 +170,23 @@ const years = Array.from(
 
           const xhr = new XMLHttpRequest();
           activeRefs.current.push(xhr);
-          xhr.open("POST", endpoint, true);
+          xhr.open("POST", type === 'image' ? "/api/gallery/images" : "/api/gallery/videos", true);
           xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("adminToken")}`);
 
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
-              const percent = Math.round(((uploadedBytesTotal + e.loaded) / totalBytes) * 100);
-              setProgress(percent);
+              const totalPercent = Math.round(((uploadedBytes + e.loaded) / totalBytes) * 100);
+              setProgress(totalPercent);
             }
           };
 
           xhr.onload = () => {
             if (xhr.status === 200) {
               const data = JSON.parse(xhr.responseText);
+              batchTracker.current.push(data.id);
               const newItem = { id: data.id, url: data.url, uploadedAt: new Date(data.uploadedAt) };
               type === 'image' ? setImages(p => [...p, newItem]) : setVideos(p => [...p, newItem]);
-              uploadedBytesTotal += file.size;
+              uploadedBytes += file.size;
               resolve();
             } else reject();
           };
@@ -238,12 +195,30 @@ const years = Array.from(
           xhr.send(formData);
         });
       }
-      toast({ title: "Success", description: `All ${type}s uploaded.` });
+      toast({ title: "Success", description: "Upload complete." });
       type === 'image' ? resetImageForm() : resetVideoForm();
     } catch (e) {
-      if (e !== "ABORTED") toast({ title: "Error", description: "Upload failed", variant: "destructive" });
+      if (e !== "ABORTED") toast({ title: "Error", description: "Upload failed.", variant: "destructive" });
       setIsUploading(false);
     }
+  };
+
+  const resetImageForm = () => {
+    imagePreviews.forEach(url => URL.revokeObjectURL(url));
+    setSelectedImages([]);
+    setImagePreviews([]);
+    setImageDate("");
+    setImageUploadProgress(0);
+    setIsImageUploading(false);
+  };
+
+  const resetVideoForm = () => {
+    videoPreviews.forEach(url => URL.revokeObjectURL(url));
+    setSelectedVideos([]);
+    setVideoPreviews([]);
+    setVideoDate("");
+    setVideoUploadProgress(0);
+    setIsVideoUploading(false);
   };
 
   // --- Deletion Logic ---
@@ -262,204 +237,160 @@ const years = Array.from(
   const handleBulkDelete = async (type: 'image' | 'video') => {
     const ids = type === 'image' ? selectedImageIds : selectedVideoIds;
     if (!window.confirm(`Delete ${ids.length} items?`)) return;
-
     await Promise.all(ids.map(id => fetch(`/api/gallery/${type}s/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
     })));
-
     type === 'image' ? setImages(p => p.filter(i => !ids.includes(i.id))) : setVideos(p => p.filter(v => !ids.includes(v.id)));
     type === 'image' ? setSelectedImageIds([]) : setSelectedVideoIds([]);
     toast({ title: "Bulk delete successful" });
   };
 
+  // --- Filtering ---
+  const filteredImages = images.filter(img => {
+    const d = new Date(img.uploadedAt);
+    return (filterMonth === "all" || d.getMonth().toString() === filterMonth) && (filterYear === "all" || d.getFullYear().toString() === filterYear);
+  }).sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+
+  const filteredVideos = videos.filter(vid => {
+    const d = new Date(vid.uploadedAt);
+    return (filterMonth === "all" || d.getMonth().toString() === filterMonth) && (filterYear === "all" || d.getFullYear().toString() === filterYear);
+  }).sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+
   return (
-    <div className="min-h-screen bg-gray-900 p-6 space-y-6 text-gray-100">
+    <div className="min-h-screen bg-gray-900 p-4 md:p-8 space-y-6 text-gray-100">
+      <style>{`
+        input[type="date"]::-webkit-calendar-picker-indicator {
+          filter: invert(1);
+          opacity: 0.7;
+          cursor: pointer;
+        }
+      `}</style>
+
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Admin Gallery Section</h1>
-        <Button
-          variant="outline"
-          onClick={() => {
-            if ((isImageUploading || isVideoUploading) &&
-              !window.confirm("Upload in progress. Leave anyway?")) {
-              return;
-            }
-            window.location.href = "/admin";
-          }}
-        >
-          Back To Dashboard
-        </Button>
+        <h1 className="text-2xl font-bold">Admin Gallery</h1>
+        <Button variant="outline" onClick={() => window.location.href = "/admin"}>Dashboard</Button>
       </div>
 
       <Tabs defaultValue="upload" className="w-full">
-        <TabsList className="bg-gray-800 mb-4">
+        <TabsList className="bg-gray-800 mb-6">
           <TabsTrigger value="upload">Upload</TabsTrigger>
-          <TabsTrigger value="manage">Manage</TabsTrigger>
+          <TabsTrigger value="manage">Manage Library</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="upload" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Image Upload Card */}
+        <TabsContent value="upload" className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* IMAGE UPLOAD */}
           <Card className="bg-gray-800 border-gray-700">
-            <CardHeader><CardTitle>Images</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Images ({selectedImages.length}/{MAX_IMAGES})</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <Input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isImageUploading} />
-              <div className="grid grid-cols-4 gap-2">
+              <Input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isImageUploading || isImageLocked} className="bg-gray-900" />
+              <div className="grid grid-cols-5 gap-2">
                 {imagePreviews.map((src, i) => (
-                  <div key={i} className="relative"><img src={src} className="h-16 w-full object-cover rounded" /><X className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full cursor-pointer" onClick={() => removeSelectedImage(i)} /></div>
+                  <div key={i} className="relative aspect-square">
+                    <img src={src} className="h-full w-full object-cover rounded border border-gray-600" />
+                    <button onClick={() => {
+                      setImagePreviews(p => p.filter((_, idx) => idx !== i));
+                      setSelectedImages(p => p.filter((_, idx) => idx !== i));
+                    }} className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5"><X className="w-3 h-3" /></button>
+                  </div>
                 ))}
               </div>
-              <Input type="date" value={imageDate} onChange={e => setImageDate(e.target.value)} />
-              {isImageUploading && <Progress value={imageUploadProgress} />}
+              <Input type="date" value={imageDate} onChange={e => setImageDate(e.target.value)} className="bg-gray-900" />
+              {isImageUploading && <Progress value={imageUploadProgress} className="h-2" />}
               <div className="flex gap-2">
-                <Button
-                  className="w-full"
-                  onClick={() => handleBatchUpload('image')}
-                  disabled={isImageUploading || !selectedImages.length}
-                >
-                  {isImageUploading ? "Uploading..." : "Upload Images"}
-                </Button>
-
-                {isImageUploading && (
-                  <Button variant="destructive" onClick={cancelImageUpload}>
-                    Cancel
-                  </Button>
-                )}
-              </div>            </CardContent>
+                <Button className="flex-1" onClick={() => handleBatchUpload('image')} disabled={isImageUploading || !selectedImages.length || isImageLocked}>Upload</Button>
+                {isImageUploading && <Button variant="destructive" onClick={() => handleCancelUpload('image')}>Cancel</Button>}
+              </div>
+            </CardContent>
           </Card>
 
-          {/* Video Upload Card */}
+          {/* VIDEO UPLOAD */}
           <Card className="bg-gray-800 border-gray-700">
-            <CardHeader><CardTitle>Videos</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Videos ({selectedVideos.length}/{MAX_VIDEOS})</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <Input type="file" multiple accept="video/*" onChange={handleVideoSelect} disabled={isVideoUploading} />
-              <div className="grid grid-cols-3 gap-2">
+              <Input type="file" multiple accept="video/*" onChange={handleVideoSelect} disabled={isVideoUploading || isVideoLocked} className="bg-gray-900" />
+              <div className={`grid gap-3 ${videoPreviews.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
                 {videoPreviews.map((src, i) => (
-                  <div key={i} className="relative"><video src={src} className="h-40 w-full object-cover rounded" controls /><X className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full cursor-pointer" onClick={() => removeSelectedVideo(i)} /></div>
+                  <div key={i} className="relative bg-black rounded-lg overflow-hidden border border-gray-700">
+                    <video src={src} className="w-full aspect-video object-cover" controls playsInline muted />
+                    <button onClick={() => {
+                      setVideoPreviews(p => p.filter((_, idx) => idx !== i));
+                      setSelectedVideos(p => p.filter((_, idx) => idx !== i));
+                    }} className="absolute top-2 right-2 z-10 bg-red-500 p-1 rounded-full shadow-lg hover:bg-red-600">
+                      <X className="w-6 h-6 text-white" />
+                    </button>
+                  </div>
                 ))}
               </div>
-              <Input type="date" value={videoDate} onChange={e => setVideoDate(e.target.value)} />
-              {isVideoUploading && <Progress value={videoUploadProgress} />}
+              <Input type="date" value={videoDate} onChange={e => setVideoDate(e.target.value)} className="bg-gray-900" />
+              {isVideoUploading && <Progress value={videoUploadProgress} className="h-2" />}
               <div className="flex gap-2">
-                <Button
-                  className="w-full"
-                  onClick={() => handleBatchUpload('video')}
-                  disabled={isVideoUploading || !selectedVideos.length}
-                >
-                  {isVideoUploading ? "Uploading..." : "Upload Videos"}
-                </Button>
-
-                {isVideoUploading && (
-                  <Button variant="destructive" onClick={cancelVideoUpload}>
-                    Cancel
-                  </Button>
-                )}
-              </div>            </CardContent>
+                <Button className="flex-1" onClick={() => handleBatchUpload('video')} disabled={isVideoUploading || !selectedVideos.length || isVideoLocked}>Upload</Button>
+                {isVideoUploading && <Button variant="destructive" onClick={() => handleCancelUpload('video')}>Cancel</Button>}
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="manage" className="space-y-6">
-  {/* DATE FILTERS */}
-  <Card className="bg-gray-800 border-gray-700">
-    <CardContent className="pt-6">
-      <div className="flex flex-wrap items-center gap-6">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-400">Month</label>
-          <select 
-            className="bg-gray-900 border border-gray-700 rounded-md px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value)}
-          >
-            <option value="all">All Months</option>
-            {months.map((m, idx) => <option key={m} value={idx}>{m}</option>)}
-          </select>
-        </div>
+          {/* Filters */}
+          <Card className="bg-gray-800 border-gray-700">
+            <CardContent className="py-4 flex flex-wrap gap-4">
+              <select className="bg-gray-900 border-gray-700 p-2 rounded text-sm" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
+                <option value="all">All Months</option>
+                {months.map((m, idx) => <option key={idx} value={idx}>{m}</option>)}
+              </select>
+              <select className="bg-gray-900 border-gray-700 p-2 rounded text-sm" value={filterYear} onChange={e => setFilterYear(e.target.value)}>
+                <option value="all">All Years</option>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </CardContent>
+          </Card>
 
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-400">Year</label>
-          <select 
-            className="bg-gray-900 border border-gray-700 rounded-md px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            value={filterYear}
-            onChange={(e) => setFilterYear(e.target.value)}
-          >
-            <option value="all">All Years</option>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
+          {/* Manage Images */}
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader className="flex flex-row justify-between items-center">
+              <CardTitle>Images ({filteredImages.length})</CardTitle>
+              {selectedImageIds.length > 0 && <Button variant="destructive" size="sm" onClick={() => handleBulkDelete('image')}>Delete Selected ({selectedImageIds.length})</Button>}
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {filteredImages.map(img => (
+                <div key={img.id} className={`relative p-1 rounded-lg border-2 transition-all ${selectedImageIds.includes(img.id) ? 'border-blue-500 bg-blue-900/20' : 'border-transparent bg-gray-900'}`}>
+                  <div className="absolute top-1 left-1 z-10 cursor-pointer" onClick={() => setSelectedImageIds(p => p.includes(img.id) ? p.filter(id => id !== img.id) : [...p, img.id])}>
+                    {selectedImageIds.includes(img.id) ? <CheckSquare className="text-blue-500 w-5 h-5" /> : <Square className="text-gray-500 w-5 h-5" />}
+                  </div>
+                  <img src={img.url} className="h-24 w-full object-cover rounded" />
+                  <div className="flex justify-between items-center mt-1 px-1">
+                    <span className="text-[10px] text-gray-400">{new Date(img.uploadedAt).toLocaleDateString()}</span>
+                    <Trash2 className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-400" onClick={() => handleDelete(img.id, 'image')} />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
 
-        {(filterMonth !== "all" || filterYear !== "all") && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => { setFilterMonth("all"); setFilterYear("all"); }}
-            className="text-blue-400 hover:text-blue-300"
-          >
-            Reset Filters
-          </Button>
-        )}
-      </div>
-    </CardContent>
-  </Card>
-
-  {/* Images Management */}
-  <Card className="bg-gray-800 border-gray-700">
-    <CardHeader className="flex flex-row items-center justify-between">
-      <CardTitle>Manage Images ({filteredImages.length})</CardTitle>
-      {selectedImageIds.length > 0 && (
-        <Button variant="destructive" size="sm" onClick={() => handleBulkDelete('image')}>
-          Delete Selected ({selectedImageIds.length})
-        </Button>
-      )}
-    </CardHeader>
-    <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-      {filteredImages.length === 0 ? (
-        <p className="text-gray-500 col-span-full py-10 text-center">No images match this filter.</p>
-      ) : (
-        filteredImages.map(img => (
-          <div key={img.id} className={`relative p-1 rounded-lg border-2 transition-all ${selectedImageIds.includes(img.id) ? 'border-blue-500 bg-blue-900/20' : 'border-transparent bg-gray-900'}`}>
-            <div className="absolute top-1 left-1 z-10 cursor-pointer" onClick={() => setSelectedImageIds(prev => prev.includes(img.id) ? prev.filter(id => id !== img.id) : [...prev, img.id])}>
-              {selectedImageIds.includes(img.id) ? <CheckSquare className="text-blue-500 w-5 h-5" /> : <Square className="text-gray-500 w-5 h-5" />}
-            </div>
-            <img src={img.url} className="h-24 w-full object-cover rounded" alt="Gallery" />
-            <div className="flex justify-between items-center mt-1 px-1">
-              <span className="text-[10px] text-gray-400">{new Date(img.uploadedAt).toLocaleDateString()}</span>
-              <Trash2 className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-400" onClick={() => handleDelete(img.id, 'image')} />
-            </div>
-          </div>
-        ))
-      )}
-    </CardContent>
-  </Card>
-
-  {/* Videos Management */}
-  <Card className="bg-gray-800 border-gray-700">
-    <CardHeader className="flex flex-row items-center justify-between">
-      <CardTitle>Manage Videos ({filteredVideos.length})</CardTitle>
-      {selectedVideoIds.length > 0 && (
-        <Button variant="destructive" size="sm" onClick={() => handleBulkDelete('video')}>
-          Delete Selected ({selectedVideoIds.length})
-        </Button>
-      )}
-    </CardHeader>
-    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {filteredVideos.length === 0 ? (
-        <p className="text-gray-500 col-span-full py-10 text-center">No videos match this filter.</p>
-      ) : (
-        filteredVideos.map(vid => (
-          <div key={vid.id} className={`relative p-1 rounded-lg border-2 transition-all ${selectedVideoIds.includes(vid.id) ? 'border-blue-500 bg-blue-900/20' : 'border-transparent bg-gray-900'}`}>
-            <div className="absolute top-2 left-2 z-10 cursor-pointer" onClick={() => setSelectedVideoIds(prev => prev.includes(vid.id) ? prev.filter(id => id !== vid.id) : [...prev, vid.id])}>
-              {selectedVideoIds.includes(vid.id) ? <CheckSquare className="text-blue-500 w-6 h-6" /> : <Square className="text-gray-500 w-6 h-6" />}
-            </div>
-            <video src={vid.url} className="h-32 w-full object-cover rounded" muted controls />
-            <div className="flex justify-between items-center mt-2 px-1">
-              <span className="text-xs text-gray-400">{new Date(vid.uploadedAt).toLocaleDateString()}</span>
-              <Trash2 className="w-5 h-5 text-red-500 cursor-pointer hover:text-red-400" onClick={() => handleDelete(vid.id, 'video')} />
-            </div>
-          </div>
-        ))
-      )}
-    </CardContent>
-  </Card>
-</TabsContent>
+          {/* Manage Videos */}
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader className="flex flex-row justify-between items-center">
+              <CardTitle>Videos ({filteredVideos.length})</CardTitle>
+              {selectedVideoIds.length > 0 && <Button variant="destructive" size="sm" onClick={() => handleBulkDelete('video')}>Delete Selected ({selectedVideoIds.length})</Button>}
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {filteredVideos.map(vid => (
+                <div key={vid.id} className={`relative p-1 rounded-lg border-2 transition-all ${selectedVideoIds.includes(vid.id) ? 'border-blue-500 bg-blue-900/20' : 'border-transparent bg-gray-900'}`}>
+                  <div className="absolute top-2 left-2 z-10 cursor-pointer" onClick={() => setSelectedVideoIds(p => p.includes(vid.id) ? p.filter(id => id !== vid.id) : [...p, vid.id])}>
+                    {selectedVideoIds.includes(vid.id) ? <CheckSquare className="text-blue-500 w-6 h-6 shadow-md" /> : <Square className="text-gray-500 w-6 h-6 shadow-md" />}
+                  </div>
+                  <video src={vid.url} className="h-32 w-full object-cover rounded" controls playsInline muted />
+                  <div className="flex justify-between items-center mt-2 px-1">
+                    <span className="text-xs text-gray-400">{new Date(vid.uploadedAt).toLocaleDateString()}</span>
+                    <Trash2 className="w-5 h-5 text-red-500 cursor-pointer hover:text-red-400" onClick={() => handleDelete(vid.id, 'video')} />
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );

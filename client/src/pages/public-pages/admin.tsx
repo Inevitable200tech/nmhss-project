@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, ChevronUp, BookOpen, Medal, Palette,  Book, NotebookPen, Newspaper, Calendar, Upload } from "lucide-react";
+import { Menu, X, ChevronDown, ChevronUp, BookOpen, Medal, Palette, Book, NotebookPen, Newspaper, Calendar, Upload } from "lucide-react";
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -55,7 +55,20 @@ export default function AdminPage() {
     } catch (err: any) {
       setError(err.message || "An unknown error occurred");
     }
-  };
+  };// Inside your component:
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    // Set up an interval to update the state every 1 second
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    // Clean up the interval when the component unmounts to prevent memory leaks
+    return () => clearInterval(timer);
+  }, []);
+
+  // In your JSX:
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
@@ -248,9 +261,8 @@ export default function AdminPage() {
             <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
               <h2 className="text-2xl font-bold text-yellow-400 mb-3">System Info</h2>
               <p className="text-gray-400">Status: <span className="text-green-500 font-semibold">Online</span></p>
-              <p className="text-gray-400">Good To See You King!! </p>
-              <p className="text-gray-400">Server Time: {new Date().toLocaleTimeString()}</p>
-            </div>
+              <p className="text-gray-400">Good To See You Sir!! </p>
+              <p className="text-gray-400">Server Time: {currentTime.toLocaleTimeString()}</p>            </div>
           </div>
         </div>
       </div>

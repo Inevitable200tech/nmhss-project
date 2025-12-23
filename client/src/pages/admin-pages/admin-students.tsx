@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Loader2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress"; // Ensure this is installed via shadcn
+import { Trash2, Loader2, Check, X, Filter, Ban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X } from "lucide-react"; // ✅ add approve/disapprove icons
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type StudentMedia = {
     id: string;
@@ -28,238 +29,264 @@ type PendingMedia = {
 };
 
 export default function AdminStudentsPage() {
+    // --- State: Data Lists ---
     const [items, setItems] = useState<StudentMedia[]>([]);
+    const [pendingUploads, setPendingUploads] = useState<PendingMedia[]>([]);
+
+    // --- State: Loaders & Progress ---
     const [isLoading, setIsLoading] = useState(false);
+    const [isPendingLoading, setIsPendingLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [approvingId, setApprovingId] = useState<string | null>(null);
 
-    // ✅ Pending uploads state
-    const [pendingUploads, setPendingUploads] = useState<PendingMedia[]>([]);
-    const [isPendingLoading, setIsPendingLoading] = useState(false);
+    // --- Ref for Cancellation ---
+    const abortControllerRef = useRef<AbortController | null>(null);
 
-    // Upload states
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [imageBatch, setImageBatch] = useState("");
-    const [imageYear, setImageYear] = useState("");
+    // --- State: Upload Forms ---
+    const [imageFiles, setImageFiles] = useState<File[]>([]);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [imageBatch, setImageBatch] = useState<string>("");
+    const [imageYear, setImageYear] = useState<string>("");
     const [imageDescription, setImageDescription] = useState("");
 
-    const [videoFile, setVideoFile] = useState<File | null>(null);
-    const [videoPreview, setVideoPreview] = useState<string | null>(null);
-    const [videoBatch, setVideoBatch] = useState("");
-    const [videoYear, setVideoYear] = useState("");
+    const [videoFiles, setVideoFiles] = useState<File[]>([]);
+    const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
+    const [videoBatch, setVideoBatch] = useState<string>("");
+    const [videoYear, setVideoYear] = useState<string>("");
     const [videoDescription, setVideoDescription] = useState("");
 
-    const [isUploading, setIsUploading] = useState(false);
-    const { toast } = useToast();
-
-    // Filters
+    // --- State: Filters ---
     const [filterBatch, setFilterBatch] = useState("");
     const [filterType, setFilterType] = useState("");
     const [filterYear, setFilterYear] = useState("");
 
-    // ✅ Load pending uploads
-    const loadPending = async () => {
-        setIsPendingLoading(true);
-        const res = await fetch("/api/admin/pending-uploads", {
-            headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
-        });
-        if (res.ok) {
-            const data = await res.json();
-            setPendingUploads(data);
-        }
-        setIsPendingLoading(false);
+    const { toast } = useToast();
+    const adminToken = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+
+    // --- Helpers ---
+    const removeImage = (index: number) => {
+        if (isUploading) return;
+        URL.revokeObjectURL(imagePreviews[index]);
+        setImageFiles(prev => prev.filter((_, i) => i !== index));
+        setImagePreviews(prev => prev.filter((_, i) => i !== index));
     };
 
-    // ✅ Approve upload
+    const removeVideo = (index: number) => {
+        if (isUploading) return;
+        URL.revokeObjectURL(videoPreviews[index]);
+        setVideoFiles(prev => prev.filter((_, i) => i !== index));
+        setVideoPreviews(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const cancelUpload = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            setIsUploading(false);
+            setUploadProgress(0);
+            toast({ title: "Cancelled", description: "Upload process stopped." });
+        }
+    };
+
+    // --- Data Fetching ---
+    const loadMedia = async () => {
+        setIsLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (filterBatch) params.set("batch", filterBatch);
+            if (filterType) params.set("type", filterType);
+            if (filterYear) params.set("year", filterYear);
+
+            const res = await fetch(`/api/students?${params.toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                setItems(data);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const loadPending = async () => {
+        setIsPendingLoading(true);
+        try {
+            const res = await fetch("/api/admin/pending-uploads", {
+                headers: { Authorization: `Bearer ${adminToken}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPendingUploads(data);
+            }
+        } finally {
+            setIsPendingLoading(false);
+        }
+    };
+
+    // --- Actions ---
     const approveUpload = async (tempId: string) => {
-        setApprovingId(tempId); // ✅ show spinner for this item
+        setApprovingId(tempId);
         try {
             const res = await fetch(`/api/admin/approve-upload/${tempId}`, {
                 method: "POST",
-                headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+                headers: { Authorization: `Bearer ${adminToken}` },
             });
             if (res.ok) {
                 setPendingUploads((prev) => prev.filter(u => u.tempId !== tempId));
                 toast({ title: "Approved", description: "Upload approved successfully." });
-                loadMedia(); // refresh main media
+                loadMedia();
             } else {
-                toast({ title: "Error", description: "Failed to approve upload." });
+                toast({ variant: "destructive", title: "Error", description: "Failed to approve." });
             }
         } finally {
-            setApprovingId(null); // ✅ reset
+            setApprovingId(null);
         }
     };
 
-
-    // ✅ Disapprove upload
     const disapproveUpload = async (tempId: string) => {
+        if (!window.confirm("Reject and delete this pending upload?")) return;
         const res = await fetch(`/api/admin/disapprove-upload/${tempId}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+            headers: { Authorization: `Bearer ${adminToken}` },
         });
         if (res.ok) {
             setPendingUploads(prev => prev.filter(u => u.tempId !== tempId));
-            toast({ title: "Removed", description: "Upload disapproved and removed." });
-        } else {
-            toast({ title: "Error", description: "Failed to disapprove upload." });
-        }
-    };
-
-    // Fetch with filters
-    const loadMedia = async () => {
-        setIsLoading(true);
-        const params = new URLSearchParams();
-        if (filterBatch) params.set("batch", filterBatch); // ✅ auto-encodes +1/+2
-        if (filterType) params.set("type", filterType);
-        if (filterYear) params.set("year", filterYear);
-
-
-        const res = await fetch(`/api/students?${params.toString()}`);
-        if (res.ok) {
-            const data = await res.json();
-            setItems(data);
-        }
-        setIsLoading(false);
-    };
-
-    // Initial load (all media)
-    useEffect(() => {
-
-        loadMedia();
-        loadPending();
-
-    }, []);
-
-    // Cleanup previews on unmount
-    useEffect(() => {
-        return () => {
-            if (imagePreview) URL.revokeObjectURL(imagePreview);
-            if (videoPreview) URL.revokeObjectURL(videoPreview);
-        };
-    }, [imagePreview, videoPreview]);
-
-    // Preview Handlers
-    const handleImageSelect = (file: File | null) => {
-        if (imagePreview) URL.revokeObjectURL(imagePreview);
-        setImageFile(file);
-        setImagePreview(file ? URL.createObjectURL(file) : null);
-    };
-
-    const handleVideoSelect = (file: File | null) => {
-        if (videoPreview) URL.revokeObjectURL(videoPreview);
-        setVideoFile(file);
-        setVideoPreview(file ? URL.createObjectURL(file) : null);
-    };
-
-    const isImageFormValid =
-        imageFile &&
-        imageBatch &&
-        imageYear.length === 4 &&
-        parseInt(imageYear) >= 1900 &&
-        imageFile.size <= 1 * 1024 * 1024 &&
-        imageDescription.length <= 160;
-
-    const isVideoFormValid =
-        videoFile &&
-        videoBatch &&
-        videoYear.length === 4 &&
-        parseInt(videoYear) >= 1900 &&
-        videoFile.size <= 25 * 1024 * 1024 &&
-        videoDescription.length <= 160;
-
-    const uploadMedia = async (
-        file: File,
-        batch: string,
-        year: string,
-        description: string,
-        type: "image" | "video"
-    ) => {
-        const confirmed = window.confirm(
-            "Upload Now?"
-        );
-        if (!confirmed) return;
-
-        setIsUploading(true);
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const mediaRes = await fetch("/api/media", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
-            body: formData,
-        });
-
-        if (!mediaRes.ok) {
-            setIsUploading(false);
-            toast({ title: "Upload failed", description: "Failed to upload media file." });
-            return false;
-        }
-
-        const media = await mediaRes.json();
-        const payload = {
-            mediaId: media.id,
-            url: media.url,
-            type,
-            batch,
-            year: parseInt(year),
-            description,
-        };
-
-        const res = await fetch("/api/admin-students", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
-            },
-            body: JSON.stringify(payload),
-        });
-
-        setIsUploading(false);
-
-        if (res.ok) {
-            const result = await res.json();
-            setItems((prev) => [result.studentMedia, ...prev]);
-            toast({ title: "Success", description: `${type} uploaded successfully.` });
-
-            // ✅ Reset form + cleanup previews
-            if (type === "image") {
-                if (imagePreview) URL.revokeObjectURL(imagePreview);
-                setImageFile(null);
-                setImagePreview(null);
-                setImageBatch("");
-                setImageYear("");
-                setImageDescription("");
-            } else {
-                if (videoPreview) URL.revokeObjectURL(videoPreview);
-                setVideoFile(null);
-                setVideoPreview(null);
-                setVideoBatch("");
-                setVideoYear("");
-                setVideoDescription("");
-            }
-
-            return true;
-        } else {
-            toast({ title: "Error", description: "Failed to save media metadata." });
-            return false;
+            toast({ title: "Removed", description: "Upload disapproved." });
         }
     };
 
     const handleDelete = async (id: string) => {
-        const confirmed = window.confirm(
-            "⚠️ Are you sure you want to delete the media?\nThis will remove it from the database completely!!!."
-        );
-        if (!confirmed) return;
+        if (!window.confirm("⚠️ This will delete the media from storage and database. Continue?")) return;
         const res = await fetch(`/api/admin-students/${id}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+            headers: { Authorization: `Bearer ${adminToken}` },
         });
-
         if (res.ok) {
             setItems((prev) => prev.filter((m) => m.id !== id));
-            toast({ title: "Deleted", description: "Media deleted successfully." });
+            toast({ title: "Deleted", description: "Media permanently removed." });
         } else {
-            toast({ title: "Error", description: "Failed to delete media." });
+            toast({ variant: "destructive", title: "Error", description: "Failed to delete media." });
+        }
+    };
+
+    // --- Lifecycle ---
+    useEffect(() => {
+        loadMedia();
+        loadPending();
+    }, [filterBatch, filterType, filterYear]);
+
+    useEffect(() => {
+        return () => {
+            imagePreviews.forEach(url => URL.revokeObjectURL(url));
+            videoPreviews.forEach(url => URL.revokeObjectURL(url));
+        };
+    }, []);
+
+    // --- Handlers ---
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        const newFiles = Array.from(files);
+        setImageFiles((prev) => [...prev, ...newFiles]);
+        const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+        setImagePreviews((prev) => [...prev, ...newPreviews]);
+        e.target.value = "";
+    };
+
+    const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        const newFiles = Array.from(files);
+        setVideoFiles((prev) => [...prev, ...newFiles]);
+        const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+        setVideoPreviews((prev) => [...prev, ...newPreviews]);
+        e.target.value = "";
+    };
+
+    const isImageFormValid = imageFiles.length > 0 && imageBatch && imageYear.length === 4;
+    const isVideoFormValid = videoFiles.length > 0 && videoBatch && videoYear.length === 4;
+
+    const uploadMedia = async (files: File[], batch: string, year: string, description: string, type: "image" | "video") => {
+        if (!window.confirm(`Upload ${files.length} item(s) now?`)) return;
+
+        setIsUploading(true);
+        setUploadProgress(0);
+        abortControllerRef.current = new AbortController();
+
+        let successCount = 0;
+        const totalFiles = files.length;
+        const uploadedMediaIds: string[] = [];
+
+        try {
+            
+
+            for (let i = 0; i < totalFiles; i++) {
+                if (abortControllerRef.current?.signal.aborted) throw new Error("AbortError");
+
+                const file = files[i];
+                const formData = new FormData();
+                formData.append("file", file);
+
+                // STEP 1: UPLOAD TO R2
+                const mediaRes = await fetch("/api/media", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                    body: formData,
+                    signal: abortControllerRef.current.signal
+                });
+
+                if (!mediaRes.ok) continue;
+                const media = await mediaRes.json();
+                uploadedMediaIds.push(media.id); // Captured! Even if we cancel now, we know to delete this.
+
+                // --- 2. THE 5-SECOND "STAGING" DELAY ---
+                // File is in R2, but not yet in StudentMedia.
+                
+
+                // STEP 2: CREATE DATABASE ENTRY
+                const res = await fetch("/api/admin-students", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+                    body: JSON.stringify({
+                        mediaId: media.id,
+                        url: media.url,
+                        type,
+                        batch,
+                        year: parseInt(year),
+                        description
+                    }),
+                    signal: abortControllerRef.current.signal
+                });
+
+                if (res.ok) {
+                    const result = await res.json();
+                    setItems((prev) => [result.studentMedia, ...prev]);
+                    successCount++;
+                }
+
+                setUploadProgress(((i + 1) / totalFiles) * 100);
+            }
+
+            toast({ title: "Done", description: `Uploaded ${successCount}/${totalFiles} items.` });
+
+        } catch (error: any) {
+            if (error.name === 'AbortError' || error.message === 'AbortError') {
+                if (uploadedMediaIds.length > 0) {
+                    toast({ title: "Cleaning up...", description: "Removing files from R2 storage." });
+                    // This will hit your /api/media/:id delete route
+                    await Promise.all(uploadedMediaIds.map(id =>
+                        fetch(`/api/media/${id}`, {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${adminToken}` },
+                        })
+                    ));
+                }
+                toast({ title: "Cancelled", description: "Process stopped and storage scrubbed." });
+            } else {
+                toast({ variant: "destructive", title: "Error", description: "Process failed." });
+            }
+        } finally {
+            setIsUploading(false);
+            abortControllerRef.current = null;
         }
     };
 
@@ -276,122 +303,256 @@ export default function AdminStudentsPage() {
             <Tabs defaultValue="upload" className="w-full">
                 <TabsList className="bg-gray-800">
                     <TabsTrigger value="upload">Upload Media</TabsTrigger>
-                    <TabsTrigger value="manage">Manage Media</TabsTrigger>
-                    <TabsTrigger value="pending">Pending Uploads</TabsTrigger> {/* ✅ New tab */}
+                    <TabsTrigger value="manage" onClick={loadMedia}>Manage Media</TabsTrigger>
+                    <TabsTrigger value="pending" onClick={loadPending}>Pending Uploads</TabsTrigger> {/* ✅ New tab */}
                 </TabsList>
 
                 {/* Upload Section */}
-                <TabsContent value="upload" className="space-y-6">
-                    {/* Image Upload */}
-                    <Card className="bg-gray-800/70 border-gray-700">
-                        <CardHeader><CardTitle>Upload Image</CardTitle></CardHeader>
-                        <CardContent className="space-y-2">
-                            <Input type="file" accept="image/*" onChange={(e) => handleImageSelect(e.target.files?.[0] || null)} />
-                            {/* Image Preview Container */}
-                            <div className="bg-gray-900/60 border border-gray-700/40 rounded-xl p-4 flex items-center justify-center">
-                                {imagePreview ? (
-                                    <img src={imagePreview} alt="Preview" className="max-h-60 rounded-lg object-contain" />
-                                ) : (
-                                    <p className="text-gray-500 italic">No preview available</p>
+        <TabsContent value="upload">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Image Upload Card */}
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>Upload Images</CardTitle>
+                {imageFiles.length > 0 && !isUploading && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive h-8 px-2"
+                        onClick={() => {
+                            imagePreviews.forEach(url => URL.revokeObjectURL(url));
+                            setImageFiles([]);
+                            setImagePreviews([]);
+                        }}
+                    >
+                        Clear All
+                    </Button>
+                )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={isUploading}
+                    onChange={handleImageSelect}
+                />
+
+                {imagePreviews.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-muted/30">
+                        {imagePreviews.map((url, index) => (
+                            <div key={index} className="relative group aspect-square">
+                                <img
+                                    src={url}
+                                    className="h-full w-full object-cover rounded-md shadow-sm"
+                                    alt={`Preview ${index}`}
+                                />
+                                {!isUploading && (
+                                    <button
+                                        onClick={() => removeImage(index)}
+                                        className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5 shadow-md hover:bg-red-600 transition-colors "
+                                    >
+                                        <X className="h-6 w-6" />
+                                    </button>
                                 )}
                             </div>
-                            {imageFile && imageFile.size > 1 * 1024 * 1024 && (
-                                <p className="text-red-400 text-sm">Image must be ≤ 1MB</p>
-                            )}
+                        ))}
+                    </div>
+                )}
 
-                            <select value={imageBatch} onChange={(e) => setImageBatch(e.target.value)}
-                                className="w-full rounded p-2 bg-gray-700 border border-gray-600">
-                                <option value="">Select Batch</option>
-                                <option value="+1">+1</option>
-                                <option value="+2">+2</option>
-                            </select>
+                <div className="grid grid-cols-2 gap-4">
+                    {/* UPDATED: Image Batch Select */}
+                    <Select 
+                        value={imageBatch} 
+                        onValueChange={setImageBatch}
+                        disabled={isUploading}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select Batch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="+1">+1</SelectItem>
+                            <SelectItem value="+2">+2</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                            <Input type="number" placeholder="Year (yyyy)" value={imageYear}
-                                onChange={(e) => setImageYear(e.target.value.slice(0, 4))}
-                                className="pl-3" />
-                            {imageYear && (imageYear.length !== 4 || parseInt(imageYear) < 1900) && (
-                                <p className="text-red-400 text-sm">Year must be ≥ 1900 and 4 digits</p>
-                            )}
+                    <Input
+                        placeholder="Year (YYYY)"
+                        type="number"
+                        value={imageYear}
+                        disabled={isUploading}
+                        onChange={(e) => setImageYear(e.target.value)}
+                    />
+                </div>
+                <Textarea
+                    placeholder="Common description for this batch"
+                    value={imageDescription}
+                    disabled={isUploading}
+                    onChange={(e) => setImageDescription(e.target.value)}
+                />
 
-                            <Textarea
-                                placeholder="Optional description"
-                                value={imageDescription}
-                                onChange={(e) => setImageDescription(e.target.value)}
-                            />
-                            <div className="flex justify-between text-sm">
-                                <span className={imageDescription.length > 160 ? "text-red-400" : "text-gray-400"}>
-                                    {imageDescription.length}/160
-                                </span>
-                            </div>
-                            {imageDescription.length > 160 && (
-                                <p className="text-red-400 text-sm">Description must be ≤ 160 characters</p>
-                            )}
-
-                            <Button disabled={!isImageFormValid || isUploading}
-                                onClick={() => uploadMedia(imageFile!, imageBatch, imageYear, imageDescription, "image")}>
-                                {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                Upload Image
+                <div className="space-y-2">
+                    {!isUploading ? (
+                        <Button
+                            className="w-full"
+                            disabled={!isImageFormValid}
+                            onClick={() => uploadMedia(imageFiles, imageBatch, imageYear, imageDescription, "image")}
+                        >
+                            Upload {imageFiles.length} Image{imageFiles.length === 1 ? "" : "s"}
+                        </Button>
+                    ) : (
+                        imageFiles.length > 0 && (
+                            <Button
+                                variant="outline"
+                                className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                                onClick={cancelUpload}
+                            >
+                                <Ban className="mr-2 h-4 w-4" />
+                                Cancel Upload
                             </Button>
-                        </CardContent>
-                    </Card>
+                        )
+                    )}
 
-                    {/* Video Upload */}
-                    <Card className="bg-gray-800/70 border-gray-700">
-                        <CardHeader><CardTitle>Upload Video</CardTitle></CardHeader>
-                        <CardContent className="space-y-2">
-                            <Input type="file" accept="video/*" onChange={(e) => handleVideoSelect(e.target.files?.[0] || null)} />
-                            {/* Video Preview Container */}
-                            <div className="bg-gray-900/60 border border-gray-700/40 rounded-xl p-4 flex items-center justify-center">
-                                {videoPreview ? (
-                                    <video src={videoPreview} controls muted className="max-h-60 rounded-lg object-contain" />
-                                ) : (
-                                    <p className="text-gray-500 italic">No preview available</p>
+                    {isUploading && imageFiles.length > 0 && (
+                        <div className="space-y-1 pt-2">
+                            <Progress value={uploadProgress} className="h-2" />
+                            <div className="flex justify-between items-center">
+                                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center">
+                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Processing
+                                </p>
+                                <p className="text-xs font-medium text-primary">
+                                    {Math.round(uploadProgress)}%
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+
+        {/* Video Upload Card */}
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>Upload Videos</CardTitle>
+                {videoFiles.length > 0 && !isUploading && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive h-8 px-2"
+                        onClick={() => {
+                            videoPreviews.forEach(url => URL.revokeObjectURL(url));
+                            setVideoFiles([]);
+                            setVideoPreviews([]);
+                        }}
+                    >
+                        Clear All
+                    </Button>
+                )}
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Input
+                    type="file"
+                    accept="video/*"
+                    multiple
+                    disabled={isUploading}
+                    onChange={handleVideoSelect}
+                />
+
+                {videoPreviews.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-muted/30">
+                        {videoPreviews.map((url, index) => (
+                            <div key={index} className="relative group">
+                                <video
+                                    src={url}
+                                    className="h-24 w-full bg-black rounded-md"
+                                />
+                                {!isUploading && (
+                                    <button
+                                        onClick={() => removeVideo(index)}
+                                        className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
                                 )}
                             </div>
-                            {videoFile && videoFile.size > 25 * 1024 * 1024 && (
-                                <p className="text-red-400 text-sm">Video must be ≤ 25MB</p>
-                            )}
+                        ))}
+                    </div>
+                )}
 
-                            <select value={videoBatch} onChange={(e) => setVideoBatch(e.target.value)}
-                                className="w-full rounded p-2 bg-gray-700 border border-gray-600">
-                                <option value="">Select Batch</option>
-                                <option value="+1">+1</option>
-                                <option value="+2">+2</option>
-                            </select>
+                <div className="grid grid-cols-2 gap-4">
+                    {/* UPDATED: Video Batch Select */}
+                    <Select 
+                        value={videoBatch} 
+                        onValueChange={setVideoBatch}
+                        disabled={isUploading}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select Batch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="+1">+1</SelectItem>
+                            <SelectItem value="+2">+2</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                            <Input type="number" placeholder="Year (yyyy)" value={videoYear}
-                                onChange={(e) => setVideoYear(e.target.value.slice(0, 4))}
-                                className="pl-3" />
-                            {videoYear && (videoYear.length !== 4 || parseInt(videoYear) < 1900) && (
-                                <p className="text-red-400 text-sm">Year must be ≥ 1900 and 4 digits</p>
-                            )}
+                    <Input
+                        placeholder="Year (YYYY)"
+                        type="number"
+                        value={videoYear}
+                        disabled={isUploading}
+                        onChange={(e) => setVideoYear(e.target.value)}
+                    />
+                </div>
+                <Textarea
+                    placeholder="Common description for these videos"
+                    value={videoDescription}
+                    disabled={isUploading}
+                    onChange={(e) => setVideoDescription(e.target.value)}
+                />
 
-                            <Textarea
-                                placeholder="Optional description"
-                                value={videoDescription}
-                                onChange={(e) => setVideoDescription(e.target.value)}
-                            />
-                            <div className="flex justify-between text-sm">
-                                <span className={videoDescription.length > 160 ? "text-red-400" : "text-gray-400"}>
-                                    {videoDescription.length}/160
-                                </span>
-                            </div>
-                            {videoDescription.length > 160 && (
-                                <p className="text-red-400 text-sm">Description must be ≤ 160 characters</p>
-                            )}
-
-                            <Button disabled={!isVideoFormValid || isUploading}
-                                onClick={() => uploadMedia(videoFile!, videoBatch, videoYear, videoDescription, "video")}>
-                                {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                Upload Video
+                <div className="space-y-2">
+                    {!isUploading ? (
+                        <Button
+                            className="w-full"
+                            disabled={!isVideoFormValid}
+                            onClick={() => uploadMedia(videoFiles, videoBatch, videoYear, videoDescription, "video")}
+                        >
+                            Upload {videoFiles.length} Video{videoFiles.length === 1 ? "" : "s"}
+                        </Button>
+                    ) : (
+                        videoFiles.length > 0 && (
+                            <Button
+                                variant="outline"
+                                className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                                onClick={cancelUpload}
+                            >
+                                <Ban className="mr-2 h-4 w-4" />
+                                Cancel Upload
                             </Button>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                        )
+                    )}
 
+                    {isUploading && videoFiles.length > 0 && (
+                        <div className="space-y-1 pt-2">
+                            <Progress value={uploadProgress} className="h-2" />
+                            <div className="flex justify-between items-center">
+                                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center">
+                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Processing
+                                </p>
+                                <p className="text-xs font-medium text-primary">
+                                    {Math.round(uploadProgress)}%
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    </div>
+</TabsContent>
                 {/* Manage Section */}
-                <TabsContent value="manage">
-                    <Card className="bg-gray-800/70 border-gray-700">
+                <TabsContent value="manage" >
+                    <Card className="bg-gray-800/70 border-gray-700" >
                         <CardHeader><CardTitle>Existing Media</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             {/* Filters */}

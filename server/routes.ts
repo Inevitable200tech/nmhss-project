@@ -10,7 +10,8 @@ import {
   insertTeacherSchema,
   StudentMediaZodSchema,
   insertOrUpdateSportsResultSchema,
-  insertOrUpdateArtsScienceResultSchema
+  insertOrUpdateArtsScienceResultSchema,
+  StudentMediaModel
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
@@ -623,6 +624,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await MediaModel.deleteOne({ _id: mediaDoc._id });
 
       // --- R2 MODIFICATION END ---
+
+      await StudentMediaModel.deleteMany({ mediaId: req.params.id });
 
       // 4. Remove references from Sections (This logic remains intact)
       await SectionModel.updateMany(
