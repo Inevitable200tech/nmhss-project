@@ -434,21 +434,23 @@ export default function AdminSportsChampions() {
 
 return (
   <div className="min-h-screen bg-gradient-to-b from-orange-50 to-amber-50 dark:from-gray-900 dark:to-black p-4">
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8">
 
       {/* Header (Main Save Button) */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-          <div>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-bold text-orange-600 flex items-center gap-3">
               <Trophy className="w-9 h-9" /> Sports Admin
             </h1>
             {selectedYear && (
-              <Badge className="mt-2 bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-200">
+              <Badge className="self-start mt-2 bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-200">
                 Editing: {selectedYear}–{selectedYear + 1}
               </Badge>
             )}
           </div>
+
+          {/* Action Buttons - Stacked on mobile, horizontal on larger screens */}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={handleGoToDashboard}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Dashboard
@@ -483,12 +485,12 @@ return (
           <Card>
             <CardHeader><CardTitle>Slideshow Images (up to 4)</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 {[0, 1, 2, 3].map(i => (
                   <div key={i} className="space-y-2">
                     <Label>Image {i + 1}</Label>
                     {!slideshowPreviews[i] ? (
-                      <label className="block border-2 border-dashed border-orange-300 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500 h-32 flex items-center justify-center">
+                      <label className="block border-2 border-dashed border-orange-300 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500 h-40 flex items-center justify-center">
                         <Upload className="w-8 h-8 text-orange-400" />
                         <input type="file" accept="image/*" className="hidden" onChange={e => handleSlideshowImageChange(i, e.target.files?.[0] || null)} />
                       </label>
@@ -517,7 +519,7 @@ return (
           </Card>
 
           {/* Top Champions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {(['HSS', 'HS'] as const).map(level => {
               const champ = watchedChampions.find((c: any) => c.level === level && c.featured);
               return (
@@ -530,14 +532,14 @@ return (
                   </CardHeader>
                   <CardContent className="pt-6">
                     {champ ? (
-                      <div className="flex items-center gap-5">
+                      <div className="flex flex-col sm:flex-row items-center gap-5">
                         <img
                           src={champ.photoUrl || '/placeholder.svg'}
                           alt={champ.name}
-                          className="w-28 h-28 rounded-full object-cover border-4 border-orange-200 shadow-xl"
+                          className="w-32 h-32 rounded-full object-cover border-4 border-orange-200 shadow-xl flex-shrink-0"
                           onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }}
                         />
-                        <div>
+                        <div className="text-center sm:text-left">
                           <h3 className="text-2xl font-bold">{champ.name}</h3>
                           <p className="text-gray-600 dark:text-gray-400">{champ.event}</p>
                           <Badge className={`text-xs ${champ.position === 1 ? 'bg-yellow-500' : champ.position === 2 ? 'bg-gray-400' : 'bg-orange-700'}`}>
@@ -567,11 +569,11 @@ return (
           <Card>
             <CardHeader><CardTitle>Medal Summary</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-4 text-center">
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-4 text-center">
                 {['gold', 'silver', 'bronze', 'totalNationalMedals', 'totalParticipants'].map(field => (
-                  <div key={field}>
+                  <div key={field} className="space-y-1">
                     <Label className="text-sm text-gray-600 dark:text-gray-400">
-                      {field === 'totalNationalMedals' ? 'Total Medals' : field.charAt(0).toUpperCase() + field.slice(1)}
+                      {field === 'totalNationalMedals' ? 'Total Medals' : field === 'totalParticipants' ? 'Participants' : field.charAt(0).toUpperCase() + field.slice(1)}
                     </Label>
                     <Input
                       type="number"
@@ -587,25 +589,25 @@ return (
 
           {/* Events */}
           <Card>
-            <CardHeader className="flex-row justify-between items-center">
+            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle>Events</CardTitle>
               <Button size="sm" onClick={() => addEvent({ name: '', category: 'Individual' })}>
                 <Plus className="w-4 h-4 mr-1" /> Add Event
               </Button>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               {events.length === 0 && <p className="text-gray-500 text-center py-4">No events added. Champions require events.</p>}
               {events.map((e, i) => (
-                <div key={e.id} className="flex gap-3 items-center">
+                <div key={e.id} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                   <Input {...register(`events.${i}.name`)} placeholder="Event name (e.g., 100m Sprint, Badminton)" className="flex-1 focus:border-orange-500" />
                   <Select value={watch(`events.${i}.category`)} onValueChange={v => setValue(`events.${i}.category`, v as any)}>
-                    <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Individual">Individual</SelectItem>
                       <SelectItem value="Team">Team</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50" onClick={() => removeEvent(i)}><X className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 self-end sm:self-center"><X className="w-4 h-4" onClick={() => removeEvent(i)} /></Button>
                 </div>
               ))}
             </CardContent>
@@ -613,7 +615,7 @@ return (
 
           {/* All Champions */}
           <Card>
-            <CardHeader className="flex-row justify-between items-center">
+            <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle>All Champions ({champions.length})</CardTitle>
               <Button size="sm" onClick={() => openChampion()} disabled={watchedEvents.length === 0}>
                 <Plus className="w-4 h-4 mr-1" /> Add
@@ -626,32 +628,32 @@ return (
                 </p>
               ) : (
                 champions.map((c: any, i) => (
-                  <div key={i} className="flex gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-100 dark:border-gray-700">
+                  <div key={i} className="flex flex-col sm:flex-row gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-100 dark:border-gray-700">
                     <img
                       src={c.photoUrl || '/placeholder.svg'}
                       alt={c.name}
-                      className="w-20 h-20 rounded-full object-cover flex-shrink-0 border-2 border-orange-300"
+                      className="w-24 h-24 rounded-full object-cover flex-shrink-0 border-2 border-orange-300 self-center sm:self-start"
                       onError={(e) => { e.currentTarget.src = '/placeholder.svg'; }}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
                             <Badge variant="secondary" className="bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-200">{(c.level as ChampionLevel)}</Badge>
                             <span className="font-semibold text-lg truncate">{c.name}</span>
                             {c.featured && <Star className="w-5 h-5 text-yellow-500 fill-yellow-500 flex-shrink-0" />}
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
                             {c.event} •
-                            <Badge className={`text-xs ${c.position === 1 ? 'bg-yellow-500' : c.position === 2 ? 'bg-gray-400' : 'bg-orange-700'}`}>
+                            <Badge className={`ml-2 text-xs ${c.position === 1 ? 'bg-yellow-500' : c.position === 2 ? 'bg-gray-400' : 'bg-orange-700'}`}>
                               {c.position === 1 ? 'Gold' : c.position === 2 ? 'Silver' : 'Bronze'}
                             </Badge>
                           </p>
                           {c.teamMembers?.length > 0 && <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 truncate">Team: {c.teamMembers.join(', ')}</p>}
                         </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <Button size="icon" variant="outline" className='w-8 h-8' onClick={() => openChampion(i)}><Edit3 className="w-4 h-4" /></Button>
-                          <Button size="icon" variant="destructive" className='w-8 h-8' onClick={() => handleRemoveChampion(i)}><Trash2 className="w-4 h-4" /></Button>
+                        <div className="flex gap-2 self-end sm:self-center">
+                          <Button size="icon" variant="outline" className='w-10 h-10' onClick={() => openChampion(i)}><Edit3 className="w-4 h-4" /></Button>
+                          <Button size="icon" variant="destructive" className='w-10 h-10' onClick={() => handleRemoveChampion(i)}><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       </div>
                     </div>
@@ -689,25 +691,26 @@ return (
 
       {/* Champion Dialog */}
       <Dialog open={openChampionDialog} onOpenChange={setOpenChampionDialog}>
-        <DialogContent className="max-w-xl w-full mx-4">
+        <DialogContent className="max-w-2xl w-full mx-4 overflow-y-auto max-h-[90vh]">
           <DialogHeader><DialogTitle>{editingIndex !== null ? 'Edit' : 'Add'} Champion</DialogTitle></DialogHeader>
 
           {isLoading && <div className='absolute inset-0 bg-white/70 dark:bg-gray-900/70 flex items-center justify-center z-50 rounded-lg'><Loader2 className="w-8 h-8 animate-spin text-orange-600" /></div>}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left Column: Photo Uploader */}
-            <div className='md:col-span-1'>
+          {/* Stack columns on mobile */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Photo Uploader */}
+            <div className="space-y-3">
               <Label>Photo (Raw Upload)</Label>
               {!imagePreviewUrl ? (
-                <label className="block mt-1 border-2 border-dashed border-orange-300 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 h-40 flex flex-col justify-center items-center">
-                  <Upload className="w-10 h-10 mx-auto text-orange-400" />
+                <label className="block mt-1 border-2 border-dashed border-orange-300 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 h-48 flex flex-col justify-center items-center">
+                  <Upload className="w-12 h-12 mx-auto text-orange-400" />
                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Tap to upload (1:1 aspect ratio recommended)</p>
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                 </label>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="relative w-full overflow-hidden rounded-xl border-2 border-gray-200 dark:border-gray-700">
-                    <img src={imagePreviewUrl} alt="Preview" className="w-full object-contain max-h-64" />
+                    <img src={imagePreviewUrl} alt="Preview" className="w-full object-contain max-h-72 mx-auto" />
                   </div>
                   <Button size="sm" variant="outline" className='w-full' onClick={() => {
                     if (imagePreviewUrl.startsWith('blob:')) URL.revokeObjectURL(imagePreviewUrl);
@@ -719,8 +722,8 @@ return (
               )}
             </div>
 
-            {/* Right Column: Champion Details */}
-            <div className='md:col-span-1 space-y-4'>
+            {/* Champion Details */}
+            <div className="space-y-4">
               <div>
                 <Label htmlFor="name">Champion Name</Label>
                 <Input id="name" value={tempChampion.name} onChange={e => setTempChampion(p => ({ ...p, name: e.target.value }))} className='focus:border-orange-500' />
@@ -729,7 +732,7 @@ return (
               <div>
                 <Label htmlFor="event">Event</Label>
                 <Select value={tempChampion.event} onValueChange={v => setTempChampion(p => ({ ...p, event: v }))}>
-                  <SelectTrigger className="w-full focus:border-orange-500"><SelectValue placeholder="Select Event" /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select Event" /></SelectTrigger>
                   <SelectContent>{watchedEvents.map(e => <SelectItem key={e.name} value={e.name}>{e.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -738,7 +741,7 @@ return (
                 <div>
                   <Label htmlFor="position">Position</Label>
                   <Select value={String(tempChampion.position)} onValueChange={v => setTempChampion(p => ({ ...p, position: Number(v) as 1 | 2 | 3 }))}>
-                    <SelectTrigger className="w-full focus:border-orange-500"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">1st (Gold)</SelectItem>
                       <SelectItem value="2">2nd (Silver)</SelectItem>
@@ -749,7 +752,7 @@ return (
                 <div>
                   <Label htmlFor="level">Level</Label>
                   <Select value={tempChampion.level} onValueChange={v => setTempChampion(p => ({ ...p, level: v as ChampionLevel }))}>
-                    <SelectTrigger className="w-full focus:border-orange-500"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="HSS">HSS</SelectItem>
                       <SelectItem value="HS">HS</SelectItem>
@@ -774,9 +777,9 @@ return (
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenChampionDialog(false)}>Cancel</Button>
-            <Button onClick={saveChampion} disabled={isLoading || !tempChampion.name.trim() || !tempChampion.event}>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
+            <Button variant="outline" onClick={() => setOpenChampionDialog(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={saveChampion} disabled={isLoading || !tempChampion.name.trim() || !tempChampion.event} className="w-full sm:w-auto">
               {editingIndex !== null ? 'Update Champion' : 'Add Champion'}
             </Button>
           </DialogFooter>
