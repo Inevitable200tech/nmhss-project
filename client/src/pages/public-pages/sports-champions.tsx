@@ -186,7 +186,14 @@ export default function SportsChampionsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-white dark:from-gray-900 dark:to-black overflow-x-hidden">
-      <Helmet><title>Sports Champions - NMHSS</title></Helmet>
+      <Helmet>
+        <title>Sports Champions - NMHSS Thirunavaya</title>
+        <meta name="description" content="Celebrate the athletic achievements of NMHSS Thirunavaya sports champions. Discover our award-winning athletes and their accomplishments." />
+        <meta name="keywords" content="sports, champions, athletics, NMHSS, Thirunavaya, awards, sports achievements" />
+        <meta property="og:title" content="Sports Champions - NMHSS Thirunavaya" />
+        <meta property="og:description" content="Celebrate the athletic achievements of NMHSS Thirunavaya sports champions." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <Navigation />
 
       <main className="pt-20 pb-16">
