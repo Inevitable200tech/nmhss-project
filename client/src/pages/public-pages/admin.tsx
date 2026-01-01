@@ -145,7 +145,6 @@ export default function AdminPage() {
         "bot-field": "",
       };
 
-      console.log("Sending developer code email with payload:", emailPayload);
 
       const emailResponse = await fetch(WEB3FORMS_ENDPOINT, {
         method: "POST",
@@ -155,7 +154,6 @@ export default function AdminPage() {
 
       const emailResult = await emailResponse.json();
 
-      console.log("Email response:", emailResult);
 
       if (emailResponse.ok && emailResult.success) {
         playSuccessSound();
