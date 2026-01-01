@@ -2,7 +2,6 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import {
-  insertContactMessageSchema,
   insertEventSchema,
   insertNewsSchema,
   insertOrUpdateAcademicResultSchema,
@@ -27,30 +26,12 @@ import { randomUUID } from "crypto";
 import { s3Client, R2_BUCKET_NAME } from "./s3.ts";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { rateLimit } from 'express-rate-limit';
 
 type UploadTracker = {
   count: number;
   month: number; // track month (1-12)
   lastUpload: number;
 };
-
-const contactFormLimiter = rateLimit({
-  // windowMs: 15 * 60 * 1000, // 15 minutes
-  windowMs: 60 * 60 * 1000, // Set to 1 hour to be more conservative
-  max: 5, // Limit each IP to 5 requests per hour. Adjust this based on traffic.
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: "Too many contact form requests. Please try again in an hour."
-  },
-  statusCode: 429 // Too Many Requests
-});
-
-interface Web3FormsResult {
-  success: boolean;
-  message?: string; // Optional message field for errors or success
-}
 
 const userUploadTracker = new Map<string, UploadTracker>();
 const rootEnvPath = path.resolve("cert.env");
@@ -62,6 +43,7 @@ dotenv.config({ path: envPath }); // Adjust the path if your .env is elsewhere
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASS = process.env.ADMIN_PASS || "password";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const DEVELOPER_EMAIL = process.env.DEVELOPER_EMAIL || "navamukundahss@gmail.com";
 export const upload = multer({ storage: multer.memoryStorage() });
 
 const validContentTypes = {
@@ -105,6 +87,24 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+// Store temporary verification codes in memory (expires after 10 minutes)
+const developerVerificationCodes = new Map<string, { code: string; createdAt: number; email: string }>();
+
+// Generate a 6-digit random code
+function generateVerificationCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Clean up expired verification codes (runs every minute)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of developerVerificationCodes.entries()) {
+    if (now - value.createdAt > 10 * 60 * 1000) { // 10 minutes
+      developerVerificationCodes.delete(key);
+    }
+  }
+}, 60 * 1000);
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Admin login route
   app.post("/api/admin/login", (req, res) => {
@@ -120,6 +120,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin token verification route
   app.get("/api/admin/verify", requireAuth, (req, res) => {
     res.json({ success: true, message: "Token is valid" });
+  });
+
+  // Developer access request - generate and send code
+  app.post("/api/admin/developer-request", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ message: "Invalid email" });
+      }
+
+      // Check if this email matches the configured developer email
+      if (email.toLowerCase() !== DEVELOPER_EMAIL.toLowerCase()) {
+        return res.status(403).json({ message: "Email not authorized for developer access" });
+      }
+
+      // Generate a new code
+      const code = generateVerificationCode();
+      const codeKey = `${email}-${code}`;
+
+      // Store the code with timestamp
+      developerVerificationCodes.set(codeKey, {
+        code,
+        createdAt: Date.now(),
+        email,
+      });
+
+      // Return the code (frontend will send it via email)
+      res.json({ success: true, code });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to generate code" });
+    }
+  });
+
+  // Verify developer code and issue token
+  app.post("/api/admin/verify-developer-code", (req, res) => {
+    try {
+      const { email, code } = req.body;
+
+      if (!email || !code) {
+        return res.status(400).json({ message: "Email and code are required" });
+      }
+
+      const codeKey = `${email}-${code}`;
+      const storedCode = developerVerificationCodes.get(codeKey);
+
+      // Check if code exists
+      if (!storedCode) {
+        return res.status(401).json({ message: "Invalid or expired code" });
+      }
+
+      // Check if code is expired (10 minutes)
+      if (Date.now() - storedCode.createdAt > 10 * 60 * 1000) {
+        developerVerificationCodes.delete(codeKey);
+        return res.status(401).json({ message: "Code has expired" });
+      }
+
+      // Code is valid, issue JWT token
+      const token = jwt.sign({ email, isDeveloper: true }, JWT_SECRET, { expiresIn: "1h" });
+
+      // Delete the used code
+      developerVerificationCodes.delete(codeKey);
+
+      res.json({ success: true, token });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to verify code" });
+    }
   });
 
 

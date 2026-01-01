@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, ChevronUp, BookOpen, Medal, Palette, Book, NotebookPen, Newspaper, Calendar, Upload } from "lucide-react";
+import { Menu, X, ChevronDown, ChevronUp, BookOpen, Medal, Palette, Book, NotebookPen, Newspaper, Calendar, Upload, Play, Mail, Loader2 } from "lucide-react";
 import { useSound } from "@/hooks/use-sound";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+const WEB3FORMS_ACCESS_KEY = import.meta.env.VITE_DEVELOPER_KEY_EMAIL;
+const WEB3FORMS_ENDPOINT = "https://api.web3forms.com/submit";
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -9,9 +22,17 @@ export default function AdminPage() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // NEW STATE for the collapsible sub-section
   const [academicDropdownOpen, setAcademicDropdownOpen] = useState(false);
   const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
+  const { toast } = useToast();
+
+  // Developer verification states
+  const [showDeveloperDialog, setShowDeveloperDialog] = useState(false);
+  const [developerStep, setDeveloperStep] = useState<"email" | "code">("email");
+  const [developerEmail, setDeveloperEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [isLoadingDeveloper, setIsLoadingDeveloper] = useState(false);
+  const [sentCodeEmail, setSentCodeEmail] = useState("");
 
   useEffect(() => {
     if (token) {
@@ -83,6 +104,147 @@ export default function AdminPage() {
     window.location.reload();
   };
 
+  const handleSendDeveloperCode = async () => {
+    if (!developerEmail.trim()) {
+      playErrorSound();
+      toast({
+        title: "Enter your email",
+        description: "Please provide your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingDeveloper(true);
+
+    try {
+      const response = await fetch("/api/admin/developer-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: developerEmail.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        playErrorSound();
+        toast({
+          title: "Failed to send code",
+          description: data.message || "Please try again later",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Send email with the code
+      const emailPayload = {
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject: `Developer Verification Code for School Dashboard`,
+        message: `Dear Developer,\n\nYour verification code is: ${data.code}\n\nThis code will expire in 10 minutes.\n\nPlease use this code in the dashboard to gain access.\n\nBest regards,\nSchool Connect Admin System`,
+        from_name: "School Connect",
+        to_email: developerEmail.trim(),
+        "bot-field": "",
+      };
+
+      const emailResponse = await fetch(WEB3FORMS_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(emailPayload),
+      });
+
+      const emailResult = await emailResponse.json();
+
+      if (emailResponse.ok && emailResult.success) {
+        playSuccessSound();
+        toast({
+          title: "Code sent!",
+          description: `Verification code sent to ${developerEmail}`,
+        });
+        setSentCodeEmail(developerEmail);
+        setDeveloperStep("code");
+      } else {
+        playErrorSound();
+        toast({
+          title: "Failed to send email",
+          description: "Could not send verification code",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      playErrorSound();
+      toast({
+        title: "Error",
+        description: "An error occurred while processing your request",
+        variant: "destructive",
+      });
+      console.error(error);
+    } finally {
+      setIsLoadingDeveloper(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!verificationCode.trim()) {
+      playErrorSound();
+      toast({
+        title: "Enter verification code",
+        description: "Please paste the code you received",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingDeveloper(true);
+
+    try {
+      const response = await fetch("/api/admin/verify-developer-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: sentCodeEmail,
+          code: verificationCode.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        playErrorSound();
+        toast({
+          title: "Invalid code",
+          description: data.message || "Please check your code and try again",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Login successful
+      localStorage.setItem("adminToken", data.token);
+      setToken(data.token);
+      setLoggedIn(true);
+      setShowDeveloperDialog(false);
+      setDeveloperStep("email");
+      setDeveloperEmail("");
+      setVerificationCode("");
+      setSentCodeEmail("");
+      playSuccessSound();
+      toast({
+        title: "Access granted!",
+        description: "Welcome to the dashboard",
+      });
+    } catch (error) {
+      playErrorSound();
+      toast({
+        title: "Error",
+        description: "An error occurred while verifying your code",
+        variant: "destructive",
+      });
+      console.error(error);
+    } finally {
+      setIsLoadingDeveloper(false);
+    }
+  };
+
   if (!loggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -128,6 +290,100 @@ export default function AdminPage() {
           >
             ← Back to Homepage
           </Button>
+
+      {/* Developer Access Link */}
+      <div className="text-center mt-6 pt-4 border-t border-gray-700">
+        <button
+          onClick={() => {
+            setShowDeveloperDialog(true);
+            playHoverSound();
+          }}
+          className="text-sm text-amber-500 hover:text-amber-400 transition-colors flex items-center justify-center gap-1 w-full"
+        >
+          <Mail className="w-4 h-4" />
+          Are you a developer?
+        </button>
+      </div>
+
+      {/* Developer Verification Dialog */}
+      <Dialog open={showDeveloperDialog} onOpenChange={setShowDeveloperDialog}>
+        <DialogContent className="sm:max-w-md">
+          {developerStep === "email" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Developer Access</DialogTitle>
+                <DialogDescription>
+                  Enter your email to receive a verification code
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="dev-email" className="text-sm font-medium">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="dev-email"
+                    type="email"
+                    placeholder="developer@example.com"
+                    value={developerEmail}
+                    onChange={(e) => setDeveloperEmail(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleSendDeveloperCode()}
+                  />
+                </div>
+                <Button
+                  onClick={handleSendDeveloperCode}
+                  disabled={isLoadingDeveloper}
+                  className="w-full"
+                >
+                  {isLoadingDeveloper && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Send Verification Code
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Enter Verification Code</DialogTitle>
+                <DialogDescription>
+                  Check your email at <span className="font-semibold text-foreground">{sentCodeEmail}</span> for the code
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="dev-code" className="text-sm font-medium">
+                    Verification Code
+                  </Label>
+                  <Input
+                    id="dev-code"
+                    placeholder="Enter the code from your email"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleVerifyCode()}
+                  />
+                </div>
+                <Button
+                  onClick={handleVerifyCode}
+                  disabled={isLoadingDeveloper}
+                  className="w-full"
+                >
+                  {isLoadingDeveloper && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  Verify & Login
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeveloperStep("email");
+                    setVerificationCode("");
+                  }}
+                  className="w-full"
+                >
+                  Back
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
         </div>
       </div>
     );
@@ -174,6 +430,13 @@ export default function AdminPage() {
               <a href="/admin-intro">
                 <Button variant="outline" className="w-full text-left" onMouseEnter={playHoverSound}>
                   Manage Introsection Video
+                </Button>
+              </a>
+            </li>
+            <li>
+              <a href="/admin-tutorial">
+                <Button variant="outline" className="w-full text-left flex items-center gap-2 bg-purple-900/50 hover:bg-purple-900/70 border-purple-800 text-purple-300" onMouseEnter={playHoverSound}>
+                  <Play className="w-4 h-4" /> Dashboard Tutorials
                 </Button>
               </a>
             </li>

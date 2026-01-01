@@ -35,6 +35,7 @@ const AdminTeacherEdit = lazy(() => import("@/pages/admin-pages/admin-teachers-e
 const AdminAcademicResults = lazy(() => import("@/pages/admin-pages/admin-academic"));
 const AdminArtsScience = lazy(() => import("@/pages/admin-pages/admin-arts-science"));
 const AdminSportsChampions = lazy(() => import("@/pages/admin-pages/admin-sports-champions"));
+const AdminTutorial = lazy(() => import("@/pages/admin-pages/admin-tutorial"));
 
 function App() {
   useEffect(() => {
@@ -75,6 +76,7 @@ function App() {
               <Route path="/admin-teachers-edit" element={<ProtectedRoute><AdminTeacherEdit /></ProtectedRoute>} />
               <Route path="/admin-academic-results" element={<ProtectedRoute><AdminAcademicResults /></ProtectedRoute>} />
               <Route path="/admin-arts-science" element={<ProtectedRoute><AdminArtsScience /></ProtectedRoute>} />
+              <Route path="/admin-tutorial" element={<ProtectedRoute><AdminTutorial /></ProtectedRoute>} />
 
               {/* Fallback route for 404 */}
               <Route path="*" element={<NotFound />} />
