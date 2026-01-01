@@ -127,12 +127,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email } = req.body;
 
+      console.log("Developer request received for email:", email);
+
       if (!email || typeof email !== "string") {
+        console.log("Invalid email provided");
         return res.status(400).json({ message: "Invalid email" });
       }
 
       // Check if this email matches the configured developer email
       if (email.toLowerCase() !== DEVELOPER_EMAIL.toLowerCase()) {
+        console.log(`Email ${email} does not match DEVELOPER_EMAIL ${DEVELOPER_EMAIL}`);
         return res.status(403).json({ message: "Email not authorized for developer access" });
       }
 
@@ -147,10 +151,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
       });
 
+      console.log(`Generated verification code for ${email}: ${code}`);
+
       // Return the code (frontend will send it via email)
       res.json({ success: true, code });
     } catch (error) {
-      console.error(error);
+      console.error("Error in developer-request:", error);
       res.status(500).json({ message: "Failed to generate code" });
     }
   });

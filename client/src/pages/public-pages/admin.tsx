@@ -141,10 +141,11 @@ export default function AdminPage() {
         access_key: WEB3FORMS_ACCESS_KEY,
         subject: `Developer Verification Code for School Dashboard`,
         message: `Dear Developer,\n\nYour verification code is: ${data.code}\n\nThis code will expire in 10 minutes.\n\nPlease use this code in the dashboard to gain access.\n\nBest regards,\nSchool Connect Admin System`,
-        from_name: "School Connect",
-        to_email: developerEmail.trim(),
+        email: developerEmail.trim(),
         "bot-field": "",
       };
+
+      console.log("Sending developer code email with payload:", emailPayload);
 
       const emailResponse = await fetch(WEB3FORMS_ENDPOINT, {
         method: "POST",
@@ -153,6 +154,8 @@ export default function AdminPage() {
       });
 
       const emailResult = await emailResponse.json();
+
+      console.log("Email response:", emailResult);
 
       if (emailResponse.ok && emailResult.success) {
         playSuccessSound();
@@ -166,9 +169,10 @@ export default function AdminPage() {
         playErrorSound();
         toast({
           title: "Failed to send email",
-          description: "Could not send verification code",
+          description: emailResult.message || "Could not send verification code. Check console for details.",
           variant: "destructive",
         });
+        console.error("Email service error:", emailResult);
       }
     } catch (error) {
       playErrorSound();
