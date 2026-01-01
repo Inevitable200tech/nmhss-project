@@ -34,6 +34,24 @@ export default function AdminPage() {
   const [isLoadingDeveloper, setIsLoadingDeveloper] = useState(false);
   const [sentCodeEmail, setSentCodeEmail] = useState("");
 
+  // Login attempt lockout states - load from localStorage
+  const [failedAttempts, setFailedAttempts] = useState(() => {
+    const stored = localStorage.getItem("adminFailedAttempts");
+    return stored ? parseInt(stored, 10) : 0;
+  });
+  const [lockoutEndTime, setLockoutEndTime] = useState<number | null>(() => {
+    const stored = localStorage.getItem("adminLockoutEndTime");
+    const endTime = stored ? parseInt(stored, 10) : null;
+    // If lockout has expired, clear it
+    if (endTime && Date.now() >= endTime) {
+      localStorage.removeItem("adminLockoutEndTime");
+      localStorage.removeItem("adminFailedAttempts");
+      return null;
+    }
+    return endTime;
+  });
+  const [lockoutCountdown, setLockoutCountdown] = useState(0);
+
   useEffect(() => {
     if (token) {
       fetch("/api/admin/verify", {
@@ -56,9 +74,40 @@ export default function AdminPage() {
     }
   }, [token]);
 
+  // Lockout countdown timer
+  useEffect(() => {
+    if (!lockoutEndTime) return;
+
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, lockoutEndTime - now);
+
+      if (remaining === 0) {
+        setLockoutEndTime(null);
+        setLockoutCountdown(0);
+        setFailedAttempts(0);
+        localStorage.removeItem("adminLockoutEndTime");
+        localStorage.removeItem("adminFailedAttempts");
+        clearInterval(timer);
+      } else {
+        setLockoutCountdown(Math.ceil(remaining / 1000));
+      }
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [lockoutEndTime]);
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    // Check if account is locked
+    if (lockoutEndTime && Date.now() < lockoutEndTime) {
+      playErrorSound();
+      setError(`Account temporarily locked. Try again in ${lockoutCountdown}s`);
+      return;
+    }
+
     try {
       const res = await fetch("/api/admin/login", {
         method: "POST",
@@ -68,13 +117,33 @@ export default function AdminPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.message || "Login failed");
+        const newFailedAttempts = failedAttempts + 1;
+        setFailedAttempts(newFailedAttempts);
+        localStorage.setItem("adminFailedAttempts", newFailedAttempts.toString());
+
+        // Lock account after every 5 failed attempts
+        if (newFailedAttempts % 5 === 0) {
+          const lockoutDuration = (Math.floor(newFailedAttempts / 5) * 30) * 1000; // Increases by 30s per 5 failures
+          const newLockoutEndTime = Date.now() + lockoutDuration;
+          setLockoutEndTime(newLockoutEndTime);
+          localStorage.setItem("adminLockoutEndTime", newLockoutEndTime.toString());
+          playErrorSound();
+          setError(`Too many failed attempts. Account locked for ${Math.floor(lockoutDuration / 1000)}s`);
+        } else {
+          playErrorSound();
+          setError(data.message || "Login failed");
+        }
+        return;
       }
 
       const data = await res.json();
       localStorage.setItem("adminToken", data.token);
       setToken(data.token);
       setLoggedIn(true);
+      setFailedAttempts(0);
+      setLockoutEndTime(null);
+      localStorage.removeItem("adminFailedAttempts");
+      localStorage.removeItem("adminLockoutEndTime");
       playSuccessSound();
     } catch (err: any) {
       playErrorSound();
@@ -279,8 +348,15 @@ export default function AdminPage() {
               style={{ color: "#fff", backgroundColor: "#0000" }}
             />
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <Button type="submit" className="w-full" onMouseEnter={playHoverSound}>
-              Login
+            <Button 
+              type="submit" 
+              className="w-full" 
+              onMouseEnter={playHoverSound}
+              disabled={lockoutEndTime !== null && Date.now() < lockoutEndTime}
+            >
+              {lockoutEndTime && Date.now() < lockoutEndTime 
+                ? `Locked (${lockoutCountdown}s)` 
+                : "Login"}
             </Button>
           </form>
 
@@ -527,7 +603,7 @@ export default function AdminPage() {
               <h2 className="text-2xl font-bold text-cyan-400 mb-3">Quick Actions</h2>
               <ul className="space-y-3">
                 <li><a href="/admin-academic-results" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><BookOpen className="w-5 h-5" /> Update Academic Results</a></li>
-                <li><a href="/admin-arts-science" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Palette className="w-5 h-5" /> Manage Arts Fair</a></li>
+                <li><a href="/admin-arts-science" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Palette className="w-5 h-5" /> Manage Arts / Science Fair</a></li>
                 <li><a href="/admin-sports-champions" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Medal className="w-5 h-5" /> Manage Sports Champions</a></li>
                 <li><a href="/admin-gallery" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Upload className="w-5 h-5" /> Upload  Media</a></li>
               </ul>

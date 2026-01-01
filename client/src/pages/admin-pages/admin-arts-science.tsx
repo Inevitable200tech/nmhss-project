@@ -57,8 +57,6 @@ const SectionOptions: SchoolSection[] = ["HSS", "HS", "UP"];
 const LevelOptions: CompetitionLevel[] = ["State", "District", "Sub-District"];
 
 async function uploadMediaFile(file: File): Promise<{ mediaId: string; photoUrl: string }> {
-    const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
-  
   const token = localStorage.getItem("adminToken");
   if (!token) throw new Error("Authentication required");
 
@@ -72,7 +70,7 @@ async function uploadMediaFile(file: File): Promise<{ mediaId: string; photoUrl:
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => toast({ title: "Upload Failed", variant: "destructive" }));
+    const err = await res.json().catch(() => ({ message: "Upload failed" }));
     throw new Error(err.message || "Failed to upload image");
   }
 
@@ -299,31 +297,63 @@ export default function AdminArtsScience() {
     }
 
     try {
-      toast({ title: "Uploading..." });
-      const { mediaId, photoUrl } = await uploadMediaFile(file);
+      // Create preview without uploading yet
       const preview = URL.createObjectURL(file);
 
       if (index !== undefined) {
+        // For existing achievements - upload immediately and trigger save
+        toast({ title: "Uploading..." });
+        const { mediaId, photoUrl } = await uploadMediaFile(file);
         const updated = [...currentEvent!.achievements];
         updated[index] = { ...updated[index], mediaId, photoUrl, _tempPreview: preview };
         updateData(updated);
         triggerAutoSave();
+        toast({ title: "Image uploaded successfully" });
+        playSuccessSound();
       } else {
-        setNewAchievement(prev => ({ ...prev, mediaId, photoUrl, _tempPreview: preview }));
+        // For new achievements - just store file and preview, upload on "Add Achievement" click
+        setNewAchievement(prev => ({ 
+          ...prev, 
+          _tempFile: file,
+          _tempPreview: preview 
+        }));
+        toast({ title: "Image selected. Click 'Add Achievement' to upload." });
+        playSuccessSound();
       }
-      toast({ title: "Image uploaded successfully" });
-      playSuccessSound();
     } catch (err: any) {
       toast({ title: err.message || "Upload failed", variant: "destructive" });
       playErrorSound();
     }
   };
 
-  const addAchievement = () => {
+  const addAchievement = async () => {
     if (!newAchievement.name?.trim() || !newAchievement.item?.trim()) {
       toast({ title: "Main participant name and Item are required", variant: "destructive" });
       playErrorSound();
       return;
+    }
+
+    let mediaId: string | undefined;
+    let photoUrl: string | undefined;
+    let tempPreview: string | undefined;
+
+    // Upload the file if it exists
+    if (newAchievement._tempFile) {
+      try {
+        toast({ title: "Uploading image..." });
+        const { mediaId: id, photoUrl: url } = await uploadMediaFile(newAchievement._tempFile);
+        mediaId = id;
+        photoUrl = url;
+      } catch (err: any) {
+        toast({ title: err.message || "Upload failed", variant: "destructive" });
+        playErrorSound();
+        return;
+      }
+    }
+
+    // Store temp preview for immediate display
+    if (newAchievement._tempPreview) {
+      tempPreview = newAchievement._tempPreview;
     }
 
     const full: Achievement = {
@@ -334,8 +364,9 @@ export default function AdminArtsScience() {
       schoolSection: newAchievement.schoolSection ?? "HS",
       competitionLevel: newAchievement.competitionLevel ?? "District",
       featured: newAchievement.featured || false,
-      mediaId: newAchievement.mediaId,
-      photoUrl: newAchievement.photoUrl,
+      mediaId: mediaId || newAchievement.mediaId,
+      photoUrl: photoUrl || newAchievement.photoUrl,
+      _tempPreview: tempPreview,
       groupMembers:
         newAchievement.groupMembers
           ?.map(m => m.trim())
@@ -358,6 +389,7 @@ export default function AdminArtsScience() {
       groupMembers: [],
       mediaId: undefined,
       photoUrl: undefined,
+      _tempFile: undefined,
       _tempPreview: undefined,
     });
 
