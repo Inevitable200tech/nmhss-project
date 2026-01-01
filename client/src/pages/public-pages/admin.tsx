@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ChevronDown, ChevronUp, BookOpen, Medal, Palette, Book, NotebookPen, Newspaper, Calendar, Upload } from "lucide-react";
+import { useSound } from "@/hooks/use-sound";
 
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -10,6 +11,7 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // NEW STATE for the collapsible sub-section
   const [academicDropdownOpen, setAcademicDropdownOpen] = useState(false);
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
 
   useEffect(() => {
     if (token) {
@@ -52,7 +54,9 @@ export default function AdminPage() {
       localStorage.setItem("adminToken", data.token);
       setToken(data.token);
       setLoggedIn(true);
+      playSuccessSound();
     } catch (err: any) {
+      playErrorSound();
       setError(err.message || "An unknown error occurred");
     }
   };// Inside your component:
@@ -111,7 +115,7 @@ export default function AdminPage() {
               style={{ color: "#fff", backgroundColor: "#0000" }}
             />
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" onMouseEnter={playHoverSound}>
               Login
             </Button>
           </form>
@@ -120,6 +124,7 @@ export default function AdminPage() {
             variant="outline"
             className="w-full mt-4"
             onClick={() => (window.location.href = "/")}
+            onMouseEnter={playHoverSound}
           >
             ← Back to Homepage
           </Button>
@@ -138,7 +143,10 @@ export default function AdminPage() {
         aria-controls="default-sidebar"
         type="button"
         className="inline-flex items-center p-2 mt-2 ml-3 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 fixed z-50 bg-gray-900"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
+        onClick={() => {
+          setSidebarOpen(!sidebarOpen);
+          playHoverSound();
+        }}
       >
         <span className="sr-only">Open sidebar</span>
         {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -156,23 +164,22 @@ export default function AdminPage() {
           <ul className="space-y-2 font-medium">
             <li>
               <a href="/admin-about">
-                <Button variant="outline" className="w-full text-left">
+                <Button variant="outline" className="w-full text-left" onMouseEnter={playHoverSound}>
                   Manage About Section
                 </Button>
               </a>
             </li>
 
-
             <li>
               <a href="/admin-intro">
-                <Button variant="outline" className="w-full text-left">
+                <Button variant="outline" className="w-full text-left" onMouseEnter={playHoverSound}>
                   Manage Introsection Video
                 </Button>
               </a>
             </li>
             <li>
               <a href="/admin-faculty">
-                <Button variant="outline" className="w-full text-left">
+                <Button variant="outline" className="w-full text-left" onMouseEnter={playHoverSound}>
                   Edit Faculty Section
                 </Button>
               </a>
@@ -183,7 +190,11 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 className="w-full text-left justify-start font-bold pr-2 bg-blue-900/50 hover:bg-blue-900/70 border-blue-800 text-blue-300"
-                onClick={() => setAcademicDropdownOpen(!academicDropdownOpen)}
+                onClick={() => {
+                  setAcademicDropdownOpen(!academicDropdownOpen);
+                  playHoverSound();
+                }}
+                onMouseEnter={playHoverSound}
               >
                 <div className="flex justify-between items-center w-full">
                   <span>Manage Events & Staff  </span>
@@ -199,28 +210,28 @@ export default function AdminPage() {
                 <ul className="ml-4 space-y-1 border-l-2 border-cyan-500 pl-4">
                   <li>
                     <a href="/admin-events">
-                      <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300">
+                      <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300" onMouseEnter={playHoverSound}>
                         <Calendar className="w-4 h-4 mr-2 text-blue-500" /> Manage Events
                       </Button>
                     </a>
                   </li>
                   <li>
                     <a href="/admin-news">
-                      <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300">
+                      <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300" onMouseEnter={playHoverSound}>
                         <Newspaper className="w-4 h-4 mr-2 text-pink-500" /> Manage News
                       </Button>
                     </a>
                   </li>
                   <li>
                     <a href="/admin-teachers-edit">
-                      <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300">
+                      <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300" onMouseEnter={playHoverSound}>
                         <NotebookPen className="w-4 h-4 mr-2 text-yellow-500" />  Teacher's Section
                       </Button>
                     </a>
                   </li>
                   <li>
                     <a href="/admin-students-setting">
-                      <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300">
+                      <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300" onMouseEnter={playHoverSound}>
                         <Book className="w-4 h-4 mr-2 text-yellow-500" />  Students's Section
                       </Button>
                     </a>
@@ -230,9 +241,8 @@ export default function AdminPage() {
             </li>
             {/* END OF NEW DROPDOWN SECTION */}
 
-
           </ul>
-          <Button variant="outline" className="w-full mt-4 bg-red-800 hover:bg-red-700 border-red-700 text-white" onClick={handleLogout}>
+          <Button variant="outline" className="w-full mt-4 bg-red-800 hover:bg-red-700 border-red-700 text-white" onClick={handleLogout} onMouseEnter={playHoverSound}>
             Logout
           </Button>
         </div>
@@ -251,10 +261,10 @@ export default function AdminPage() {
             <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
               <h2 className="text-2xl font-bold text-cyan-400 mb-3">Quick Actions</h2>
               <ul className="space-y-3">
-                <li><a href="/admin-academic-results" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2"><BookOpen className="w-5 h-5" /> Update Academic Results</a></li>
-                <li><a href="/admin-arts-science" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2"><Palette className="w-5 h-5" /> Manage Arts Fair</a></li>
-                <li><a href="/admin-sports-champions" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2"><Medal className="w-5 h-5" /> Manage Sports Champions</a></li>
-                <li><a href="/admin-gallery" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2"><Upload className="w-5 h-5" /> Upload  Media</a></li>
+                <li><a href="/admin-academic-results" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><BookOpen className="w-5 h-5" /> Update Academic Results</a></li>
+                <li><a href="/admin-arts-science" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Palette className="w-5 h-5" /> Manage Arts Fair</a></li>
+                <li><a href="/admin-sports-champions" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Medal className="w-5 h-5" /> Manage Sports Champions</a></li>
+                <li><a href="/admin-gallery" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Upload className="w-5 h-5" /> Upload  Media</a></li>
               </ul>
             </div>
 
@@ -262,7 +272,8 @@ export default function AdminPage() {
               <h2 className="text-2xl font-bold text-yellow-400 mb-3">System Info</h2>
               <p className="text-gray-400">Status: <span className="text-green-500 font-semibold">Online</span></p>
               <p className="text-gray-400">Good To See You Sir!! </p>
-              <p className="text-gray-400">Server Time: {currentTime.toLocaleTimeString()}</p>            </div>
+              <p className="text-gray-400">Server Time: {currentTime.toLocaleTimeString()}</p>
+            </div>
           </div>
         </div>
       </div>

@@ -7,6 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { InsertContactMessage } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
+import {
+  canSubmitMessage,
+  getRemainingCooldown,
+  formatRemainingTime,
+  setLastMessageTime,
+} from "@/lib/contact-rate-limit";
 // --- CONFIGURATION FOR WEB3FORMS ---
 // Ensure VITE_WEB3FORMS_KEY is set in your .env file
 const WEB3FORMS_ACCESS_KEY = import.meta.env.VITE_WEB3FORMS_KEY;
@@ -26,12 +33,27 @@ export default function ContactSection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { toast } = useToast();
+  const { playDoneSound, playErrorSound, playHoverSound } = useSound();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Check rate limit (one message per week)
+    if (!canSubmitMessage()) {
+      const remaining = getRemainingCooldown();
+      const timeLeft = formatRemainingTime(remaining);
+      playErrorSound();
+      toast({
+        title: "Message Limit Reached",
+        description: `You can only send one message per week. Please try again in ${timeLeft}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check if the key was correctly loaded
     if (!WEB3FORMS_ACCESS_KEY || typeof WEB3FORMS_ACCESS_KEY !== 'string') {
+      playErrorSound();
       toast({
         title: "Configuration Error",
         description: "Contact service key is missing. Ensure VITE_WEB3FORMS_KEY is set.",
@@ -42,6 +64,7 @@ export default function ContactSection() {
 
     // Basic validation
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.subject || !formData.message) {
+      playErrorSound();
       toast({
         title: "Please fill in all required fields",
         variant: "destructive",
@@ -108,6 +131,9 @@ This submission was made on school's website at nhmms.onrender.com by ${formData
       const result = await response.json();
 
       if (response.ok && result.success) {
+        // Record submission time for rate limiting
+        setLastMessageTime();
+        playDoneSound();
         toast({
           title: "Message sent successfully!",
           description: "We will get back to you soon.",
@@ -123,6 +149,7 @@ This submission was made on school's website at nhmms.onrender.com by ${formData
         });
       } else {
         // Web3Forms returns errors in the result.message field
+        playErrorSound();
         toast({
           title: "Failed to send message",
           description: result.message || "An unknown error occurred. Please check the console.",
@@ -131,6 +158,7 @@ This submission was made on school's website at nhmms.onrender.com by ${formData
         console.error("Web3Forms Error Details:", result);
       }
     } catch (error: any) {
+      playErrorSound();
       toast({
         title: "Network Error",
         description: "Could not connect to the submission service. Check your connection.",
@@ -332,6 +360,7 @@ This submission was made on school's website at nhmms.onrender.com by ${formData
               <div className="grid grid-cols-2 gap-4">
                 <a
                   href="/gallery"
+                  onMouseEnter={playHoverSound}
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-admission"
                 >
@@ -341,6 +370,7 @@ This submission was made on school's website at nhmms.onrender.com by ${formData
 
                 <a
                   href="/about-us"
+                  onMouseEnter={playHoverSound}
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-fees"
                 >
@@ -350,6 +380,7 @@ This submission was made on school's website at nhmms.onrender.com by ${formData
 
                 <a
                   href="/students"
+                  onMouseEnter={playHoverSound}
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-handbook"
                 >
@@ -359,6 +390,7 @@ This submission was made on school's website at nhmms.onrender.com by ${formData
 
                 <a
                   href="/about-teachers"
+                  onMouseEnter={playHoverSound}
                   className="flex items-center p-3 bg-card rounded-lg border border-border hover:border-primary transition-colors group"
                   data-testid="link-calendar"
                 >

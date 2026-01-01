@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 
 // Fallback Data
 const fallbackImages = [
@@ -67,6 +68,7 @@ interface FacultySection {
 
 export default function AdminFaculty() {
     const { toast } = useToast();
+    const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
     const [title, setTitle] = useState("");
     const [subtitle, setSubtitle] = useState("");
 
@@ -91,6 +93,7 @@ export default function AdminFaculty() {
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
             if (isSaving) {
+                playHoverSound();
                 // Standard way to trigger the "Are you sure?" browser dialog
                 e.preventDefault();
                 e.returnValue = "";
@@ -177,7 +180,10 @@ export default function AdminFaculty() {
                                 body: formData
                             });
 
-                            if (!uploadRes.ok) throw new Error("Upload failed");
+                            if (!uploadRes.ok){
+                                toast({ title: "❌ Image upload failed", variant: "destructive" });
+                                    playErrorSound();
+                                throw new Error("Upload failed");}
                             const uploaded = await uploadRes.json();
 
                             // Update progress
@@ -189,6 +195,8 @@ export default function AdminFaculty() {
                             return { ...p, mediaId: uploaded.id, imageUrl: `/api/media/${uploaded.id}` };
                         } catch (e) {
                             console.error("Image upload failed", e);
+                            toast({ title: "❌ Image upload failed", variant: "destructive" });
+                            playErrorSound();
                             throw e;
                         }
                     }
@@ -197,7 +205,7 @@ export default function AdminFaculty() {
             );
 
             setUploadProgress(85); // Uploads done, starting save
-
+            toast({ title: "💾 Saving faculty section..." }) ;
             const finalPayload: FacultySection = {
                 ...payload,
                 profiles: uploadedProfiles,
@@ -216,7 +224,7 @@ export default function AdminFaculty() {
 
             setUploadProgress(100);
             toast({ title: "✅ Faculty section saved" });
-
+            playSuccessSound();
             // Optional: Clear temp files after successful save
             setTempFiles([null, null, null]);
             setTempPreviews([null, null, null]);
@@ -224,6 +232,7 @@ export default function AdminFaculty() {
         } catch (err) {
             console.error(err);
             toast({ title: "❌ Failed to save faculty section", variant: "destructive" });
+            playErrorSound();
         } finally {
             // Small delay to let the user see 100% before hiding
             setTimeout(() => {
@@ -245,6 +254,8 @@ export default function AdminFaculty() {
                     }
                 } catch (err) {
                     console.error("Failed to load faculty section", err);
+                    toast({ title: "❌ Failed to reload faculty section", variant: "destructive" });
+                    playErrorSound();
                 }
             })();
         }, 1000);
@@ -252,7 +263,7 @@ export default function AdminFaculty() {
 
     const handleImageRemove = async (i: number) => {
         if (isSaving) return; // Prevent removing while saving
-
+        playHoverSound();
         const confirmed = window.confirm(
             "⚠️ Are you sure you want to remove this image?\nThis action will delete the image from the database."
         );
@@ -280,15 +291,17 @@ export default function AdminFaculty() {
             await handleSave({ profiles: newProfiles });
 
             toast({ title: "🗑️ Image removed successfully" });
+            playSuccessSound();
         } catch (err) {
             console.error(err);
             toast({ title: "❌ Failed to remove image", variant: "destructive" });
+            playErrorSound();
         }
     };
 
     const handleRestoreDefaults = async () => {
         if (isSaving) return;
-
+        playHoverSound();
         const confirmed = window.confirm(
             "⚠️ Are you sure you want to reset?\nThis action will delete the all image from the form and database and also reset everything to defaults!!!!"
         );
@@ -300,6 +313,8 @@ export default function AdminFaculty() {
                         await fetch(`/api/media/${profile.mediaId}`, { method: "DELETE", headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` } });
                     } catch (err) {
                         console.error(`Failed to delete media ${profile.mediaId}`, err);
+                        toast({ title: `❌ Failed to delete media ${profile.mediaId}`, variant: "destructive" });   
+                        playErrorSound();
                     }
                 }
             }
@@ -331,9 +346,11 @@ export default function AdminFaculty() {
             });
 
             toast({ title: "↩️ Restored to defaults" });
+            playSuccessSound();
         } catch (error) {
             console.error(error);
             toast({ title: "❌ Failed to restore defaults", variant: "destructive" });
+            playErrorSound();
         }
     };
 
@@ -356,8 +373,9 @@ export default function AdminFaculty() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
                 <Button
                     onClick={() => (window.location.href = "/admin")}
+                    onMouseEnter={playHoverSound}
                     variant="secondary"
-                    disabled={isSaving} // Disable navigation while saving
+                    disabled={isSaving}
                     className="flex items-center gap-2 w-full sm:w-auto"
                 >
                     <ArrowLeft className="w-4 h-4" /> Back to Admin
@@ -366,6 +384,7 @@ export default function AdminFaculty() {
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     <Button
                         onClick={handleRestoreDefaults}
+                        onMouseEnter={playHoverSound}
                         variant="outline"
                         disabled={isSaving}
                         className="flex items-center gap-2 w-full sm:w-auto"
@@ -373,9 +392,9 @@ export default function AdminFaculty() {
                         <Trash2 className="w-4 h-4" /> Restore Defaults
                     </Button>
 
-                    {/* Updated Save Button */}
                     <Button
                         onClick={() => handleSave()}
+                        onMouseEnter={playHoverSound}
                         disabled={isSaving}
                         className="flex items-center gap-2 w-full sm:w-auto min-w-[100px]"
                     >
@@ -404,6 +423,7 @@ export default function AdminFaculty() {
                         placeholder="Section Title"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        onMouseEnter={playHoverSound}
                         disabled={isSaving}
                     />
                     <Textarea
@@ -411,6 +431,7 @@ export default function AdminFaculty() {
                         placeholder="Section Subtitle"
                         value={subtitle}
                         onChange={(e) => setSubtitle(e.target.value)}
+                        onMouseEnter={playHoverSound}
                         disabled={isSaving}
                     />
                 </CardContent>
@@ -438,6 +459,7 @@ export default function AdminFaculty() {
                                     placeholder="Label"
                                     value={s.label}
                                     onChange={(e) => handleStatChange(i, "label", e.target.value)}
+                                    onMouseEnter={playHoverSound}
                                     disabled={isSaving}
                                 />
                                 <Input
@@ -445,6 +467,7 @@ export default function AdminFaculty() {
                                     placeholder="Value"
                                     value={s.value}
                                     onChange={(e) => handleStatChange(i, "value", e.target.value)}
+                                    onMouseEnter={playHoverSound}
                                     disabled={isSaving}
                                 />
                                 <Textarea
@@ -452,6 +475,7 @@ export default function AdminFaculty() {
                                     placeholder="Description"
                                     value={s.description}
                                     onChange={(e) => handleStatChange(i, "description", e.target.value)}
+                                    onMouseEnter={playHoverSound}
                                     disabled={isSaving}
                                 />
                             </motion.div>
@@ -499,7 +523,7 @@ export default function AdminFaculty() {
                                     )}
 
                                     <Button asChild variant="secondary" size="sm" disabled={isSaving} className="flex items-center gap-2">
-                                        <label className={`cursor-pointer ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                        <label className={`cursor-pointer ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`} onMouseEnter={playHoverSound}>
                                             <Upload className="w-4 h-4" /> Upload
                                             <input
                                                 type="file"
@@ -519,6 +543,7 @@ export default function AdminFaculty() {
                                             variant="destructive"
                                             size="sm"
                                             disabled={isSaving}
+                                            onMouseEnter={playHoverSound}
                                             className="flex items-center gap-2"
                                             onClick={() => handleImageRemove(i)}
                                         >
@@ -533,6 +558,7 @@ export default function AdminFaculty() {
                                     placeholder="Name"
                                     value={p.name}
                                     onChange={(e) => handleProfileChange(i, "name", e.target.value)}
+                                    onMouseEnter={playHoverSound}
                                     disabled={isSaving}
                                 />
                                 <Input
@@ -540,6 +566,7 @@ export default function AdminFaculty() {
                                     placeholder="Role"
                                     value={p.role}
                                     onChange={(e) => handleProfileChange(i, "role", e.target.value)}
+                                    onMouseEnter={playHoverSound}
                                     disabled={isSaving}
                                 />
                                 <Textarea
@@ -547,6 +574,7 @@ export default function AdminFaculty() {
                                     placeholder="Description"
                                     value={p.description}
                                     onChange={(e) => handleProfileChange(i, "description", e.target.value)}
+                                    onMouseEnter={playHoverSound}
                                     disabled={isSaving}
                                 />
                             </motion.div>

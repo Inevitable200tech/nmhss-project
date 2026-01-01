@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 import { Plus, Trash2, Edit, Save, X, ArrowLeft, Loader2 } from "lucide-react";
 import type { ClientNews } from "@shared/schema";
 
 export default function AdminNews() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -12,14 +16,7 @@ export default function AdminNews() {
     expiresAt: ""
   });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [dateError, setDateError] = useState<string | null>(null); // State for date error
-
-  // Helper to show auto-hide message
-  const showMessage = (msg: string) => {
-    setStatusMessage(msg);
-    setTimeout(() => setStatusMessage(null), 3000);
-  };
+  const [dateError, setDateError] = useState<string | null>(null);
 
   // Fetch news
   const { data: news = [], isLoading } = useQuery<ClientNews[]>({
@@ -47,11 +44,19 @@ export default function AdminNews() {
       return res.json();
     },
     onSuccess: () => {
+      playSuccessSound();
       queryClient.invalidateQueries({ queryKey: ["/api/news"] });
       setFormData({ title: "", content: "", type: "", expiresAt: "" });
-      showMessage("✅ News created successfully!");
+      toast({ title: "Success", description: "News created successfully!", variant: "default" });
     },
-    onError: () => showMessage("❌ Failed to create news"),
+    onError: (err: any) => {
+      playErrorSound();
+      toast({
+        title: "Creation Failed",
+        description: err.message || "Failed to create news",
+        variant: "destructive",
+      });
+    },
   });
 
   // Update news
@@ -70,12 +75,20 @@ export default function AdminNews() {
       return res.json();
     },
     onSuccess: () => {
+      playSuccessSound();
       queryClient.invalidateQueries({ queryKey: ["/api/news"] });
       setEditingId(null);
       setFormData({ title: "", content: "", type: "", expiresAt: "" });
-      showMessage("✅ News updated successfully!");
+      toast({ title: "Success", description: "News updated successfully!", variant: "default" });
     },
-    onError: () => showMessage("❌ Failed to update news"),
+    onError: (err: any) => {
+      playErrorSound();
+      toast({
+        title: "Update Failed",
+        description: err.message || "Failed to update news",
+        variant: "destructive",
+      });
+    },
   });
 
   // Delete news
@@ -92,32 +105,95 @@ export default function AdminNews() {
       return res.json();
     },
     onSuccess: () => {
+      playSuccessSound();
       queryClient.invalidateQueries({ queryKey: ["/api/news"] });
-      showMessage("🗑️ News deleted successfully!");
+      toast({ title: "Success", description: "News deleted successfully!", variant: "default" });
     },
-    onError: (err) => {
+    onError: (err: any) => {
       if (err.message !== "Cancelled") {
-        showMessage("❌ Failed to delete news");
+        playErrorSound();
+        toast({
+          title: "Deletion Failed",
+          description: err.message || "Failed to delete news",
+          variant: "destructive",
+        });
       }
     },
   });
 
-  // Submit handler (add or update)
+  // Submit handler (add or update) - WITH VALIDATION
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Client-side validation for expiration date
-    const expiryDate = new Date(formData.expiresAt);
-    const currentDate = new Date();
 
-    // Check if the expiry date is in the future
-    if (formData.expiresAt && expiryDate <= currentDate) {
-      setDateError("❌ Expiry date must be in the future.");
-      return; // Prevent form submission
-    } else {
-      setDateError(null); // Clear error if the date is valid
+    // Validation: Check required fields
+    const titleTrimmed = formData.title.trim();
+    const contentTrimmed = formData.content.trim();
+
+    if (!titleTrimmed) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Title is required and cannot be empty", variant: "destructive" });
+      return;
     }
 
-    editingId ? updateNews.mutate({ id: editingId, data: formData }) : createNews.mutate(formData);
+    if (titleTrimmed.length < 3) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Title must be at least 3 characters long", variant: "destructive" });
+      return;
+    }
+
+    if (titleTrimmed.length > 200) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Title must be 200 characters or less", variant: "destructive" });
+      return;
+    }
+
+    if (!contentTrimmed) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Content is required and cannot be empty", variant: "destructive" });
+      return;
+    }
+
+    if (contentTrimmed.length < 10) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Content must be at least 10 characters long", variant: "destructive" });
+      return;
+    }
+
+    if (contentTrimmed.length > 10000) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Content must be 10000 characters or less", variant: "destructive" });
+      return;
+    }
+
+    if (!formData.type) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Type (Announcement, News, Update) is required", variant: "destructive" });
+      return;
+    }
+
+    // Edge case: Check if expiry date is in the future
+    if (formData.expiresAt) {
+      const expiryDate = new Date(formData.expiresAt);
+      const currentDate = new Date();
+      currentDate.setHours(0, 0, 0, 0);
+      expiryDate.setHours(0, 0, 0, 0);
+
+      if (expiryDate <= currentDate) {
+        playErrorSound();
+        toast({
+          title: "Validation Error",
+          description: "Expiry date must be in the future (not today or earlier)",
+          variant: "destructive",
+        });
+        setDateError("Expiry date must be in the future");
+        return;
+      }
+      setDateError(null);
+    }
+
+    editingId
+      ? updateNews.mutate({ id: editingId, data: formData })
+      : createNews.mutate(formData);
   };
 
   if (isLoading) return (
@@ -129,15 +205,16 @@ export default function AdminNews() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
       {/* Status banner */}
-      {statusMessage && (
-        <div className="p-3 rounded-lg text-center font-medium bg-gray-700 text-white shadow-md">
-          {statusMessage}
+      {dateError && (
+        <div className="p-3 rounded-lg text-center font-medium bg-red-700 text-red-100 shadow-md">
+          {dateError}
         </div>
       )}
 
       {/* Back Button */}
       <button
         onClick={() => (window.location.href = "/admin")}
+        onMouseEnter={playHoverSound}
         className="flex items-center mb-6 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg"
       >
         <ArrowLeft className="w-4 h-4 mr-2" /> Back
@@ -199,13 +276,14 @@ export default function AdminNews() {
               className="w-full p-2 rounded bg-gray-700 text-white"
             />
             <small className="text-gray-400 text-xs">Leave blank for no expiry</small>
-            {dateError && <p className="text-red-500 text-xs mt-2">{dateError}</p>} {/* Show error */}
+            {dateError && <p className="text-red-400 text-xs mt-1">{dateError}</p>}
           </div>
 
           {/* Buttons */}
           <div className="flex gap-2 mt-4">
             <button
               type="submit"
+              onMouseEnter={playHoverSound}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center"
             >
               {editingId ? <Save className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
@@ -214,6 +292,7 @@ export default function AdminNews() {
             {editingId && (
               <button
                 type="button"
+                onMouseEnter={playHoverSound}
                 onClick={() => {
                   setEditingId(null);
                   setFormData({ title: "", content: "", type: "", expiresAt: "" });
@@ -262,6 +341,7 @@ export default function AdminNews() {
                 <div className="flex space-x-2">
                   <button
                     title="Edit this news"
+                    onMouseEnter={playHoverSound}
                     onClick={() => {
                       setEditingId(item.id);
                       setFormData({
@@ -277,6 +357,7 @@ export default function AdminNews() {
                   </button>
                   <button
                     title="Delete this news"
+                    onMouseEnter={playHoverSound}
                     onClick={() => deleteNews.mutate(item.id)}
                     className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
                   >

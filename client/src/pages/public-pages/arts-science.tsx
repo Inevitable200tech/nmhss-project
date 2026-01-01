@@ -40,6 +40,7 @@ type EventResult = {
   totalC: number;
   totalParticipants: number;
   achievements: Achievement[];
+  slideshowImages?: { mediaId?: string; photoUrl?: string }[];
 };
 
 type ArtsScienceData = {
@@ -215,7 +216,7 @@ const renderFeaturedHero = (achievements: Achievement[], eventName: ActiveTab, s
           OUTSTANDING PERFORMANCE!
         </h2>
         <p className="text-2xl sm:text-3xl font-semibold text-gray-700 dark:text-gray-300">
-          <span className={primaryColor}>{featured.name.toUpperCase()}</span> secured Grade {featured.grade} in the <span className={primaryColor + ' font-extrabold'}>{featured.item}</span> Event!
+          <span className={primaryColor}>{String(featured.name ?? 'Unknown').toUpperCase()}</span> secured Grade {featured.grade} in the <span className={primaryColor + ' font-extrabold'}>{featured.item}</span> Event!
         </p>
         {featured.groupMembers && (
           <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 italic">
@@ -305,6 +306,43 @@ export default function ArtsSciencePage() {
   
   // NEW STATE FOR DIALOG
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+
+  // Derive a safe `eventData` and slideshow list early so hooks are not declared conditionally.
+  const eventDataSafe: EventResult = data ? data[activeTab] : {
+    year: selectedYear ?? new Date().getFullYear(),
+    totalA: 0,
+    totalB: 0,
+    totalC: 0,
+    totalParticipants: 0,
+    achievements: [],
+    slideshowImages: [],
+  };
+
+  const slideshowImages = (eventDataSafe.slideshowImages && eventDataSafe.slideshowImages.length > 0)
+    ? Array.from(new Set(
+        eventDataSafe.slideshowImages
+          .map(s => s.photoUrl ?? (s.mediaId ? `/api/media/${s.mediaId}` : undefined))
+          .filter((v): v is string => Boolean(v))
+      ))
+    : Array.from(new Set(
+        eventDataSafe.achievements
+          .map(a => a.mediaId ? `/api/media/${a.mediaId}` : a.photoUrl)
+          .filter((v): v is string => Boolean(v))
+      ));
+
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    setCurrentSlide(0);
+  }, [activeTab, selectedYear]);
+
+  useEffect(() => {
+    if (slideshowImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % slideshowImages.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [slideshowImages.length]);
 
   // Fetch available years
   useEffect(() => {
@@ -406,7 +444,7 @@ export default function ArtsSciencePage() {
   }
 
   // SUCCESS / Main Content
-  const eventData = data[activeTab];
+  const eventData = eventDataSafe;
   const { HSS, HS, UP } = groupBySchoolSection(eventData.achievements);
   const eventNameFull = activeTab === 'Kalolsavam' ? 'Kalolsavam (Arts Festival)' : 'Sasthrosavam (Science Fair)';
 
@@ -449,6 +487,31 @@ export default function ArtsSciencePage() {
 
       <main className="container mx-auto px-4 py-8 pt-24 sm:pt-32">
         <div className="max-w-7xl mx-auto space-y-20">
+
+          {/* Top Slideshow - uses achievement photos for the active tab */}
+          {slideshowImages.length > 0 && (
+            <section className="relative h-[60vh] overflow-hidden rounded-3xl mb-10">
+              <AnimatePresence initial={false}>
+                <motion.div
+                  key={currentSlide}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.2 }}
+                  className="absolute inset-0"
+                >
+                  <img src={slideshowImages[currentSlide]} alt={`${activeTab} slide`} className="w-full h-full object-cover" />
+                </motion.div>
+              </AnimatePresence>
+
+              <div className="absolute inset-0 bg-black/50 z-10" />
+
+              <div className="relative z-20 h-full flex flex-col justify-center pb-8 px-6 text-center text-white">
+                <h2 className="text-4xl sm:text-6xl font-black drop-shadow-lg">{activeTab === 'Kalolsavam' ? 'Kalolsavam Highlights' : 'Sasthrosavam Highlights'}</h2>
+                <p className="mt-3 text-lg opacity-90">Top achievements and photo highlights from {selectedYear}–{selectedYear! + 1}</p>
+              </div>
+            </section>
+          )}
 
           {/* Header */}
           <header className="text-center space-y-10">

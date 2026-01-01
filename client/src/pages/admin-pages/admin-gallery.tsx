@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, X, CheckSquare, Square, Film, Calendar } from "lucide-react";
+import { useSound } from "@/hooks/use-sound";
+import { Trash2, X, CheckSquare, Square } from "lucide-react";
 
 type MediaItem = { id: string; url: string; uploadedAt: Date };
 
 export default function AdminGalleryPage() {
   const { toast } = useToast();
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
 
   // --- Data State ---
   const [images, setImages] = useState<MediaItem[]>([]);
@@ -63,6 +65,7 @@ export default function AdminGalleryPage() {
         setVideos(data.videos || []);
       } catch {
         toast({ title: "Error", description: "Failed to load gallery", variant: "destructive" });
+        playErrorSound();
       }
     };
     loadGallery();
@@ -73,6 +76,7 @@ export default function AdminGalleryPage() {
     const files = Array.from(e.target.files || []);
     if (selectedImages.length + files.length > MAX_IMAGES) {
       toast({ title: "Limit Reached", description: `Max ${MAX_IMAGES} images allowed.`, variant: "destructive" });
+      playErrorSound();
       return;
     }
     const newPreviews = files.map(f => URL.createObjectURL(f));
@@ -85,6 +89,7 @@ export default function AdminGalleryPage() {
     const files = Array.from(e.target.files || []);
     if (selectedVideos.length + files.length > MAX_VIDEOS) {
       toast({ title: "Limit Reached", description: `Max ${MAX_VIDEOS} videos allowed.`, variant: "destructive" });
+      playErrorSound();
       return;
     }
     const newPreviews = files.map(f => URL.createObjectURL(f));
@@ -106,7 +111,7 @@ export default function AdminGalleryPage() {
       ));
       if (type === 'image') setImages(p => p.filter(img => !idsToRollback.includes(img.id)));
       else setVideos(p => p.filter(vid => !idsToRollback.includes(vid.id)));
-    } catch (err) { console.error("Rollback failed", err); }
+    } catch (err) { console.error("Rollback failed", err); toast({ title: "Error", description: "Rollback failed", variant: "destructive" });  playErrorSound();}
   };
 
 
@@ -141,6 +146,7 @@ export default function AdminGalleryPage() {
     }
 
     toast({ title: "Cancelled", description: "Cleanup complete. Upload disabled for 2s." });
+    playSuccessSound();
   };
 
   // --- Upload Logic ---
@@ -152,7 +158,7 @@ export default function AdminGalleryPage() {
     const activeRefs = type === 'image' ? activeImageXHRs : activeVideoXHRs;
     const batchTracker = type === 'image' ? currentBatchImageIds : currentBatchVideoIds;
 
-    if (!files.length || !date) return toast({ title: "Error", description: "Select files and date." });
+    if (!files.length || !date){ playErrorSound(); return toast({ title: "Error", description: "Select files and date." });}
 
     setIsUploading(true);
     setProgress(0);
@@ -196,9 +202,12 @@ export default function AdminGalleryPage() {
         });
       }
       toast({ title: "Success", description: "Upload complete." });
+      playSuccessSound();
       type === 'image' ? resetImageForm() : resetVideoForm();
     } catch (e) {
-      if (e !== "ABORTED") toast({ title: "Error", description: "Upload failed.", variant: "destructive" });
+      if (e !== "ABORTED") {toast({ title: "Error", description: "Upload failed.", variant: "destructive" });
+      playErrorSound();
+    }
       setIsUploading(false);
     }
   };
@@ -231,6 +240,11 @@ export default function AdminGalleryPage() {
     if (res.ok) {
       type === 'image' ? setImages(p => p.filter(i => i.id !== id)) : setVideos(p => p.filter(v => v.id !== id));
       toast({ title: "Deleted" });
+      playSuccessSound();
+    }
+    else {
+      toast({ title: "Error", description: "Deletion failed", variant: "destructive" });
+      playErrorSound();
     }
   };
 
@@ -244,6 +258,7 @@ export default function AdminGalleryPage() {
     type === 'image' ? setImages(p => p.filter(i => !ids.includes(i.id))) : setVideos(p => p.filter(v => !ids.includes(v.id)));
     type === 'image' ? setSelectedImageIds([]) : setSelectedVideoIds([]);
     toast({ title: "Bulk delete successful" });
+    playSuccessSound();
   };
 
   // --- Filtering ---
@@ -269,7 +284,7 @@ export default function AdminGalleryPage() {
 
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Admin Gallery</h1>
-        <Button variant="outline" onClick={() => window.location.href = "/admin"}>Dashboard</Button>
+        <Button variant="outline" onClick={() => window.location.href = "/admin"} onMouseEnter={playHoverSound}>Dashboard</Button>
       </div>
 
       <Tabs defaultValue="upload" className="w-full">
@@ -283,7 +298,7 @@ export default function AdminGalleryPage() {
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader><CardTitle>Images ({selectedImages.length}/{MAX_IMAGES})</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <Input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isImageUploading || isImageLocked} className="bg-gray-900" />
+              <Input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isImageUploading || isImageLocked} className="bg-gray-900" onMouseEnter={playHoverSound} />
               <div className="grid grid-cols-5 gap-2">
                 {imagePreviews.map((src, i) => (
                   <div key={i} className="relative aspect-square">
@@ -291,15 +306,15 @@ export default function AdminGalleryPage() {
                     <button onClick={() => {
                       setImagePreviews(p => p.filter((_, idx) => idx !== i));
                       setSelectedImages(p => p.filter((_, idx) => idx !== i));
-                    }} className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5"><X className="w-3 h-3" /></button>
+                    }} className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5" onMouseEnter={playHoverSound}><X className="w-3 h-3" /></button>
                   </div>
                 ))}
               </div>
-              <Input type="date" value={imageDate} onChange={e => setImageDate(e.target.value)} className="bg-gray-900" />
+              <Input type="date" value={imageDate} onChange={e => setImageDate(e.target.value)} className="bg-gray-900" onMouseEnter={playHoverSound} />
               {isImageUploading && <Progress value={imageUploadProgress} className="h-2" />}
               <div className="flex gap-2">
-                <Button className="flex-1" onClick={() => handleBatchUpload('image')} disabled={isImageUploading || !selectedImages.length || isImageLocked}>Upload</Button>
-                {isImageUploading && <Button variant="destructive" onClick={() => handleCancelUpload('image')}>Cancel</Button>}
+                <Button className="flex-1" onClick={() => handleBatchUpload('image')} onMouseEnter={playHoverSound} disabled={isImageUploading || !selectedImages.length || isImageLocked}>Upload</Button>
+                {isImageUploading && <Button variant="destructive" onClick={() => handleCancelUpload('image')} onMouseEnter={playHoverSound}>Cancel</Button>}
               </div>
             </CardContent>
           </Card>
@@ -308,7 +323,7 @@ export default function AdminGalleryPage() {
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader><CardTitle>Videos ({selectedVideos.length}/{MAX_VIDEOS})</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <Input type="file" multiple accept="video/*" onChange={handleVideoSelect} disabled={isVideoUploading || isVideoLocked} className="bg-gray-900" />
+              <Input type="file" multiple accept="video/*" onChange={handleVideoSelect} disabled={isVideoUploading || isVideoLocked} className="bg-gray-900" onMouseEnter={playHoverSound} />
               <div className={`grid gap-3 ${videoPreviews.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
                 {videoPreviews.map((src, i) => (
                   <div key={i} className="relative bg-black rounded-lg overflow-hidden border border-gray-700">
@@ -316,17 +331,17 @@ export default function AdminGalleryPage() {
                     <button onClick={() => {
                       setVideoPreviews(p => p.filter((_, idx) => idx !== i));
                       setSelectedVideos(p => p.filter((_, idx) => idx !== i));
-                    }} className="absolute top-2 right-2 z-10 bg-red-500 p-1 rounded-full shadow-lg hover:bg-red-600">
+                    }} className="absolute top-2 right-2 z-10 bg-red-500 p-1 rounded-full shadow-lg hover:bg-red-600" onMouseEnter={playHoverSound}>
                       <X className="w-6 h-6 text-white" />
                     </button>
                   </div>
                 ))}
               </div>
-              <Input type="date" value={videoDate} onChange={e => setVideoDate(e.target.value)} className="bg-gray-900" />
+              <Input type="date" value={videoDate} onChange={e => setVideoDate(e.target.value)} className="bg-gray-900" onMouseEnter={playHoverSound} />
               {isVideoUploading && <Progress value={videoUploadProgress} className="h-2" />}
               <div className="flex gap-2">
-                <Button className="flex-1" onClick={() => handleBatchUpload('video')} disabled={isVideoUploading || !selectedVideos.length || isVideoLocked}>Upload</Button>
-                {isVideoUploading && <Button variant="destructive" onClick={() => handleCancelUpload('video')}>Cancel</Button>}
+                <Button className="flex-1" onClick={() => handleBatchUpload('video')} onMouseEnter={playHoverSound} disabled={isVideoUploading || !selectedVideos.length || isVideoLocked}>Upload</Button>
+                {isVideoUploading && <Button variant="destructive" onClick={() => handleCancelUpload('video')} onMouseEnter={playHoverSound}>Cancel</Button>}
               </div>
             </CardContent>
           </Card>
@@ -336,11 +351,11 @@ export default function AdminGalleryPage() {
           {/* Filters */}
           <Card className="bg-gray-800 border-gray-700">
             <CardContent className="py-4 flex flex-wrap gap-4">
-              <select className="bg-gray-900 border-gray-700 p-2 rounded text-sm" value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
+              <select className="bg-gray-900 border-gray-700 p-2 rounded text-sm" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} onMouseEnter={playHoverSound}>
                 <option value="all">All Months</option>
                 {months.map((m, idx) => <option key={idx} value={idx}>{m}</option>)}
               </select>
-              <select className="bg-gray-900 border-gray-700 p-2 rounded text-sm" value={filterYear} onChange={e => setFilterYear(e.target.value)}>
+              <select className="bg-gray-900 border-gray-700 p-2 rounded text-sm" value={filterYear} onChange={e => setFilterYear(e.target.value)} onMouseEnter={playHoverSound}>
                 <option value="all">All Years</option>
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
@@ -351,18 +366,18 @@ export default function AdminGalleryPage() {
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader className="flex flex-row justify-between items-center">
               <CardTitle>Images ({filteredImages.length})</CardTitle>
-              {selectedImageIds.length > 0 && <Button variant="destructive" size="sm" onClick={() => handleBulkDelete('image')}>Delete Selected ({selectedImageIds.length})</Button>}
+              {selectedImageIds.length > 0 && <Button variant="destructive" size="sm" onClick={() => handleBulkDelete('image')} onMouseEnter={playHoverSound}>Delete Selected ({selectedImageIds.length})</Button>}
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {filteredImages.map(img => (
                 <div key={img.id} className={`relative p-1 rounded-lg border-2 transition-all ${selectedImageIds.includes(img.id) ? 'border-blue-500 bg-blue-900/20' : 'border-transparent bg-gray-900'}`}>
-                  <div className="absolute top-1 left-1 z-10 cursor-pointer" onClick={() => setSelectedImageIds(p => p.includes(img.id) ? p.filter(id => id !== img.id) : [...p, img.id])}>
+                  <div className="absolute top-1 left-1 z-10 cursor-pointer" onClick={() => setSelectedImageIds(p => p.includes(img.id) ? p.filter(id => id !== img.id) : [...p, img.id])} onMouseEnter={playHoverSound}>
                     {selectedImageIds.includes(img.id) ? <CheckSquare className="text-blue-500 w-5 h-5" /> : <Square className="text-gray-500 w-5 h-5" />}
                   </div>
                   <img src={img.url} className="h-24 w-full object-cover rounded" />
                   <div className="flex justify-between items-center mt-1 px-1">
                     <span className="text-[10px] text-gray-400">{new Date(img.uploadedAt).toLocaleDateString()}</span>
-                    <Trash2 className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-400" onClick={() => handleDelete(img.id, 'image')} />
+                    <Trash2 className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-400" onClick={() => handleDelete(img.id, 'image')} onMouseEnter={playHoverSound} />
                   </div>
                 </div>
               ))}
@@ -373,18 +388,18 @@ export default function AdminGalleryPage() {
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader className="flex flex-row justify-between items-center">
               <CardTitle>Videos ({filteredVideos.length})</CardTitle>
-              {selectedVideoIds.length > 0 && <Button variant="destructive" size="sm" onClick={() => handleBulkDelete('video')}>Delete Selected ({selectedVideoIds.length})</Button>}
+              {selectedVideoIds.length > 0 && <Button variant="destructive" size="sm" onClick={() => handleBulkDelete('video')} onMouseEnter={playHoverSound}>Delete Selected ({selectedVideoIds.length})</Button>}
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {filteredVideos.map(vid => (
                 <div key={vid.id} className={`relative p-1 rounded-lg border-2 transition-all ${selectedVideoIds.includes(vid.id) ? 'border-blue-500 bg-blue-900/20' : 'border-transparent bg-gray-900'}`}>
-                  <div className="absolute top-2 left-2 z-10 cursor-pointer" onClick={() => setSelectedVideoIds(p => p.includes(vid.id) ? p.filter(id => id !== vid.id) : [...p, vid.id])}>
+                  <div className="absolute top-2 left-2 z-10 cursor-pointer" onClick={() => setSelectedVideoIds(p => p.includes(vid.id) ? p.filter(id => id !== vid.id) : [...p, vid.id])} onMouseEnter={playHoverSound}>
                     {selectedVideoIds.includes(vid.id) ? <CheckSquare className="text-blue-500 w-6 h-6 shadow-md" /> : <Square className="text-gray-500 w-6 h-6 shadow-md" />}
                   </div>
                   <video src={vid.url} className="h-32 w-full object-cover rounded" controls playsInline muted />
                   <div className="flex justify-between items-center mt-2 px-1">
                     <span className="text-xs text-gray-400">{new Date(vid.uploadedAt).toLocaleDateString()}</span>
-                    <Trash2 className="w-5 h-5 text-red-500 cursor-pointer hover:text-red-400" onClick={() => handleDelete(vid.id, 'video')} />
+                    <Trash2 className="w-5 h-5 text-red-500 cursor-pointer hover:text-red-400" onClick={() => handleDelete(vid.id, 'video')} onMouseEnter={playHoverSound} />
                   </div>
                 </div>
               ))}

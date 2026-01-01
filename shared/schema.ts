@@ -660,6 +660,7 @@ export interface ArtsScienceEventResult {
   totalC: number;
   totalParticipants: number;
   achievements: Achievement[];
+  slideshowImages?: SlideshowImage[];
 }
 
 export interface ArtsScienceResultDocument extends Document {
@@ -693,6 +694,12 @@ const ArtsScienceEventResultSchema = new Schema<ArtsScienceEventResult>({
   totalC: { type: Number, required: true, min: 0 },
   totalParticipants: { type: Number, required: true, min: 0 },
   achievements: [AchievementSchema],
+  slideshowImages: [
+    {
+      mediaId: { type: String },
+      photoUrl: { type: String },
+    },
+  ],
 }, { _id: false }); // Do not create a separate _id for the embedded schema
 
 
@@ -723,6 +730,14 @@ export const ArtsScienceEventResultZodSchema = z.object({
   totalC: z.number().int().min(0),
   totalParticipants: z.number().int().min(0),
   achievements: z.array(AchievementZodSchema),
+  slideshowImages: z
+    .array(
+      z.object({
+        mediaId: z.string().optional(),
+        photoUrl: z.string().optional(),
+      })
+    )
+    .optional(),
 });
 
 export const insertOrUpdateArtsScienceResultSchema = z.object({

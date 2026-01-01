@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Loader2, Plus, Trash2, Save, Upload, X, AlertTriangle, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,7 @@ type AcademicResult = {
 
 export default function AdminAcademicResults() {
   const { toast } = useToast();
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
   const [years, setYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [customYear, setCustomYear] = useState("");
@@ -77,6 +79,7 @@ export default function AdminAcademicResults() {
       setHasUnsavedChanges(false);
     } catch {
       toast({ title: "Not Found", description: `No data for ${year}`, variant: "destructive" });
+      playHoverSound();
       setData(null);
     } finally {
       setIsLoading(false);
@@ -137,7 +140,7 @@ export default function AdminAcademicResults() {
       await fetch(`/api/media/${student.mediaId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
-      }).catch(() => { });
+      }).catch(() => { playErrorSound(); toast({ title: "Error", description: "Failed to delete old image", variant: "destructive" }); });
     }
     setData({
       ...data,
@@ -157,6 +160,7 @@ export default function AdminAcademicResults() {
     });
     setHasUnsavedChanges(true);
     toast({ title: "Image Selected", description: "Image ready for upload. Click Save to upload permanently." });
+    playSuccessSound();
   };
 
   // Removed: onCropComplete
@@ -201,6 +205,8 @@ export default function AdminAcademicResults() {
 
           if (!res.ok) {
             const err = await res.text();
+            toast({ title: "Upload Failed", description: `Failed to upload image for ${student.name}`, variant: "destructive" }); 
+            playErrorSound(); 
             throw new Error(`Upload failed for ${student.name}: ${err}`);
           }
 
@@ -227,6 +233,7 @@ export default function AdminAcademicResults() {
         // Update state once
         setData(currentData);
         toast({ title: "Images uploaded!", description: "Saving to database..." });
+        playHoverSound();
       }
 
       // STEP 2: Save to DB — now 100% guaranteed to have photoUrl
@@ -246,7 +253,11 @@ export default function AdminAcademicResults() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Save failed");
+      if (!res.ok) {
+        toast({ title: "Save Failed", description: "Failed to save academic results", variant: "destructive" });  
+        playErrorSound();
+        throw new Error("Save failed");
+      }
 
       toast({ title: "Success!", description: `Academic results for ${selectedYear} saved with photos!` });
       setHasUnsavedChanges(false);
@@ -257,11 +268,13 @@ export default function AdminAcademicResults() {
           .then(setYears)
       }
     } catch (err: any) {
+
       toast({
         title: "Failed",
         description: err.message,
         variant: "destructive"
       });
+      playErrorSound();
     } finally {
       setIsSaving(false);
     }
@@ -284,7 +297,7 @@ export default function AdminAcademicResults() {
             <div>
               <Label className="text-base">Select Existing Year</Label>
               <Select onValueChange={(v) => loadYear(Number(v))}>
-                <SelectTrigger><SelectValue placeholder="Choose a year" /></SelectTrigger>
+                <SelectTrigger onMouseEnter={playHoverSound}><SelectValue placeholder="Choose a year" /></SelectTrigger>
                 <SelectContent>
                   {years.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
                 </SelectContent>
@@ -295,6 +308,7 @@ export default function AdminAcademicResults() {
                 placeholder="e.g. 2026"
                 value={customYear}
                 onChange={e => setCustomYear(e.target.value.replace(/\D/g, ""))}
+                onMouseEnter={playHoverSound}
               />
               <Button
                 onClick={() => {
@@ -304,6 +318,7 @@ export default function AdminAcademicResults() {
                     setCustomYear("");
                   }
                 }}
+                onMouseEnter={playHoverSound}
                 disabled={!customYear}
               >
                 Create New Year
@@ -328,6 +343,7 @@ export default function AdminAcademicResults() {
               <Button
                 variant="outline"
                 size="lg"
+                onMouseEnter={playHoverSound}
                 onClick={() => window.location.href = "/admin"}
                 className="w-full sm:w-auto justify-center sm:justify-start gap-2 font-medium"
               >
@@ -343,6 +359,7 @@ export default function AdminAcademicResults() {
               {/* Save Button — Right aligned */}
               <Button
                 onClick={saveAll}
+                onMouseEnter={playHoverSound}
                 disabled={isSaving || !hasUnsavedChanges}
                 size="lg"
                 className="w-full sm:w-auto gap-3 font-semibold shadow-lg order-last"
@@ -400,7 +417,7 @@ export default function AdminAcademicResults() {
                   <div className="w-3 h-3 bg-indigo-600 rounded-full"></div>
                   HS Top Achievers
                 </span>
-                <Button size="sm" onClick={() => addStudent("HS")} variant="outline" className="w-full sm:w-auto">
+                <Button size="sm" onClick={() => addStudent("HS")} onMouseEnter={playHoverSound} variant="outline" className="w-full sm:w-auto">
                   <Plus className="h-4 w-4" /> Add Student
                 </Button>
               </CardTitle>
@@ -418,6 +435,7 @@ export default function AdminAcademicResults() {
                     updateStudent={updateStudent}
                     removeStudent={removeStudent}
                     handleImageUpload={handleImageUpload} // Changed prop
+                    playHoverSound={playHoverSound}
                   />
                 ))
               )}
@@ -432,7 +450,7 @@ export default function AdminAcademicResults() {
                   <div className="w-3 h-3 bg-emerald-600 rounded-full"></div>
                   HSS Top Achievers
                 </span>
-                <Button size="sm" onClick={() => addStudent("HSS")} variant="outline" className="w-full sm:w-auto">
+                <Button size="sm" onClick={() => addStudent("HSS")} onMouseEnter={playHoverSound} variant="outline" className="w-full sm:w-auto">
                   <Plus className="h-4 w-4" /> Add Student
                 </Button>
               </CardTitle>
@@ -450,6 +468,7 @@ export default function AdminAcademicResults() {
                     updateStudent={updateStudent}
                     removeStudent={removeStudent}
                     handleImageUpload={handleImageUpload} // Changed prop
+                    playHoverSound={playHoverSound}
                   />
                 ))
               )}
@@ -463,13 +482,14 @@ export default function AdminAcademicResults() {
 }
 
 // Updated StudentRow signature and logic to use direct file upload
-function StudentRow({ student, type, index, updateStudent, removeStudent, handleImageUpload }: {
+function StudentRow({ student, type, index, updateStudent, removeStudent, handleImageUpload, playHoverSound }: {
   student: TopStudent,
   type: "HS" | "HSS",
   index: number,
   updateStudent: (type: "HS" | "HSS", index: number, updates: Partial<TopStudent>) => void,
   removeStudent: (type: "HS" | "HSS", index: number) => void,
-  handleImageUpload: (file: File, type: "HS" | "HSS", index: number) => void
+  handleImageUpload: (file: File, type: "HS" | "HSS", index: number) => void,
+  playHoverSound: () => void
 }) {
   return (
     <div className="p-5 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
@@ -549,6 +569,7 @@ function StudentRow({ student, type, index, updateStudent, removeStudent, handle
           <Button
             variant="destructive"
             size="icon"
+            onMouseEnter={playHoverSound}
             onClick={() => removeStudent(type, index)}
             className="w-full"
           >

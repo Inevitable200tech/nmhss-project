@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { insertOrUpdateSportsResultSchema, type InsertOrUpdateSportsResult } from '@shared/schema';
 import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 
 const getPhotoUrl = (mediaId?: string) => mediaId ? `/api/media/${mediaId}` : undefined;
 type ChampionLevel = 'HSS' | 'HS' | 'State' | 'District';
@@ -28,6 +29,7 @@ export default function AdminSportsChampions() {
   const [years, setYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
   const [openYearDialog, setOpenYearDialog] = useState(false);
   const [openChampionDialog, setOpenChampionDialog] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -137,7 +139,9 @@ export default function AdminSportsChampions() {
   }, [selectedYear, reset]);
 
   const openChampion = (index?: number) => {
+    
     if (index === undefined && watchedEvents.length === 0) {
+      playErrorSound();
       return toast({ title: "Error", description: "Please add at least one event before adding champions.", variant: "destructive" });
     }
 
@@ -223,6 +227,8 @@ export default function AdminSportsChampions() {
 
       if (!res.ok) {
         const errorData = await res.json();
+        toast({ title: "Error", description: errorData.error || 'Save failed', variant: "destructive" });
+        playErrorSound();
         throw new Error(errorData.error || 'Failed to save');
       }
 
@@ -230,6 +236,7 @@ export default function AdminSportsChampions() {
         title: "Saved successfully",
         description: "Record saved successfully.",
       });
+      playSuccessSound();
 
       // Re-fetch and reload into fixed slots
       await fetch(`/api/sports-results/${selectedYear}`)
@@ -254,14 +261,15 @@ export default function AdminSportsChampions() {
         description: error.message || 'Save failed',
         variant: "destructive"
       });
+      playErrorSound();
     } finally {
       setIsLoading(false);
     }
   };
 
   const saveChampion = async () => {
-    if (!tempChampion.name.trim()) return toast({ title: "Error", description: "Name required", variant: "destructive" });
-    if (!tempChampion.event) return toast({ title: "Error", description: "Event required", variant: "destructive" });
+    if (!tempChampion.name.trim()){ playErrorSound(); return toast({ title: "Error", description: "Name required", variant: "destructive" });}
+    if (!tempChampion.event) { playErrorSound(); return toast({ title: "Error", description: "Event required", variant: "destructive" }); }
 
     let mediaId = tempChampion.mediaId;
     let newPhotoUrl = getPhotoUrl(mediaId);
@@ -283,6 +291,7 @@ export default function AdminSportsChampions() {
       } catch (e: any) {
         setIsLoading(false);
         toast({ title: "Error", description: e.message || 'Image upload failed', variant: "destructive" });
+        playErrorSound();
         return;
       }
 
@@ -327,6 +336,7 @@ export default function AdminSportsChampions() {
       title: "Champion saved locally. Save all at top.",
       description: "Champion saved locally. Save all at top."
     });
+    playSuccessSound();
     const currentFormData = getValues();
     currentFormData.champions = newChampionsArray;
     reset(currentFormData, { keepDirty: true });
@@ -341,6 +351,8 @@ export default function AdminSportsChampions() {
       });
     } catch (e) {
       console.error('Media deletion failed:', e);
+      toast({ title: "Error", description: "Failed to delete media.", variant: "destructive" });
+      playErrorSound();
     }
   };
 
@@ -370,11 +382,13 @@ export default function AdminSportsChampions() {
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed');
       toast({ title: "Success", description: `Year ${selectedYear} deleted` });
+      playSuccessSound();
       setYears(prev => prev.filter(y => y !== selectedYear));
       setSelectedYear(null);
       reset();
     } catch (error: any) {
       toast({ title: "Error", description: error.message || 'Deletion failed', variant: "destructive" });
+      playErrorSound();
     } finally {
       setIsDeletingYear(false);
     }
@@ -424,11 +438,14 @@ export default function AdminSportsChampions() {
         headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` },
       });
       toast({ title: "Deleted", description: "Image permanently removed from storage." });
+      playSuccessSound();
     } catch (err) {
       toast({ title: "Error", description: "Failed to delete image from storage.", variant: "destructive" });
+      playErrorSound();
     }
   } else {
     toast({ title: "Removed", description: "Image cleared. Click 'Save All' to confirm changes." });
+    playSuccessSound();
   }
 };
 
@@ -452,22 +469,22 @@ return (
 
           {/* Action Buttons - Stacked on mobile, horizontal on larger screens */}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={handleGoToDashboard}>
+            <Button size="sm" variant="outline" onClick={handleGoToDashboard} onMouseEnter={playHoverSound}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Dashboard
             </Button>
             <Select value={selectedYear?.toString()} onValueChange={v => setSelectedYear(v ? Number(v) : null)}>
-              <SelectTrigger className="w-40"><SelectValue placeholder="Year" /></SelectTrigger>
+              <SelectTrigger className="w-40" onMouseEnter={playHoverSound}><SelectValue placeholder="Year" /></SelectTrigger>
               <SelectContent>{years.map(y => <SelectItem key={y} value={String(y)}>{y}–{y + 1}</SelectItem>)}</SelectContent>
             </Select>
-            <Button size="sm" variant="outline" onClick={() => setOpenYearDialog(true)}>
+            <Button size="sm" variant="outline" onClick={() => setOpenYearDialog(true)} onMouseEnter={playHoverSound}>
               <CalendarPlus className="w-4 h-4 mr-1" /> New Year
             </Button>
             {selectedYear && (
-              <Button size="sm" variant="destructive" onClick={handleDeleteYear} disabled={isDeletingYear}>
+              <Button size="sm" variant="destructive" onClick={handleDeleteYear} disabled={isDeletingYear} onMouseEnter={playHoverSound}>
                 {isDeletingYear ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />} Delete Year
               </Button>
             )}
-            <Button size="sm" onClick={handleSubmit(onMainFormSubmit)} disabled={isLoading || !selectedYear}>
+            <Button size="sm" onClick={handleSubmit(onMainFormSubmit)} disabled={isLoading || !selectedYear} onMouseEnter={playHoverSound}>
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />} Save All
             </Button>
           </div>
@@ -477,7 +494,7 @@ return (
       {!selectedYear ? (
         <Card className="text-center py-16">
           <CardTitle>Select or create a year to begin editing sports results.</CardTitle>
-          <Button className="mt-6" onClick={() => setOpenYearDialog(true)}><Plus className="w-5 h-5 mr-2" /> New Year</Button>
+          <Button className="mt-6" onClick={() => setOpenYearDialog(true)} onMouseEnter={playHoverSound}><Plus className="w-5 h-5 mr-2" /> New Year</Button>
         </Card>
       ) : (
         <>
@@ -490,7 +507,7 @@ return (
                   <div key={i} className="space-y-2">
                     <Label>Image {i + 1}</Label>
                     {!slideshowPreviews[i] ? (
-                      <label className="block border-2 border-dashed border-orange-300 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500 h-40 flex items-center justify-center">
+                      <label className="block border-2 border-dashed border-orange-300 rounded-xl p-4 text-center cursor-pointer hover:border-orange-500 h-40 flex items-center justify-center" onMouseEnter={playHoverSound}>
                         <Upload className="w-8 h-8 text-orange-400" />
                         <input type="file" accept="image/*" className="hidden" onChange={e => handleSlideshowImageChange(i, e.target.files?.[0] || null)} />
                       </label>
@@ -503,6 +520,7 @@ return (
                           className="absolute top-2 right-2"
                           onClick={() => removeSlideshowImage(i)}
                           disabled={isLoading}
+                          onMouseEnter={playHoverSound}
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -555,6 +573,7 @@ return (
                       disabled={watchedChampions.length === 0}
                       onClick={() => toast({ title: "Success", description: "Use the 'All Champions' section below to set a champion as 'Top Champion'." })}
                       variant="secondary"
+                      onMouseEnter={playHoverSound}
                     >
                       {watchedChampions.length === 0 ? 'Add Champions First' : 'See Champions List'}
                     </Button>
@@ -591,7 +610,7 @@ return (
           <Card>
             <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle>Events</CardTitle>
-              <Button size="sm" onClick={() => addEvent({ name: '', category: 'Individual' })}>
+              <Button size="sm" onClick={() => addEvent({ name: '', category: 'Individual' })} onMouseEnter={playHoverSound}>
                 <Plus className="w-4 h-4 mr-1" /> Add Event
               </Button>
             </CardHeader>
@@ -601,13 +620,13 @@ return (
                 <div key={e.id} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                   <Input {...register(`events.${i}.name`)} placeholder="Event name (e.g., 100m Sprint, Badminton)" className="flex-1 focus:border-orange-500" />
                   <Select value={watch(`events.${i}.category`)} onValueChange={v => setValue(`events.${i}.category`, v as any)}>
-                    <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full sm:w-40" onMouseEnter={playHoverSound}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Individual">Individual</SelectItem>
                       <SelectItem value="Team">Team</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 self-end sm:self-center"><X className="w-4 h-4" onClick={() => removeEvent(i)} /></Button>
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 self-end sm:self-center" onClick={() => removeEvent(i)} onMouseEnter={playHoverSound}><X className="w-4 h-4" /></Button>
                 </div>
               ))}
             </CardContent>
@@ -617,7 +636,7 @@ return (
           <Card>
             <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <CardTitle>All Champions ({champions.length})</CardTitle>
-              <Button size="sm" onClick={() => openChampion()} disabled={watchedEvents.length === 0}>
+              <Button size="sm" onClick={() => openChampion()} disabled={watchedEvents.length === 0} onMouseEnter={playHoverSound}>
                 <Plus className="w-4 h-4 mr-1" /> Add
               </Button>
             </CardHeader>
@@ -652,8 +671,8 @@ return (
                           {c.teamMembers?.length > 0 && <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 truncate">Team: {c.teamMembers.join(', ')}</p>}
                         </div>
                         <div className="flex gap-2 self-end sm:self-center">
-                          <Button size="icon" variant="outline" className='w-10 h-10' onClick={() => openChampion(i)}><Edit3 className="w-4 h-4" /></Button>
-                          <Button size="icon" variant="destructive" className='w-10 h-10' onClick={() => handleRemoveChampion(i)}><Trash2 className="w-4 h-4" /></Button>
+                          <Button size="icon" variant="outline" className='w-10 h-10' onClick={() => openChampion(i)} onMouseEnter={playHoverSound}><Edit3 className="w-4 h-4" /></Button>
+                          <Button size="icon" variant="destructive" className='w-10 h-10' onClick={() => handleRemoveChampion(i)} onMouseEnter={playHoverSound}><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       </div>
                     </div>
@@ -672,7 +691,7 @@ return (
           <Label htmlFor="newYear">Enter Academic Year Start (e.g., 2025 for 2025–2026)</Label>
           <Input id="newYear" type="number" value={newYear} onChange={e => setNewYear(e.target.value)} placeholder="2025" className='focus:border-orange-500' />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenYearDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setOpenYearDialog(false)} onMouseEnter={playHoverSound}>Cancel</Button>
             <Button onClick={() => {
               const y = Number(newYear);
               if (y >= 2000 && y <= 2100 && !years.includes(y)) {
@@ -684,7 +703,7 @@ return (
               } else {
                 toast({ title: "Error", description: years.includes(y) ? 'Year already exists.' : 'Invalid year (must be 2000-2100).', variant: "destructive" });
               }
-            }}>Create</Button>
+            }} onMouseEnter={playHoverSound}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -702,7 +721,7 @@ return (
             <div className="space-y-3">
               <Label>Photo (Raw Upload)</Label>
               {!imagePreviewUrl ? (
-                <label className="block mt-1 border-2 border-dashed border-orange-300 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 h-48 flex flex-col justify-center items-center">
+                <label className="block mt-1 border-2 border-dashed border-orange-300 rounded-xl p-6 text-center cursor-pointer hover:border-orange-500 h-48 flex flex-col justify-center items-center" onMouseEnter={playHoverSound}>
                   <Upload className="w-12 h-12 mx-auto text-orange-400" />
                   <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Tap to upload (1:1 aspect ratio recommended)</p>
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
@@ -715,7 +734,7 @@ return (
                   <Button size="sm" variant="outline" className='w-full' onClick={() => {
                     if (imagePreviewUrl.startsWith('blob:')) URL.revokeObjectURL(imagePreviewUrl);
                     setImagePreviewUrl(null); setImageFile(null);
-                  }}>
+                  }} onMouseEnter={playHoverSound}>
                     <X className="w-4 h-4 mr-2" /> Remove/Change Photo
                   </Button>
                 </div>
@@ -732,7 +751,7 @@ return (
               <div>
                 <Label htmlFor="event">Event</Label>
                 <Select value={tempChampion.event} onValueChange={v => setTempChampion(p => ({ ...p, event: v }))}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Select Event" /></SelectTrigger>
+                  <SelectTrigger className="w-full" onMouseEnter={playHoverSound}><SelectValue placeholder="Select Event" /></SelectTrigger>
                   <SelectContent>{watchedEvents.map(e => <SelectItem key={e.name} value={e.name}>{e.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -741,7 +760,7 @@ return (
                 <div>
                   <Label htmlFor="position">Position</Label>
                   <Select value={String(tempChampion.position)} onValueChange={v => setTempChampion(p => ({ ...p, position: Number(v) as 1 | 2 | 3 }))}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full" onMouseEnter={playHoverSound}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">1st (Gold)</SelectItem>
                       <SelectItem value="2">2nd (Silver)</SelectItem>
@@ -752,7 +771,7 @@ return (
                 <div>
                   <Label htmlFor="level">Level</Label>
                   <Select value={tempChampion.level} onValueChange={v => setTempChampion(p => ({ ...p, level: v as ChampionLevel }))}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full" onMouseEnter={playHoverSound}><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="HSS">HSS</SelectItem>
                       <SelectItem value="HS">HS</SelectItem>
@@ -778,8 +797,8 @@ return (
           </div>
 
           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
-            <Button variant="outline" onClick={() => setOpenChampionDialog(false)} className="w-full sm:w-auto">Cancel</Button>
-            <Button onClick={saveChampion} disabled={isLoading || !tempChampion.name.trim() || !tempChampion.event} className="w-full sm:w-auto">
+            <Button variant="outline" onClick={() => setOpenChampionDialog(false)} className="w-full sm:w-auto" onMouseEnter={playHoverSound}>Cancel</Button>
+            <Button onClick={saveChampion} disabled={isLoading || !tempChampion.name.trim() || !tempChampion.event} className="w-full sm:w-auto" onMouseEnter={playHoverSound}>
               {editingIndex !== null ? 'Update Champion' : 'Add Champion'}
             </Button>
           </DialogFooter>

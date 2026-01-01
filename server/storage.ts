@@ -789,14 +789,18 @@ private mapArtsScienceResult(doc: any): ArtsScienceResultDocument {
             photoUrl: a.photoUrl,
             featured: a.featured,
         })),
+    slideshowImages: (event.slideshowImages || []).map((s: any) => ({
+      mediaId: s.mediaId,
+      photoUrl: s.photoUrl,
+    })),
     });
 
     return {
         ...doc,
         id: doc._id.toString(),
         lastUpdated: new Date(doc.lastUpdated),
-        kalolsavam: mapAchievements(doc.kalolsavam),
-        sasthrosavam: mapAchievements(doc.sasthrosavam),
+      kalolsavam: mapAchievements(doc.kalolsavam),
+      sasthrosavam: mapAchievements(doc.sasthrosavam),
     } as unknown as ArtsScienceResultDocument;
 }
 

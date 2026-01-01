@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 
 type Grade = "A" | "B" | "C";
 type SchoolSection = "HSS" | "HS" | "UP";
@@ -42,6 +43,7 @@ interface EventResult {
   totalC: number;
   totalParticipants: number;
   achievements: Achievement[];
+  slideshowImages?: { mediaId?: string; photoUrl?: string }[];
 }
 
 interface ArtsScienceResult {
@@ -55,6 +57,8 @@ const SectionOptions: SchoolSection[] = ["HSS", "HS", "UP"];
 const LevelOptions: CompetitionLevel[] = ["State", "District", "Sub-District"];
 
 async function uploadMediaFile(file: File): Promise<{ mediaId: string; photoUrl: string }> {
+    const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
+  
   const token = localStorage.getItem("adminToken");
   if (!token) throw new Error("Authentication required");
 
@@ -68,7 +72,7 @@ async function uploadMediaFile(file: File): Promise<{ mediaId: string; photoUrl:
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Upload failed" }));
+    const err = await res.json().catch(() => toast({ title: "Upload Failed", variant: "destructive" }));
     throw new Error(err.message || "Failed to upload image");
   }
 
@@ -87,6 +91,7 @@ export default function AdminArtsScience() {
   const [isAddingNew, setIsAddingNew] = useState(false);
   // NEW STATE: Tracks if the initial years API call has completed
   const [hasYearsLoaded, setHasYearsLoaded] = useState(false);
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
 
   // Reference to hold the LATEST data for use in saveYear
   const dataRef = useRef<ArtsScienceResult | null>(null);
@@ -124,6 +129,9 @@ export default function AdminArtsScience() {
 
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Ref to track drag source index for slideshow DnD
+  const dragSrcIndex = useRef<number | null>(null);
+
   // Keep dataRef synchronized with data state
   useEffect(() => {
     dataRef.current = data;
@@ -147,7 +155,7 @@ export default function AdminArtsScience() {
     const token = localStorage.getItem("adminToken");
     if (!token) {
       setIsSaving(false);
-      return toast({ title: "Login required", variant: "destructive" });
+      return( toast({ title: "Login required", variant: "destructive" }));
     }
 
     try {
@@ -158,9 +166,18 @@ export default function AdminArtsScience() {
 
       const body = {
         year: selectedYear,
-        kalolsavam: { ...recalc(currentData.kalolsavam.achievements), achievements: currentData.kalolsavam.achievements.map(strip) },
-        sasthrosavam: { ...recalc(currentData.sasthrosavam.achievements), achievements: currentData.sasthrosavam.achievements.map(strip) },
+        kalolsavam: {
+          ...recalc(currentData.kalolsavam.achievements),
+          achievements: currentData.kalolsavam.achievements.map(strip),
+          slideshowImages: currentData.kalolsavam.slideshowImages || [],
+        },
+        sasthrosavam: {
+          ...recalc(currentData.sasthrosavam.achievements),
+          achievements: currentData.sasthrosavam.achievements.map(strip),
+          slideshowImages: currentData.sasthrosavam.slideshowImages || [],
+        },
       };
+      console.log('[AdminArtsScience] Saving with slideshow images - Kalolsavam:', currentData.kalolsavam.slideshowImages?.length || 0, 'Sasthrosavam:', currentData.sasthrosavam.slideshowImages?.length || 0);
 
       const res = await fetch("/api/arts-science-results", {
         method: "POST",
@@ -170,8 +187,10 @@ export default function AdminArtsScience() {
 
       if (!res.ok) throw new Error();
       toast({ title: "Changes saved successfully" });
+      playSuccessSound();
     } catch {
       toast({ title: "Save failed", variant: "destructive" });
+      playErrorSound();
     } finally {
       setIsSaving(false);
     }
@@ -186,11 +205,96 @@ export default function AdminArtsScience() {
     }, 800);
   }, [saveYear]); // triggerAutoSave depends on saveYear
 
+  // ---- Slideshow management helpers ----
+  const handleSlideUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      return toast({ title: "Only images allowed", variant: "destructive" });
+    }
+
+    try {
+      toast({ title: "Uploading slide..." });
+      const { mediaId, photoUrl } = await uploadMediaFile(file);
+
+      if (!data) return;
+      const ev = data[currentEventKey];
+      const existing = ev.slideshowImages || [];
+      const updated = [...existing, { mediaId, photoUrl }];
+
+      // Persist in state and update dataRef synchronously
+      const newData = { ...data, [currentEventKey]: { ...data[currentEventKey], slideshowImages: updated } };
+      setData(newData);
+      dataRef.current = newData;
+      // Delay auto-save to ensure state sync
+      setTimeout(() => triggerAutoSave(), 100);
+      toast({ title: "Slide uploaded" });
+      playSuccessSound();
+    } catch (err: any) {
+      toast({ title: err.message || "Upload failed", variant: "destructive" });
+      playErrorSound();
+    }
+  };
+
+  const removeSlide = async (index: number) => {
+    if (!data) return;
+    const ev = data[currentEventKey];
+    const slide = ev.slideshowImages?.[index];
+
+    // Attempt to delete media from server/R2 if we have a mediaId
+    const token = localStorage.getItem("adminToken");
+    if (slide?.mediaId && token) {
+      try {
+        const res = await fetch(`/api/media/${slide.mediaId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          toast({ title: "Warning: Could not delete slide from server", variant: "destructive" });
+          playErrorSound();
+        }
+      } catch {
+        toast({ title: "Warning: Could not delete slide from server", variant: "destructive" });
+        playErrorSound();
+      }
+    }
+
+    const updated = (ev.slideshowImages || []).filter((_, i) => i !== index);
+    setData(prev => prev ? ({ ...prev, [currentEventKey]: { ...prev[currentEventKey], slideshowImages: updated } }) : prev);
+    triggerAutoSave();
+  };
+
+  const onDragStartSlide = (e: React.DragEvent, index: number) => {
+    dragSrcIndex.current = index;
+    try { e.dataTransfer.effectAllowed = 'move'; } catch {}
+  };
+
+  const onDragOverSlide = (e: React.DragEvent) => {
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect = 'move'; } catch {}
+  };
+
+  const onDropSlide = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    const src = dragSrcIndex.current;
+    if (src === null || src === undefined) return;
+    if (!data) return;
+    const ev = data[currentEventKey];
+    const arr = [...(ev.slideshowImages || [])];
+    const [item] = arr.splice(src, 1);
+    arr.splice(index, 0, item);
+    setData(prev => prev ? ({ ...prev, [currentEventKey]: { ...prev[currentEventKey], slideshowImages: arr } }) : prev);
+    dragSrcIndex.current = null;
+    triggerAutoSave();
+  };
+
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, index?: number) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast({ title: "Invalid file type", variant: "destructive" });
+      playErrorSound();
       return;
     }
 
@@ -208,14 +312,17 @@ export default function AdminArtsScience() {
         setNewAchievement(prev => ({ ...prev, mediaId, photoUrl, _tempPreview: preview }));
       }
       toast({ title: "Image uploaded successfully" });
+      playSuccessSound();
     } catch (err: any) {
       toast({ title: err.message || "Upload failed", variant: "destructive" });
+      playErrorSound();
     }
   };
 
   const addAchievement = () => {
     if (!newAchievement.name?.trim() || !newAchievement.item?.trim()) {
       toast({ title: "Main participant name and Item are required", variant: "destructive" });
+      playErrorSound();
       return;
     }
 
@@ -256,6 +363,7 @@ export default function AdminArtsScience() {
 
     setIsAddingNew(false);
     toast({ title: "Achievement added successfully" });
+    playSuccessSound();
 
     // Auto-save shortly after
     triggerAutoSave();
@@ -268,6 +376,7 @@ export default function AdminArtsScience() {
     const token = localStorage.getItem("adminToken");
     if (!token) {
       toast({ title: "Login required", variant: "destructive" });
+      playErrorSound();
       return;
     }
 
@@ -286,13 +395,14 @@ export default function AdminArtsScience() {
           title: "Warning: Could not delete image from server (achievement still removed)",
           variant: "destructive",
         });
+        playErrorSound();
       }
     }
 
     // Always remove from local state immediately
     updateData(currentEvent!.achievements.filter((_, idx) => idx !== i));
     toast({ title: "Achievement deleted" });
-
+    playSuccessSound();
     // Auto-save changes
     triggerAutoSave();
   };
@@ -331,8 +441,8 @@ export default function AdminArtsScience() {
       const res = await fetch(`/api/arts-science-results/${year}`);
       if (res.status === 404) {
         setData({
-          year, kalolsavam: { totalA: 0, totalB: 0, totalC: 0, totalParticipants: 0, achievements: [] },
-          sasthrosavam: { totalA: 0, totalB: 0, totalC: 0, totalParticipants: 0, achievements: [] }
+          year, kalolsavam: { totalA: 0, totalB: 0, totalC: 0, totalParticipants: 0, achievements: [], slideshowImages: [] },
+          sasthrosavam: { totalA: 0, totalB: 0, totalC: 0, totalParticipants: 0, achievements: [], slideshowImages: [] }
         });
         return;
       }
@@ -341,6 +451,7 @@ export default function AdminArtsScience() {
       setData(d);
     } catch {
       toast({ title: "Failed to load year data", variant: "destructive" });
+      playErrorSound();
     } finally {
       setIsLoading(false);
     }
@@ -380,8 +491,10 @@ export default function AdminArtsScience() {
       });
       setData(null);
       toast({ title: "Year deleted successfully" });
+      playSuccessSound();
     } catch {
       toast({ title: "Delete failed", variant: "destructive" });
+      playErrorSound();
     }
   };
 
@@ -412,7 +525,7 @@ export default function AdminArtsScience() {
         {/* HEADER: Added Back to Dashboard Button & Mobile-Friendly Text Size */}
         <div className="bg-gradient-to-r from-cyan-900 to-blue-900 p-6 sm:p-8 border-b border-gray-800 flex justify-between items-center">
           <h1 className="text-3xl sm:text-4xl font-bold">Arts & Science Results Admin</h1>
-          <a href="/admin" className="px-3 sm:px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center gap-2 text-sm sm:text-base font-medium transition-colors">
+          <a href="/admin" onMouseEnter={playHoverSound} className="px-3 sm:px-4 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center gap-2 text-sm sm:text-base font-medium transition-colors">
             <Home className="w-5 h-5" />
             <span className="hidden sm:inline">Back To Dashboard</span>
             <span className="sm:hidden">Dashboard</span>
@@ -435,7 +548,7 @@ export default function AdminArtsScience() {
                 <p className="text-xl text-gray-300 max-w-2xl mx-auto">
                     The database contains no records for academic years. You must create the first year before you can enter any Kalolsavam or Sasthrosavam achievements.
                 </p>
-                <button onClick={handleAddNewYear}
+                <button onClick={handleAddNewYear} onMouseEnter={playHoverSound}
                     className="px-8 py-4 bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center justify-center gap-3 text-lg font-semibold mx-auto transition-colors shadow-lg hover:shadow-cyan-500/50">
                     <Plus className="w-6 h-6" /> Create First Academic Year
                 </button>
@@ -449,12 +562,12 @@ export default function AdminArtsScience() {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
                   <span className="text-base sm:text-lg whitespace-nowrap">Academic Year:</span>
-                  <select value={selectedYear || ""} onChange={e => setSelectedYear(Number(e.target.value))}
+                  <select value={selectedYear || ""} onChange={e => setSelectedYear(Number(e.target.value))} onMouseEnter={playHoverSound}
                     className="flex-1 min-w-0 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-sm sm:text-base">
                     {years.map(y => <option key={y} value={y}>{y}–{y + 1}</option>)}
                   </select>
                 </div>
-                <button onClick={handleAddNewYear}
+                <button onClick={handleAddNewYear} onMouseEnter={playHoverSound}
                   className="w-full sm:w-auto px-5 py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center justify-center sm:justify-start gap-2 text-sm sm:text-base">
                   <Plus className="w-5 h-5" /> Add New Year
                 </button>
@@ -467,7 +580,7 @@ export default function AdminArtsScience() {
                   {/* TABS */}
                   <div className="flex border-b border-gray-800 mb-8 overflow-x-auto">
                     {["Kalolsavam", "Sasthrosavam"].map(t => (
-                      <button key={t} onClick={() => setActiveTab(t as any)}
+                      <button key={t} onClick={() => setActiveTab(t as any)} onMouseEnter={playHoverSound}
                         className={`px-4 sm:px-8 py-4 text-sm sm:text-lg font-semibold whitespace-nowrap ${activeTab === t ? "text-cyan-400 border-b-2 border-cyan-400" : "text-gray-400 hover:text-gray-200"}`}>
                         {t}
                       </button>
@@ -490,8 +603,44 @@ export default function AdminArtsScience() {
                     </div>
                   )}
 
+                  {/* Slideshow manager for the active event */}
+                  {currentEvent && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-3">Slideshow Images ({activeTab})</h3>
+                      <div className="flex items-center gap-3 mb-3">
+                        <label onMouseEnter={playHoverSound} className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600 text-sm">
+                          <Upload className="w-5 h-5" /> <span>Upload Slide</span>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleSlideUpload} />
+                        </label>
+                        <p className="text-sm opacity-80">Upload images to appear in the top slideshow for this event.</p>
+                      </div>
+
+                      {currentEvent.slideshowImages && currentEvent.slideshowImages.length > 0 ? (
+                        <div className="flex gap-4 overflow-x-auto py-2">
+                          {currentEvent.slideshowImages.map((s, i) => (
+                            <div
+                              key={i}
+                              draggable
+                              onDragStart={(e) => onDragStartSlide(e, i)}
+                              onDragOver={onDragOverSlide}
+                              onDrop={(e) => onDropSlide(e, i)}
+                              className="relative w-40 h-28 rounded-lg overflow-hidden bg-gray-700 cursor-grab"
+                            >
+                              <img src={s.photoUrl || (s.mediaId ? `/api/media/${s.mediaId}` : '')} alt={`slide-${i}`} className="w-full h-full object-cover" />
+                              <div className="absolute top-2 right-2 flex space-x-1">
+                                <button onClick={async () => { if (confirm('Delete this slide?')) await removeSlide(i); }} onMouseEnter={playHoverSound} className="p-1 bg-red-600 rounded-md text-white" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No slideshow images added.</p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="mb-6">
-                    <button onClick={() => setIsAddingNew(true)}
+                    <button onClick={() => setIsAddingNew(true)} onMouseEnter={playHoverSound}
                       className="w-full sm:w-auto px-5 py-3 bg-cyan-600 hover:bg-cyan-700 rounded-lg flex items-center justify-center sm:justify-start gap-2 text-sm sm:text-base">
                       <Plus className="w-5 h-5" /> Add New Achievement
                     </button>
@@ -508,17 +657,17 @@ export default function AdminArtsScience() {
                         <input placeholder="Item / Event Name *" value={newAchievement.item || ""}
                           onChange={e => setNewAchievement(prev => ({ ...prev, item: e.target.value }))}
                           className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-sm" />
-                        <select value={newAchievement.grade || "A"}
+                        <select value={newAchievement.grade || "A"} onMouseEnter={playHoverSound}
                           onChange={e => setNewAchievement(prev => ({ ...prev, grade: e.target.value as Grade }))}
                           className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-sm">
                           {GradeOptions.map(g => <option key={g}>{g}</option>)}
                         </select>
-                        <select value={newAchievement.schoolSection || "HS"}
+                        <select value={newAchievement.schoolSection || "HS"} onMouseEnter={playHoverSound}
                           onChange={e => setNewAchievement(prev => ({ ...prev, schoolSection: e.target.value as SchoolSection }))}
                           className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-sm">
                           {SectionOptions.map(s => <option key={s}>{s}</option>)}
                         </select>
-                        <select value={newAchievement.competitionLevel || "District"}
+                        <select value={newAchievement.competitionLevel || "District"} onMouseEnter={playHoverSound}
                           onChange={e => setNewAchievement(prev => ({ ...prev, competitionLevel: e.target.value as CompetitionLevel }))}
                           className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-sm">
                           {LevelOptions.map(l => <option key={l}>{l}</option>)}
@@ -541,7 +690,7 @@ export default function AdminArtsScience() {
                               <button type="button" onClick={() => {
                                 const updated = (newAchievement.groupMembers || []).filter((_, i) => i !== idx);
                                 setNewAchievement(prev => ({ ...prev, groupMembers: updated.length ? updated : [] }));
-                              }}
+                              }} onMouseEnter={playHoverSound}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity p-3 bg-red-600/20 hover:bg-red-600 rounded-lg border border-red-500/30 hover:border-red-500"
                                 title="Remove participant">
                                 <X className="w-5 h-5 text-red-400" />
@@ -550,7 +699,7 @@ export default function AdminArtsScience() {
                           ))}
                           <button type="button" onClick={() => setNewAchievement(prev => ({
                             ...prev, groupMembers: [...(prev.groupMembers || []), ""]
-                          }))}
+                          }))} onMouseEnter={playHoverSound}
                             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-cyan-400 hover:text-cyan-300 bg-cyan-900/30 hover:bg-cyan-900/50 rounded-lg border border-cyan-800 hover:border-cyan-700 transition">
                             <Plus className="w-4 h-4" /> Add another participant
                           </button>
@@ -558,7 +707,7 @@ export default function AdminArtsScience() {
 
                         <div>
                           <label className="block text-sm font-medium mb-2">Photo</label>
-                          <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600 text-sm">
+                          <label onMouseEnter={playHoverSound} className="cursor-pointer inline-flex items-center gap-2 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600 text-sm">
                             <Upload className="w-5 h-5" /><span>Choose Image</span>
                             <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
                           </label>
@@ -569,10 +718,10 @@ export default function AdminArtsScience() {
                       </div>
 
                       <div className="flex gap-3 mt-6">
-                        <button onClick={addAchievement} className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2 text-sm sm:text-base">
+                        <button onClick={addAchievement} onMouseEnter={playHoverSound} className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2 text-sm sm:text-base">
                           <Save className="w-5 h-5" /> Add Achievement
                         </button>
-                        <button onClick={() => setIsAddingNew(false)} className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm sm:text-base">Cancel</button>
+                        <button onClick={() => setIsAddingNew(false)} onMouseEnter={playHoverSound} className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg text-sm sm:text-base">Cancel</button>
                       </div>
                     </div>
                   )}
@@ -619,7 +768,7 @@ export default function AdminArtsScience() {
                                           <button type="button" onClick={() => {
                                             const updated = (ach.groupMembers || []).filter((_, idx) => idx !== mi);
                                             handleEditChange(i, "groupMembers", updated.length ? updated : undefined);
-                                          }}
+                                          }} onMouseEnter={playHoverSound}
                                             className="opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-red-600/20 hover:bg-red-600 rounded-lg border border-red-500/30 hover:border-red-500"
                                             title="Remove participant">
                                             <X className="w-4 h-4 text-red-400" />
@@ -630,7 +779,7 @@ export default function AdminArtsScience() {
                                       <button type="button" onClick={() => {
                                         const updated = [...(ach.groupMembers || []), ""];
                                         handleEditChange(i, "groupMembers", updated);
-                                      }}
+                                      }} onMouseEnter={playHoverSound}
                                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 bg-cyan-900/30 hover:bg-cyan-900/50 rounded-lg border border-cyan-800 hover:border-cyan-700 transition">
                                         <Plus className="w-3 h-3" /> Add
                                       </button>
@@ -655,21 +804,21 @@ export default function AdminArtsScience() {
 
                                 {/* GRADE, SECTION, LEVEL */}
                                 <td className="px-2 py-4">
-                                  <select value={ach.grade} disabled={!editing}
+                                  <select value={ach.grade} disabled={!editing} onMouseEnter={playHoverSound}
                                     onChange={e => handleEditChange(i, "grade", e.target.value as Grade)}
                                     className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm">
                                     {GradeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                   </select>
                                 </td>
                                 <td className="px-2 py-4">
-                                  <select value={ach.schoolSection} disabled={!editing}
+                                  <select value={ach.schoolSection} disabled={!editing} onMouseEnter={playHoverSound}
                                     onChange={e => handleEditChange(i, "schoolSection", e.target.value as SchoolSection)}
                                     className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm">
                                     {SectionOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                   </select>
                                 </td>
                                 <td className="px-2 py-4">
-                                  <select value={ach.competitionLevel} disabled={!editing}
+                                  <select value={ach.competitionLevel} disabled={!editing} onMouseEnter={playHoverSound}
                                     onChange={e => handleEditChange(i, "competitionLevel", e.target.value as CompetitionLevel)}
                                     className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm">
                                     {LevelOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -679,14 +828,14 @@ export default function AdminArtsScience() {
                                 <td className="px-2 py-4">{renderPhoto(ach)}</td>
 
                                 <td className="px-2 py-4">
-                                  <label className="cursor-pointer">
+                                  <label onMouseEnter={playHoverSound} className="cursor-pointer">
                                     <Upload className="w-5 h-5 text-cyan-400 hover:text-cyan-300" />
                                     <input type="file" accept="image/*" className="hidden" onChange={e => handleFileChange(e, i)} />
                                   </label>
                                 </td>
 
                                 <td className="px-2 py-4 text-center">
-                                  <button onClick={() => toggleFeature(i)} title="Toggle Featured">
+                                  <button onClick={() => toggleFeature(i)} onMouseEnter={playHoverSound} title="Toggle Featured">
                                     <Star className={`w-6 h-6 ${ach.featured ? "text-yellow-400 fill-yellow-400" : "text-gray-500"}`} />
                                   </button>
                                 </td>
@@ -695,16 +844,16 @@ export default function AdminArtsScience() {
                                   <div className="flex gap-2">
                                     {editing ? (
                                       <>
-                                        <button onClick={() => setEditIndex(null)} title="Save/Complete Edit"
+                                        <button onClick={() => setEditIndex(null)} onMouseEnter={playHoverSound} title="Save/Complete Edit"
                                           className="p-2 bg-green-600 hover:bg-green-700 rounded-lg"><Save className="w-5 h-5" /></button>
-                                        <button onClick={() => { setEditIndex(null); loadYear(selectedYear!); }} title="Cancel Edit"
+                                        <button onClick={() => { setEditIndex(null); loadYear(selectedYear!); }} onMouseEnter={playHoverSound} title="Cancel Edit"
                                           className="p-2 bg-gray-600 hover:bg-gray-700 rounded-lg"><X className="w-5 h-5" /></button>
                                       </>
                                     ) : (
                                       <>
-                                        <button onClick={() => setEditIndex(i)} title="Edit Achievement"
+                                        <button onClick={() => setEditIndex(i)} onMouseEnter={playHoverSound} title="Edit Achievement"
                                           className="p-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg"><Edit className="w-5 h-5" /></button>
-                                        <button onClick={() => deleteAchievement(i)} title="Delete Achievement"
+                                        <button onClick={() => deleteAchievement(i)} onMouseEnter={playHoverSound} title="Delete Achievement"
                                           className="p-2 bg-red-600 hover:bg-red-700 rounded-lg"><Trash2 className="w-5 h-5" /></button>
                                       </>
                                     )}
@@ -720,11 +869,11 @@ export default function AdminArtsScience() {
 
                   {/* SAVE/DELETE BUTTONS */}
                   <div className="flex flex-col sm:flex-row justify-end mt-8 gap-3 sm:gap-4">
-                    <button onClick={deleteYear}
+                    <button onClick={deleteYear} onMouseEnter={playHoverSound}
                       className="w-full sm:w-auto px-6 py-3 bg-red-700 hover:bg-red-800 rounded-lg flex items-center justify-center gap-2 text-sm sm:text-base">
                       <Trash2 className="w-5 h-5" /> Delete Year
                     </button>
-                    <button onClick={saveYear} disabled={isSaving}
+                    <button onClick={saveYear} onMouseEnter={playHoverSound} disabled={isSaving}
                       className="w-full sm:w-auto px-6 py-3 bg-green-700 hover:bg-green-800 rounded-lg flex items-center justify-center gap-2 text-sm sm:text-base disabled:opacity-50">
                       {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                       Save All Changes

@@ -5,8 +5,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress"; // Ensure this is installed via shadcn
-import { Trash2, Loader2, Check, X, Filter, Ban } from "lucide-react";
+import { Trash2, Loader2, Check, X, Ban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type StudentMedia = {
@@ -62,6 +63,7 @@ export default function AdminStudentsPage() {
     const [filterYear, setFilterYear] = useState("");
 
     const { toast } = useToast();
+    const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
     const adminToken = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
 
     // --- Helpers ---
@@ -85,6 +87,7 @@ export default function AdminStudentsPage() {
             setIsUploading(false);
             setUploadProgress(0);
             toast({ title: "Cancelled", description: "Upload process stopped." });
+            playSuccessSound();
         }
     };
 
@@ -133,9 +136,11 @@ export default function AdminStudentsPage() {
             if (res.ok) {
                 setPendingUploads((prev) => prev.filter(u => u.tempId !== tempId));
                 toast({ title: "Approved", description: "Upload approved successfully." });
+                playSuccessSound();
                 loadMedia();
             } else {
                 toast({ variant: "destructive", title: "Error", description: "Failed to approve." });
+                playErrorSound();
             }
         } finally {
             setApprovingId(null);
@@ -151,6 +156,7 @@ export default function AdminStudentsPage() {
         if (res.ok) {
             setPendingUploads(prev => prev.filter(u => u.tempId !== tempId));
             toast({ title: "Removed", description: "Upload disapproved." });
+            playSuccessSound();
         }
     };
 
@@ -163,8 +169,10 @@ export default function AdminStudentsPage() {
         if (res.ok) {
             setItems((prev) => prev.filter((m) => m.id !== id));
             toast({ title: "Deleted", description: "Media permanently removed." });
+            playSuccessSound();
         } else {
             toast({ variant: "destructive", title: "Error", description: "Failed to delete media." });
+            playErrorSound();
         }
     };
 
@@ -267,11 +275,12 @@ export default function AdminStudentsPage() {
             }
 
             toast({ title: "Done", description: `Uploaded ${successCount}/${totalFiles} items.` });
-
+            playSuccessSound();
         } catch (error: any) {
             if (error.name === 'AbortError' || error.message === 'AbortError') {
                 if (uploadedMediaIds.length > 0) {
                     toast({ title: "Cleaning up...", description: "Removing files from R2 storage." });
+                    playSuccessSound();
                     // This will hit your /api/media/:id delete route
                     await Promise.all(uploadedMediaIds.map(id =>
                         fetch(`/api/media/${id}`, {
@@ -281,8 +290,10 @@ export default function AdminStudentsPage() {
                     ));
                 }
                 toast({ title: "Cancelled", description: "Process stopped and storage scrubbed." });
+                playErrorSound();
             } else {
                 toast({ variant: "destructive", title: "Error", description: "Process failed." });
+                playErrorSound();
             }
         } finally {
             setIsUploading(false);
@@ -296,260 +307,269 @@ export default function AdminStudentsPage() {
             <a
                 href="/admin"
                 className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500"
+                onMouseEnter={playHoverSound}
             >
                 Go Back To Dashboard
             </a>
 
             <Tabs defaultValue="upload" className="w-full">
                 <TabsList className="bg-gray-800">
-                    <TabsTrigger value="upload">Upload Media</TabsTrigger>
-                    <TabsTrigger value="manage" onClick={loadMedia}>Manage Media</TabsTrigger>
-                    <TabsTrigger value="pending" onClick={loadPending}>Pending Uploads</TabsTrigger> {/* ✅ New tab */}
+                    <TabsTrigger value="upload" onMouseEnter={playHoverSound}>Upload Media</TabsTrigger>
+                    <TabsTrigger value="manage" onClick={loadMedia} onMouseEnter={playHoverSound}>Manage Media</TabsTrigger>
+                    <TabsTrigger value="pending" onClick={loadPending} onMouseEnter={playHoverSound}>Pending Uploads</TabsTrigger>
                 </TabsList>
 
                 {/* Upload Section */}
-        <TabsContent value="upload">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Image Upload Card */}
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle>Upload Images</CardTitle>
-                {imageFiles.length > 0 && !isUploading && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive h-8 px-2"
-                        onClick={() => {
-                            imagePreviews.forEach(url => URL.revokeObjectURL(url));
-                            setImageFiles([]);
-                            setImagePreviews([]);
-                        }}
-                    >
-                        Clear All
-                    </Button>
-                )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <Input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    disabled={isUploading}
-                    onChange={handleImageSelect}
-                />
-
-                {imagePreviews.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-muted/30">
-                        {imagePreviews.map((url, index) => (
-                            <div key={index} className="relative group aspect-square">
-                                <img
-                                    src={url}
-                                    className="h-full w-full object-cover rounded-md shadow-sm"
-                                    alt={`Preview ${index}`}
-                                />
-                                {!isUploading && (
-                                    <button
-                                        onClick={() => removeImage(index)}
-                                        className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5 shadow-md hover:bg-red-600 transition-colors "
+                <TabsContent value="upload">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Image Upload Card */}
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                                <CardTitle>Upload Images</CardTitle>
+                                {imageFiles.length > 0 && !isUploading && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-destructive h-8 px-2"
+                                        onClick={() => {
+                                            imagePreviews.forEach(url => URL.revokeObjectURL(url));
+                                            setImageFiles([]);
+                                            setImagePreviews([]);
+                                        }}
+                                        onMouseEnter={playHoverSound}
                                     >
-                                        <X className="h-6 w-6" />
-                                    </button>
+                                        Clear All
+                                    </Button>
                                 )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                    {/* UPDATED: Image Batch Select */}
-                    <Select 
-                        value={imageBatch} 
-                        onValueChange={setImageBatch}
-                        disabled={isUploading}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select Batch" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="+1">+1</SelectItem>
-                            <SelectItem value="+2">+2</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <Input
-                        placeholder="Year (YYYY)"
-                        type="number"
-                        value={imageYear}
-                        disabled={isUploading}
-                        onChange={(e) => setImageYear(e.target.value)}
-                    />
-                </div>
-                <Textarea
-                    placeholder="Common description for this batch"
-                    value={imageDescription}
-                    disabled={isUploading}
-                    onChange={(e) => setImageDescription(e.target.value)}
-                />
-
-                <div className="space-y-2">
-                    {!isUploading ? (
-                        <Button
-                            className="w-full"
-                            disabled={!isImageFormValid}
-                            onClick={() => uploadMedia(imageFiles, imageBatch, imageYear, imageDescription, "image")}
-                        >
-                            Upload {imageFiles.length} Image{imageFiles.length === 1 ? "" : "s"}
-                        </Button>
-                    ) : (
-                        imageFiles.length > 0 && (
-                            <Button
-                                variant="outline"
-                                className="w-full border-destructive text-destructive hover:bg-destructive/10"
-                                onClick={cancelUpload}
-                            >
-                                <Ban className="mr-2 h-4 w-4" />
-                                Cancel Upload
-                            </Button>
-                        )
-                    )}
-
-                    {isUploading && imageFiles.length > 0 && (
-                        <div className="space-y-1 pt-2">
-                            <Progress value={uploadProgress} className="h-2" />
-                            <div className="flex justify-between items-center">
-                                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center">
-                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Processing
-                                </p>
-                                <p className="text-xs font-medium text-primary">
-                                    {Math.round(uploadProgress)}%
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
-
-        {/* Video Upload Card */}
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle>Upload Videos</CardTitle>
-                {videoFiles.length > 0 && !isUploading && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive h-8 px-2"
-                        onClick={() => {
-                            videoPreviews.forEach(url => URL.revokeObjectURL(url));
-                            setVideoFiles([]);
-                            setVideoPreviews([]);
-                        }}
-                    >
-                        Clear All
-                    </Button>
-                )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <Input
-                    type="file"
-                    accept="video/*"
-                    multiple
-                    disabled={isUploading}
-                    onChange={handleVideoSelect}
-                />
-
-                {videoPreviews.length > 0 && (
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-muted/30">
-                        {videoPreviews.map((url, index) => (
-                            <div key={index} className="relative group">
-                                <video
-                                    src={url}
-                                    className="h-24 w-full bg-black rounded-md"
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <Input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    disabled={isUploading}
+                                    onChange={handleImageSelect}
                                 />
-                                {!isUploading && (
-                                    <button
-                                        onClick={() => removeVideo(index)}
-                                        className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
-                                    >
-                                        <X className="h-3 w-3" />
-                                    </button>
+
+                                {imagePreviews.length > 0 && (
+                                    <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-muted/30">
+                                        {imagePreviews.map((url, index) => (
+                                            <div key={index} className="relative group aspect-square">
+                                                <img
+                                                    src={url}
+                                                    className="h-full w-full object-cover rounded-md shadow-sm"
+                                                    alt={`Preview ${index}`}
+                                                />
+                                                {!isUploading && (
+                                                    <button
+                                                        onClick={() => removeImage(index)}
+                                                        className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-0.5 shadow-md hover:bg-red-600 transition-colors"
+                                                        onMouseEnter={playHoverSound}
+                                                    >
+                                                        <X className="h-6 w-6" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
-                            </div>
-                        ))}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* UPDATED: Image Batch Select */}
+                                    <Select 
+                                        value={imageBatch} 
+                                        onValueChange={setImageBatch}
+                                        disabled={isUploading}
+                                    >
+                                        <SelectTrigger onMouseEnter={playHoverSound}>
+                                            <SelectValue placeholder="Select Batch" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="+1" onMouseEnter={playHoverSound}>+1</SelectItem>
+                                            <SelectItem value="+2" onMouseEnter={playHoverSound}>+2</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Input
+                                        placeholder="Year (YYYY)"
+                                        type="number"
+                                        value={imageYear}
+                                        disabled={isUploading}
+                                        onChange={(e) => setImageYear(e.target.value)}
+                                    />
+                                </div>
+                                <Textarea
+                                    placeholder="Common description for this batch"
+                                    value={imageDescription}
+                                    disabled={isUploading}
+                                    onChange={(e) => setImageDescription(e.target.value)}
+                                />
+
+                                <div className="space-y-2">
+                                    {!isUploading ? (
+                                        <Button
+                                            className="w-full"
+                                            disabled={!isImageFormValid}
+                                            onClick={() => uploadMedia(imageFiles, imageBatch, imageYear, imageDescription, "image")}
+                                            onMouseEnter={playHoverSound}
+                                        >
+                                            Upload {imageFiles.length} Image{imageFiles.length === 1 ? "" : "s"}
+                                        </Button>
+                                    ) : (
+                                        imageFiles.length > 0 && (
+                                            <Button
+                                                variant="outline"
+                                                className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                                                onClick={cancelUpload}
+                                                onMouseEnter={playHoverSound}
+                                            >
+                                                <Ban className="mr-2 h-4 w-4" />
+                                                Cancel Upload
+                                            </Button>
+                                        )
+                                    )}
+
+                                    {isUploading && imageFiles.length > 0 && (
+                                        <div className="space-y-1 pt-2">
+                                            <Progress value={uploadProgress} className="h-2" />
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center">
+                                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Processing
+                                                </p>
+                                                <p className="text-xs font-medium text-primary">
+                                                    {Math.round(uploadProgress)}%
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Video Upload Card */}
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                                <CardTitle>Upload Videos</CardTitle>
+                                {videoFiles.length > 0 && !isUploading && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-destructive h-8 px-2"
+                                        onClick={() => {
+                                            videoPreviews.forEach(url => URL.revokeObjectURL(url));
+                                            setVideoFiles([]);
+                                            setVideoPreviews([]);
+                                        }}
+                                        onMouseEnter={playHoverSound}
+                                    >
+                                        Clear All
+                                    </Button>
+                                )}
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <Input
+                                    type="file"
+                                    accept="video/*"
+                                    multiple
+                                    disabled={isUploading}
+                                    onChange={handleVideoSelect}
+                                />
+
+                                {videoPreviews.length > 0 && (
+                                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-muted/30">
+                                        {videoPreviews.map((url, index) => (
+                                            <div key={index} className="relative group">
+                                                <video
+                                                    src={url}
+                                                    className="h-24 w-full bg-black rounded-md"
+                                                />
+                                                {!isUploading && (
+                                                    <button
+                                                        onClick={() => removeVideo(index)}
+                                                        className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                                                        onMouseEnter={playHoverSound}
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* UPDATED: Video Batch Select */}
+                                    <Select 
+                                        value={videoBatch} 
+                                        onValueChange={setVideoBatch}
+                                        disabled={isUploading}
+                                    >
+                                        <SelectTrigger onMouseEnter={playHoverSound}>
+                                            <SelectValue placeholder="Select Batch" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="+1" onMouseEnter={playHoverSound}>+1</SelectItem>
+                                            <SelectItem value="+2" onMouseEnter={playHoverSound}>+2</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Input
+                                        placeholder="Year (YYYY)"
+                                        type="number"
+                                        value={videoYear}
+                                        disabled={isUploading}
+                                        onChange={(e) => setVideoYear(e.target.value)}
+                                    />
+                                </div>
+                                <Textarea
+                                    placeholder="Common description for these videos"
+                                    value={videoDescription}
+                                    disabled={isUploading}
+                                    onChange={(e) => setVideoDescription(e.target.value)}
+                                />
+
+                                <div className="space-y-2">
+                                    {!isUploading ? (
+                                        <Button
+                                            className="w-full"
+                                            disabled={!isVideoFormValid}
+                                            onClick={() => uploadMedia(videoFiles, videoBatch, videoYear, videoDescription, "video")}
+                                            onMouseEnter={playHoverSound}
+                                        >
+                                            Upload {videoFiles.length} Video{videoFiles.length === 1 ? "" : "s"}
+                                        </Button>
+                                    ) : (
+                                        videoFiles.length > 0 && (
+                                            <Button
+                                                variant="outline"
+                                                className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                                                onClick={cancelUpload}
+                                                onMouseEnter={playHoverSound}
+                                            >
+                                                <Ban className="mr-2 h-4 w-4" />
+                                                Cancel Upload
+                                            </Button>
+                                        )
+                                    )}
+
+                                    {isUploading && videoFiles.length > 0 && (
+                                        <div className="space-y-1 pt-2">
+                                            <Progress value={uploadProgress} className="h-2" />
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center">
+                                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Processing
+                                                </p>
+                                                <p className="text-xs font-medium text-primary">
+                                                    {Math.round(uploadProgress)}%
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                    {/* UPDATED: Video Batch Select */}
-                    <Select 
-                        value={videoBatch} 
-                        onValueChange={setVideoBatch}
-                        disabled={isUploading}
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select Batch" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="+1">+1</SelectItem>
-                            <SelectItem value="+2">+2</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <Input
-                        placeholder="Year (YYYY)"
-                        type="number"
-                        value={videoYear}
-                        disabled={isUploading}
-                        onChange={(e) => setVideoYear(e.target.value)}
-                    />
-                </div>
-                <Textarea
-                    placeholder="Common description for these videos"
-                    value={videoDescription}
-                    disabled={isUploading}
-                    onChange={(e) => setVideoDescription(e.target.value)}
-                />
-
-                <div className="space-y-2">
-                    {!isUploading ? (
-                        <Button
-                            className="w-full"
-                            disabled={!isVideoFormValid}
-                            onClick={() => uploadMedia(videoFiles, videoBatch, videoYear, videoDescription, "video")}
-                        >
-                            Upload {videoFiles.length} Video{videoFiles.length === 1 ? "" : "s"}
-                        </Button>
-                    ) : (
-                        videoFiles.length > 0 && (
-                            <Button
-                                variant="outline"
-                                className="w-full border-destructive text-destructive hover:bg-destructive/10"
-                                onClick={cancelUpload}
-                            >
-                                <Ban className="mr-2 h-4 w-4" />
-                                Cancel Upload
-                            </Button>
-                        )
-                    )}
-
-                    {isUploading && videoFiles.length > 0 && (
-                        <div className="space-y-1 pt-2">
-                            <Progress value={uploadProgress} className="h-2" />
-                            <div className="flex justify-between items-center">
-                                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground flex items-center">
-                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Processing
-                                </p>
-                                <p className="text-xs font-medium text-primary">
-                                    {Math.round(uploadProgress)}%
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        </Card>
-    </div>
-</TabsContent>
+                </TabsContent>
                 {/* Manage Section */}
                 <TabsContent value="manage" >
                     <Card className="bg-gray-800/70 border-gray-700" >
@@ -558,22 +578,28 @@ export default function AdminStudentsPage() {
                             {/* Filters */}
                             <div className="flex flex-wrap gap-2 items-end">
                                 <select value={filterBatch} onChange={(e) => setFilterBatch(e.target.value)}
-                                    className="rounded p-2 bg-gray-700 border border-gray-600">
+                                    className="rounded p-2 bg-gray-700 border border-gray-600"
+                                    onMouseEnter={playHoverSound}
+                                >
                                     <option value="">All Batches</option>
                                     <option value="+1">+1</option>
                                     <option value="+2">+2</option>
                                 </select>
                                 <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                                    className="rounded p-2 bg-gray-700 border border-gray-600">
+                                    className="rounded p-2 bg-gray-700 border border-gray-600"
+                                    onMouseEnter={playHoverSound}
+                                >
                                     <option value="">All Types</option>
                                     <option value="image">Image</option>
                                     <option value="video">Video</option>
                                 </select>
                                 <Input type="number" placeholder="Year (yyyy)" value={filterYear}
                                     onChange={(e) => setFilterYear(e.target.value.slice(0, 4))}
-                                    className="w-32" />
+                                    className="w-32" 
+                                    onMouseEnter={playHoverSound}
+                                />
 
-                                <Button onClick={loadMedia} className="ml-2">Find Now</Button>
+                                <Button onClick={loadMedia} onMouseEnter={playHoverSound} className="ml-2">Find Now</Button>
                                 <Button
                                     variant="outline"
                                     onClick={() => {
@@ -582,6 +608,7 @@ export default function AdminStudentsPage() {
                                         setFilterYear("");
                                         loadMedia();
                                     }}
+                                    onMouseEnter={playHoverSound}
                                 >
                                     Clear Filters
                                 </Button>
@@ -611,7 +638,9 @@ export default function AdminStudentsPage() {
                                                 </div>
                                                 <Button size="sm" variant="destructive"
                                                     className="absolute top-2 right-2"
-                                                    onClick={() => handleDelete(m.id)}>
+                                                    onClick={() => handleDelete(m.id)}
+                                                    onMouseEnter={playHoverSound}
+                                                >
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
                                             </div>
@@ -634,6 +663,7 @@ export default function AdminStudentsPage() {
                                         value={filterBatch}
                                         onChange={(e) => setFilterBatch(e.target.value)}
                                         className="rounded p-2 bg-gray-700 border border-gray-600"
+                                        onMouseEnter={playHoverSound}
                                     >
                                         <option value="">All Batches</option>
                                         <option value="+1">+1</option>
@@ -645,6 +675,7 @@ export default function AdminStudentsPage() {
                                         value={filterType}
                                         onChange={(e) => setFilterType(e.target.value)}
                                         className="rounded p-2 bg-gray-700 border border-gray-600"
+                                        onMouseEnter={playHoverSound}
                                     >
                                         <option value="">All Types</option>
                                         <option value="image">Image</option>
@@ -658,10 +689,11 @@ export default function AdminStudentsPage() {
                                         value={filterYear}
                                         onChange={(e) => setFilterYear(e.target.value.slice(0, 4))}
                                         className="w-32"
+                                        onMouseEnter={playHoverSound}
                                     />
 
                                     {/* Refresh Button */}
-                                    <Button onClick={loadPending} className="ml-2">Find Now</Button>
+                                    <Button onClick={loadPending} onMouseEnter={playHoverSound} className="ml-2">Find Now</Button>
                                     <Button
                                         variant="outline"
                                         onClick={() => {
@@ -670,13 +702,13 @@ export default function AdminStudentsPage() {
                                             setFilterYear("");
                                             loadPending();
                                         }}
+                                        onMouseEnter={playHoverSound}
                                     >
                                         Clear Filters
                                     </Button>
                                 </div>
                             </div>
                         </CardHeader>
-
 
                         <CardContent>
                             {isPendingLoading ? (
@@ -712,7 +744,6 @@ export default function AdminStudentsPage() {
                                                         controls
                                                         muted
                                                         className="w-full h-40 rounded"
-
                                                     />
                                                 )}
                                             </div>
@@ -735,6 +766,7 @@ export default function AdminStudentsPage() {
                                                     className="bg-green-600 hover:bg-green-500 flex items-center"
                                                     onClick={() => approveUpload(u.tempId)}
                                                     disabled={approvingId === u.tempId} // disable while loading
+                                                    onMouseEnter={playHoverSound}
                                                 >
                                                     {approvingId === u.tempId ? (
                                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -744,27 +776,24 @@ export default function AdminStudentsPage() {
                                                     {approvingId === u.tempId ? "Approving..." : "Approve"}
                                                 </Button>
 
-
                                                 {approvingId !== u.tempId && (
                                                     <Button
                                                         size="sm"
                                                         variant="destructive"
                                                         onClick={() => disapproveUpload(u.tempId)}
+                                                        onMouseEnter={playHoverSound}
                                                     >
                                                         <X className="w-4 h-4 mr-1" /> Disapprove
                                                     </Button>
                                                 )}
-
                                             </div>
                                         </div>
                                     ))}
-
                                 </div>
                             )}
                         </CardContent>
                     </Card>
                 </TabsContent>
-
             </Tabs>
         </div>
     );

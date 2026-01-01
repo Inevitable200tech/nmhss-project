@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 import AboutSection from "@/components/dynamic-pages/about-section";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,6 +68,7 @@ export default function AboutAdmin() {
   const [previewMode, setPreviewMode] = useState(false);
   const [token] = useState(localStorage.getItem("adminToken") || "");
   const [previousParagraphs, setPreviousParagraphs] = useState<string[]>([]);
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
 
   const isMalayalam = (text?: string) =>
     text ? /[\u0D00-\u0D7F]/.test(text) : false;
@@ -187,13 +189,16 @@ export default function AboutAdmin() {
   const handleConfirmUrl = (url: string, index: number) => {
     if (!url.trim()) {
       toast({ title: "Image URL cannot be empty", variant: "destructive" });
+      playErrorSound();
       return;
     }
     handleUrlChange(url.trim(), index);
     toast({ title: `Image ${index + 1} URL confirmed` });
+    playSuccessSound();
   };
 
   const handleRemoveImage = async (index: number) => {
+    playHoverSound();
     const confirmed = window.confirm(
       "⚠️ Are you sure you want to delete the image?\nThis action will delete image from the database completely."
     );
@@ -210,6 +215,7 @@ export default function AboutAdmin() {
         console.log("Deleted media:", current.mediaId);
       } catch (err) {
         toast({ title: "Failed to delete image file", variant: "destructive" });
+        playErrorSound();
       }
     }
 
@@ -234,15 +240,18 @@ export default function AboutAdmin() {
         });
         if (res.ok) {
           toast({ title: `Image ${index + 1} removed & saved` });
+          playSuccessSound();
           refetch();
         }
       } catch {
         toast({ title: "Failed to auto-save after remove", variant: "destructive" });
+        playErrorSound();
       }
     }
   };
 
   const handleRemoveAudio = async () => {
+    playHoverSound();
     const confirmed = window.confirm(
       "⚠️ Are you sure you want to delete the audio?\nThis action will reset all paragraphs to default and save the section."
     );
@@ -259,6 +268,7 @@ export default function AboutAdmin() {
         console.log("Deleted media:", current.mediaId);
       } catch (err) {
         toast({ title: "Failed to delete audio file", variant: "destructive" });
+        playErrorSound();
         return;
       }
     }
@@ -284,10 +294,12 @@ export default function AboutAdmin() {
       });
       if (res.ok) {
         toast({ title: "Audio removed, paragraphs reset, & saved" });
+        playSuccessSound ();
         refetch();
       }
     } catch {
       toast({ title: "Failed to save after audio removal", variant: "destructive" });
+      playErrorSound();
     }
   };
 
@@ -305,6 +317,7 @@ export default function AboutAdmin() {
         console.log("Deleted media:", current.mediaId);
       } catch (err) {
         toast({ title: "Failed to delete audio file", variant: "destructive" });
+        playErrorSound();
         return;
       }
     }
@@ -326,13 +339,16 @@ export default function AboutAdmin() {
         body: JSON.stringify(payload),
       });
       toast({ title: "Audio removed due to paragraph changes & saved" });
+      playSuccessSound();
       refetch();
     } catch {
       toast({ title: "Failed to save after audio removal", variant: "destructive" });
+      playErrorSound();
     }
   };
 
   const handleSave = async () => {
+    playHoverSound();
     const confirmed = window.confirm("Continue With Changes ?.");
     if (!confirmed) return;
     try {
@@ -391,13 +407,16 @@ export default function AboutAdmin() {
       });
       if (!res.ok) throw new Error("Failed to save section");
       toast({ title: "Section saved successfully" });
+      playSuccessSound();
       refetch();
     } catch (err) {
       toast({ title: "Error saving section", variant: "destructive" });
+      playErrorSound();
     }
   };
 
   const handleRestoreDefaults = async () => {
+    playHoverSound();
     const confirmed = window.confirm(
       "⚠️ Are you sure you want to reset?\nThis will delete all images and audio from the form and database."
     );
@@ -414,8 +433,10 @@ export default function AboutAdmin() {
           if (!res.ok) throw new Error("Failed to delete media file");
           console.log("Deleted media:", img.mediaId);
           toast({title:`Deleted Image ${img.mediaId}`})
+          playSuccessSound();
         } catch (err) {
           toast({ title: `Failed to delete image ${img.mediaId}`, variant: "destructive" });
+          playErrorSound();
         }
       }
       if (img.file) {
@@ -434,8 +455,10 @@ export default function AboutAdmin() {
         if (!res.ok) throw new Error("Failed to delete audio file");
         console.log("Deleted media:", currentAudio.mediaId);
         toast({ title: "Deleted Audio"  })
+        playSuccessSound();
       } catch (err) {
         toast({ title: "Failed to delete audio file", variant: "destructive" });
+        playErrorSound();
       }
     }
     if (currentAudio?.file) {
@@ -463,9 +486,11 @@ export default function AboutAdmin() {
       });
       if (!res.ok) throw new Error("Failed to restore defaults");
       toast({ title: "Restored defaults and saved" });
+      playSuccessSound();
       refetch();
     } catch {
       toast({ title: "Failed to save defaults", variant: "destructive" });
+      playErrorSound();
     }
   };
 
@@ -556,6 +581,7 @@ export default function AboutAdmin() {
                       value={img.mode}
                       onValueChange={(val) => {
                         if (!val) return;
+                        playHoverSound();
                         const updated = [...aboutData.images];
                         updated[i] = { ...FALLBACKS[i], mode: val as "upload" | "url" };
                         setAboutData((prev) => ({ ...prev, images: updated }));
@@ -593,6 +619,7 @@ export default function AboutAdmin() {
                         <Button
                           variant="outline"
                           onClick={() => handleConfirmUrl(img.url, i)}
+                          onMouseEnter={playHoverSound}
                         >
                           OK
                         </Button>
@@ -602,6 +629,7 @@ export default function AboutAdmin() {
                       <Button
                         variant="destructive"
                         onClick={() => handleRemoveImage(i)}
+                        onMouseEnter={playHoverSound}
                       >
                         Remove
                       </Button>
@@ -635,7 +663,11 @@ export default function AboutAdmin() {
                     />
                   )}
                   {aboutData.audios.length > 0 && (
-                    <Button variant="destructive" onClick={handleRemoveAudio}>
+                    <Button
+                      variant="destructive"
+                      onClick={handleRemoveAudio}
+                      onMouseEnter={playHoverSound}
+                    >
                       Remove
                     </Button>
                   )}
@@ -650,6 +682,7 @@ export default function AboutAdmin() {
               onClick={handleSave}
               disabled={!audiosValid}
               className="w-full sm:w-auto"
+              onMouseEnter={playHoverSound}
             >
               Save
             </Button>
@@ -658,6 +691,7 @@ export default function AboutAdmin() {
               onClick={() => setPreviewMode(true)}
               disabled={!audiosValid}
               className="w-full sm:w-auto"
+              onMouseEnter={playHoverSound}
             >
               Preview
             </Button>
@@ -665,11 +699,16 @@ export default function AboutAdmin() {
               variant="secondary"
               onClick={handleRestoreDefaults}
               className="w-full sm:w-auto"
+              onMouseEnter={playHoverSound}
             >
               Restore Defaults
             </Button>
             <a href="/admin" className="w-full sm:w-auto">
-              <Button variant="default" className="w-full sm:w-auto">
+              <Button
+                variant="default"
+                className="w-full sm:w-auto"
+                onMouseEnter={playHoverSound}
+              >
                 Back to Dashboard
               </Button>
             </a>
@@ -698,6 +737,7 @@ export default function AboutAdmin() {
             variant="outline"
             className="mt-4"
             onClick={() => setPreviewMode(false)}
+            onMouseEnter={playHoverSound}
           >
             Back to Edit
           </Button>

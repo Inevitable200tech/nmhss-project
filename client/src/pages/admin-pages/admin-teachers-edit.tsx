@@ -7,11 +7,14 @@ import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { useSound } from "@/hooks/use-sound";
+import { toast } from "@/hooks/use-toast";
 
 export default function AdminTeacherEdit() {
   const queryClient = useQueryClient();
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
 
   // Check for adminToken in localStorage
   useEffect(() => {
@@ -28,7 +31,11 @@ export default function AdminTeacherEdit() {
     queryKey: ["/api/teachers"],
     queryFn: async () => {
       const res = await fetch("/api/teachers");
-      if (!res.ok) throw new Error("Failed to fetch teachers");
+      if (!res.ok){
+        toast({ title: "Error", description: "Failed to fetch teachers", variant: "destructive" });
+        playErrorSound();
+       throw new Error("Failed to fetch teachers");
+      }
       return res.json();
     },
     enabled: !!token,
@@ -45,7 +52,7 @@ export default function AdminTeacherEdit() {
   // Mutations
   const createTeacher = useMutation({
     mutationFn: async () => {
-      if (!newImage) throw new Error("Image is required");
+      if (!newImage){ toast({ title: "Error", description: "Image is required", variant: "destructive" }); playErrorSound(); throw new Error("Image is required")}
 
       // Upload image to /api/media
       const formData = new FormData();
@@ -55,7 +62,7 @@ export default function AdminTeacherEdit() {
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
-      if (!uploadRes.ok) throw new Error("Image upload failed");
+      if (!uploadRes.ok){ toast({ title: "Error", description: "Image upload failed", variant: "destructive" }); playErrorSound(); throw new Error("Image upload failed"); }
       const { id: mediaId, url: imageUrl } = await uploadRes.json();
 
       // Create full InsertTeacher and post to /api/admin/teachers
@@ -75,10 +82,12 @@ export default function AdminTeacherEdit() {
         },
         body: JSON.stringify(fullData),
       });
-      if (!res.ok) throw new Error("Failed to create teacher");
+      if (!res.ok){ toast({ title: "Error", description: "Failed to create teacher", variant: "destructive" }); playErrorSound(); throw new Error("Failed to create teacher"); }
       return res.json();
     },
     onSuccess: () => {
+      playSuccessSound();
+      toast({ title: "Success", description: "Teacher field created successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/teachers"] });
       setNewTeacher({ name: "", subject: "", bio: "" });
       setNewImage(null);
@@ -91,10 +100,12 @@ export default function AdminTeacherEdit() {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to delete teacher");
+      if (!res.ok){ toast({ title: "Error", description: "Failed to delete teacher", variant: "destructive" }); playErrorSound(); throw new Error("Failed to delete teacher"); }
       return res.json();
     },
     onSuccess: () => {
+      playSuccessSound();
+      toast({ title: "Success", description: "Teacher deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/teachers"] });
     },
   });
@@ -136,6 +147,7 @@ export default function AdminTeacherEdit() {
         </motion.h1>
         <Button
           onClick={() => window.location.href = "/admin"}
+          onMouseEnter={playHoverSound}
           className="mb-6 bg-gray-500 hover:bg-gray-600 text-white"
         >
           Go Back To Dashboard
@@ -154,28 +166,33 @@ export default function AdminTeacherEdit() {
               placeholder="Name"
               value={newTeacher.name}
               onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
+              onMouseEnter={playHoverSound}
               className="bg-gray-800 text-white border-white/20"
             />
             <Input
               placeholder="Subject"
               value={newTeacher.subject}
               onChange={(e) => setNewTeacher({ ...newTeacher, subject: e.target.value })}
+              onMouseEnter={playHoverSound}
               className="bg-gray-800 text-white border-white/20"
             />
             <Textarea
               placeholder="Bio"
               value={newTeacher.bio}
               onChange={(e) => setNewTeacher({ ...newTeacher, bio: e.target.value })}
+              onMouseEnter={playHoverSound}
               className="bg-gray-800 text-white border-white/20"
             />
             <Input
               type="file"
               accept="image/*"
               onChange={(e) => setNewImage(e.target.files?.[0] || null)}
+              onMouseEnter={playHoverSound}
               className="bg-gray-800 text-white border-white/20"
             />
             <Button
               onClick={() => createTeacher.mutate()}
+              onMouseEnter={playHoverSound}
               disabled={createTeacher.isPending || !newTeacher.name || !newTeacher.subject || !newTeacher.bio || !newImage}
               className="bg-blue-500 hover:bg-blue-600 text-white"
             >
@@ -209,6 +226,7 @@ export default function AdminTeacherEdit() {
                 <p className="text-gray-300 text-sm leading-relaxed mb-4">{teacher.bio}</p>
                 <Button
                   onClick={() => deleteTeacher.mutate(teacher.id)}
+                  onMouseEnter={playHoverSound}
                   disabled={deleteTeacher.isPending}
                   className="bg-red-500 hover:bg-red-600 text-white"
                 >

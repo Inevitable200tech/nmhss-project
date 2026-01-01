@@ -1511,7 +1511,20 @@ app.delete("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
         .map(a => a.mediaId)
         .filter((id): id is string => !!id);
 
-      const mediaIds = [...kalolsavamMediaIds, ...sasthrosavamMediaIds];
+      // Also gather mediaIds referenced by slideshowImages for both events (if present)
+      const kalolsavamSlideIds = (docToDelete.kalolsavam.slideshowImages || [])
+        .map((s: any) => s.mediaId)
+        .filter((id: any): id is string => !!id);
+      const sasthrosavamSlideIds = (docToDelete.sasthrosavam.slideshowImages || [])
+        .map((s: any) => s.mediaId)
+        .filter((id: any): id is string => !!id);
+
+      const mediaIds = [
+        ...kalolsavamMediaIds,
+        ...sasthrosavamMediaIds,
+        ...kalolsavamSlideIds,
+        ...sasthrosavamSlideIds,
+      ];
 
       // 2. Delete associated media from R2 and MongoDB
       if (mediaIds.length > 0) {

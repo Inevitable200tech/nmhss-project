@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 import { Trash2 } from "lucide-react";
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
@@ -16,6 +17,7 @@ export default function AdminIntroPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
 
   // Load current hero video
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function AdminIntroPage() {
         }
       } catch {
         toast({ title: "Error", description: "Failed to load hero video" });
+        playErrorSound();
       }
     };
     loadHeroVideo();
@@ -40,6 +43,7 @@ export default function AdminIntroPage() {
         description: "Please select a video file before uploading.",
         variant: "destructive",
       });
+      playErrorSound();
       return;
     }
 
@@ -49,6 +53,7 @@ export default function AdminIntroPage() {
         description: `Hero video must be less than ${MAX_FILE_SIZE / (1024 * 1024)} MB.`,
         variant: "destructive",
       });
+      playErrorSound();
       return;
     }
 
@@ -87,14 +92,16 @@ export default function AdminIntroPage() {
             }),
           });
 
-          if (!res.ok) throw new Error("Failed to save hero video");
+          if (!res.ok){ toast({title: "Error", description: "Failed to save hero video"}); playErrorSound(); throw new Error("Failed to save hero video");}
           const data = await res.json();
 
           setVideo(data);
           setNewVideo(null);
           toast({ title: "Success", description: "Hero video uploaded successfully" });
+          playSuccessSound();
         } else {
           toast({ title: "Error", description: "Upload to /api/media failed" });
+          playErrorSound();
         }
         setIsUploading(false);
         setUploadProgress(0);
@@ -103,12 +110,14 @@ export default function AdminIntroPage() {
       xhr.onerror = () => {
         setIsUploading(false);
         toast({ title: "Error", description: "Upload failed" });
+        playErrorSound();
       };
 
       xhr.send(formData);
     } catch {
       setIsUploading(false);
       toast({ title: "Error", description: "Upload failed" });
+      playErrorSound();
     }
   };
 
@@ -122,19 +131,22 @@ export default function AdminIntroPage() {
       if (res.ok) {
         setVideo(null);
         toast({ title: "Success", description: "Hero video deleted successfully" });
+        playSuccessSound();
       } else {
         toast({ title: "Error", description: "Failed to delete video" });
+        playErrorSound();
       }
     } catch {
       toast({ title: "Error", description: "Failed to delete video" });
+      playErrorSound();
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-900 p-6 space-y-6 text-gray-100">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Admin: Hero Video</h1>
-        <Button variant="outline" onClick={() => (window.location.href = "/admin")}>
+        <h1 className="text-3xl font-bold" onMouseEnter={playHoverSound}>Admin: Hero Video</h1>
+        <Button variant="outline" onClick={() => (window.location.href = "/admin")} onMouseEnter={playHoverSound}>
           Back to Dashboard
         </Button>
       </div>
@@ -142,7 +154,7 @@ export default function AdminIntroPage() {
       {!video && (
         <Card className="bg-gray-800/80 backdrop-blur-md shadow-lg">
           <CardHeader>
-            <CardTitle>Upload Hero Video</CardTitle>
+            <CardTitle onMouseEnter={playHoverSound}>Upload Hero Video</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
@@ -156,6 +168,7 @@ export default function AdminIntroPage() {
                     description: `Hero video must be less than ${MAX_FILE_SIZE / (1024 * 1024)} MB.`,
                     variant: "destructive",
                   });
+                  playErrorSound();
                   e.target.value = ""; // reset input
                   setNewVideo(null);
                 } else {
@@ -163,18 +176,19 @@ export default function AdminIntroPage() {
                 }
               }}
               disabled={isUploading}
+              onMouseEnter={playHoverSound}
             />
-            <p className="text-sm text-gray-400">Max file size: {MAX_FILE_SIZE / (1024 * 1024)} MB</p>
+            <p className="text-sm text-gray-400" onMouseEnter={playHoverSound}>Max file size: {MAX_FILE_SIZE / (1024 * 1024)} MB</p>
             {newVideo && (
-              <p className="text-sm text-gray-300">Selected file: {newVideo.name} ({(newVideo.size / (1024 * 1024)).toFixed(2)} MB)</p>
+              <p className="text-sm text-gray-300" onMouseEnter={playHoverSound}>Selected file: {newVideo.name} ({(newVideo.size / (1024 * 1024)).toFixed(2)} MB)</p>
             )}
             {isUploading && (
               <div className="space-y-2">
                 <Progress value={uploadProgress} />
-                <p className="text-sm text-gray-400">Uploading: {uploadProgress}%</p>
+                <p className="text-sm text-gray-400" onMouseEnter={playHoverSound}>Uploading: {uploadProgress}%</p>
               </div>
             )}
-            <Button onClick={handleUpload} disabled={isUploading}>
+            <Button onClick={handleUpload} onMouseEnter={playHoverSound} disabled={isUploading}>
               {isUploading ? "Uploading..." : "Upload"}
             </Button>
           </CardContent>
@@ -184,14 +198,14 @@ export default function AdminIntroPage() {
       {video && (
         <Card className="bg-gray-800/80 backdrop-blur-md shadow-lg">
           <CardHeader>
-            <CardTitle>Current Hero Video</CardTitle>
+            <CardTitle onMouseEnter={playHoverSound}>Current Hero Video</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <video src={video.url} className="w-full h-64 rounded-lg" controls />
-            <p className="text-sm text-gray-400">
+            <video src={video.url} className="w-full h-64 rounded-lg" controls onMouseEnter={playHoverSound} />
+            <p className="text-sm text-gray-400" onMouseEnter={playHoverSound}>
               Uploaded at: {new Date(video.uploadedAt).toLocaleString()}
             </p>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button variant="destructive" onClick={handleDelete} onMouseEnter={playHoverSound}>
               <Trash2 className="w-4 h-4 mr-2" /> Delete Video
             </Button>
           </CardContent>
