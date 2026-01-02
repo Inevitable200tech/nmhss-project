@@ -268,9 +268,15 @@ export default function EventsSection() {
           </h3>
           <div className="space-y-6">
             {displayNews.map((item, index) => (
-              <div
+              <button
                 key={item.id || index}
-                className="bg-card p-6 rounded-xl shadow-lg border border-border hover-lift"
+                onClick={() => {
+                  // Only navigate if it's not from mock data
+                  if (item.id) {
+                    window.location.href = `/news?type=${item.type}`;
+                  }
+                }}
+                className="w-full text-left bg-card p-6 rounded-xl shadow-lg border border-border hover:shadow-xl hover:border-primary hover:bg-card/80 transition-all duration-300 hover-lift cursor-pointer"
                 data-testid={`news-item-${index}`}
               >
                 <div className="flex items-start justify-between">
@@ -293,7 +299,7 @@ export default function EventsSection() {
                     <p className="text-black-700">{item.content}</p>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>

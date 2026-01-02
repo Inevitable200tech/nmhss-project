@@ -36,6 +36,7 @@ const AdminAcademicResults = lazy(() => import("@/pages/admin-pages/admin-academ
 const AdminArtsScience = lazy(() => import("@/pages/admin-pages/admin-arts-science"));
 const AdminSportsChampions = lazy(() => import("@/pages/admin-pages/admin-sports-champions"));
 const AdminTutorial = lazy(() => import("@/pages/admin-pages/admin-tutorial"));
+const NewsSection = lazy(() => import("@/components/dynamic-pages/news-section"));
 
 // --- Auto add Headers ------------
 
@@ -44,13 +45,13 @@ if (typeof window !== 'undefined') {
   window.fetch = async (...args) => {
     let [resource, config] = args;
     config = config || {};
-    
+
     const headers = new Headers(config.headers || {});
-    
+
     // This header acts as our "Simple CSRF Token"
     // Malicious sites cannot forge this custom header in a cross-site request
     headers.set("x-requested-with", "SchoolConnect-App");
-    
+
     config.headers = headers;
     return originalFetch(resource, config);
   };
@@ -58,13 +59,13 @@ if (typeof window !== 'undefined') {
 
 function App() {
   useEffect(() => {
-  if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return;
 
-  import("aos/dist/aos.css");
-  import("aos").then((AOS) => {
-    AOS.init({ duration: 750, easing: 'ease-out', once: true, offset: 50 });
-  });
-}, []);
+    import("aos/dist/aos.css");
+    import("aos").then((AOS) => {
+      AOS.init({ duration: 750, easing: 'ease-out', once: true, offset: 50 });
+    });
+  }, []);
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="navamukunda-theme">
@@ -83,6 +84,7 @@ function App() {
               <Route path="/sports-champions" element={<SportsChampionsPage />} />
               <Route path="/academic-results" element={<AcademicResultsPage />} />
               <Route path="/arts-science" element={<ArtsSciencePage />} />
+              <Route path="/news" element={<NewsSection />} />
               {/* Protected admin routes */}
               <Route path="/admin-gallery" element={<ProtectedRoute><AdminGalleryPage /></ProtectedRoute>} />
               <Route path="/admin-about" element={<ProtectedRoute><AboutAdminPage /></ProtectedRoute>} />

@@ -162,14 +162,16 @@ export default function Navigation() {
                     <a href="https://www.google.com" onClick={(e) => { handleLinkClick(e, 'https://www.google.com'); setIsClubOpen(false); }} className="block px-6 py-4 text-foreground hover:bg-white/40 dark:hover:bg-gray-700/40 transition-all font-medium">
                       N.S.S
                     </a>
-
-
                   </div>
+                
+
                 </div>
               </div>
             </div>
 
-            <a href="/about-teachers" className="text-foreground hover:text-primary transition-colors">Our Teachers</a>
+            <a href="/about-teachers" className="text-foreground hover:text-primary transition-colors">Teachers</a>
+            <a href="/news" className="text-foreground hover:text-primary transition-colors">News</a>
+
             <a href="/gallery" className="text-foreground hover:text-primary transition-colors">Gallery</a>
             <a href="/admin" className="bg-primary text-primary-foreground px-5 py-2.5 rounded-xl hover:bg-primary/90 transition-all shadow-lg font-medium">
               Admin
@@ -240,7 +242,9 @@ export default function Navigation() {
                 </div>
               )}
 
-              <a href="/about-teachers" onClick={(e) => { handleLinkClick(e, "/about-teachers"); setIsMobileMenuOpen(false); }} className="block py-3 text-foreground hover:text-primary">Our Teachers</a>
+              <a href="/about-teachers" onClick={(e) => { handleLinkClick(e, "/about-teachers"); setIsMobileMenuOpen(false); }} className="block py-3 text-foreground hover:text-primary"> Teachers</a>
+              <a href="/news" onClick={(e) => { handleLinkClick(e, "/news"); setIsMobileMenuOpen(false); }} className="block py-3 text-foreground hover:text-primary">News</a>
+
               <a href="/gallery" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 text-foreground hover:text-primary">Gallery</a>
               <a href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="block py-3 font-semibold text-primary">Admin</a>
             </div>

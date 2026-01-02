@@ -18,6 +18,7 @@ export default defineConfig({
         "/sports-champions",
         "/academic-results",
         "/arts-science",
+        "/news",
       ],
       outDir: "dist/public",
     }),
