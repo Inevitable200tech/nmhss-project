@@ -33,7 +33,8 @@ app.set("trust proxy", 1);
 const CSRF_EXCLUDE = [
   "/api/admin/login", 
   "/api/admin/developer-request", 
-  "/api/admin/verify-developer-code"
+  "/api/admin/verify-developer-code",
+  "/api/students-upload",
 ];
 
 app.use((req, res, next) => {

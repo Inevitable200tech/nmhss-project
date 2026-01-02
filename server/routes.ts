@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import {
   insertEventSchema,
@@ -107,6 +108,14 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+// Rate limiter for admin-protected routes
+const adminRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Store temporary verification codes in memory (expires after 10 minutes)
 const developerVerificationCodes = new Map<string, { code: string; createdAt: number; email: string }>();
 
@@ -151,7 +160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Admin token verification route
-  app.get("/api/admin/verify", requireAuth, (req, res) => {
+  app.get("/api/admin/verify", requireAuth, adminRateLimiter, (req, res) => {
     res.json({ success: true, message: "Token is valid" });
   });
 
@@ -276,7 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create event (admin only)
-  app.post("/api/events", requireAuth, async (req, res) => {
+  app.post("/api/events", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(eventData);
@@ -290,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/events/:id", requireAuth, async (req, res) => {
+  app.delete("/api/events/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deleted = await storage.deleteEvent(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Event not found" });
@@ -301,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update event (admin only)
-  app.put("/api/events/:id", requireAuth, async (req, res) => {
+  app.put("/api/events/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const updated = await storage.updateEvent(req.params.id, eventData);
@@ -329,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create news (admin only)
-  app.post("/api/news", requireAuth, async (req, res) => {
+  app.post("/api/news", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -357,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Update news (admin only)
-  app.put("/api/news/:id", requireAuth, async (req, res) => {
+  app.put("/api/news/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -385,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete news (admin only)
-  app.delete("/api/news/:id", requireAuth, async (req, res) => {
+  app.delete("/api/news/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deleted = await storage.deleteNews(req.params.id);
       if (!deleted) return res.status(404).json({ error: "News not found" });
@@ -413,7 +422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create section (admin only)
-  app.post("/api/sections", requireAuth, async (req, res) => {
+  app.post("/api/sections", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const section = await storage.createSection(sectionData);
@@ -428,7 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update section (admin only)
-  app.put("/api/sections/:name", requireAuth, async (req, res) => {
+  app.put("/api/sections/:name", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const updated = await storage.updateSection(req.params.name, sectionData);
@@ -475,7 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/gallery/images
-  app.post("/api/gallery/images", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/gallery/images", requireAuth, adminRateLimiter, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -526,7 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/gallery/videos
-  app.post("/api/gallery/videos", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/gallery/videos", requireAuth, adminRateLimiter, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -576,7 +585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/gallery/images/:id
-  app.delete("/api/gallery/images/:id", requireAuth, async (req, res) => {
+  app.delete("/api/gallery/images/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // 1. Delete from Gallery collection and get returned doc
       const deletedGalleryItem = await storage.deleteGalleryImage(req.params.id);
@@ -604,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/gallery/videos/:id
-  app.delete("/api/gallery/videos/:id", requireAuth, async (req, res) => {
+  app.delete("/api/gallery/videos/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deletedGalleryItem = await storage.deleteGalleryVideo(req.params.id);
       if (!deletedGalleryItem) return res.status(404).json({ error: "Item not found" });
@@ -669,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // POST /api/media
   // Modified endpoint
-  app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/media", requireAuth, adminRateLimiter, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -736,7 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/media/:id
-  app.delete("/api/media/:id", requireAuth, async (req, res) => {
+  app.delete("/api/media/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // 1. Find metadata in main DB
       const mediaDoc = await MediaModel.findById(req.params.id);
@@ -793,7 +802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create/replace hero video (admin only)
-  app.post("/api/hero-video", requireAuth, async (req, res) => {
+  app.post("/api/hero-video", requireAuth, adminRateLimiter, async (req, res) => {
     const schema = z.object({
       mediaId: z.string().min(1, "mediaId is required"),
       url: z.string().min(1, "URL is required"), // ✅ allow relative paths
@@ -808,7 +817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // DELETE /api/hero-video/:id
-  app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
+  app.delete("/api/hero-video/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // 1. Delete the HeroVideo entry from the main DB
       const deleted = await storage.deleteHeroVideo(req.params.id);
@@ -866,7 +875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create or update faculty section (admin only)
-  app.post("/api/faculty", requireAuth, async (req, res) => {
+  app.post("/api/faculty", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // validate with zod
       const schema = z.object({
@@ -904,7 +913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete faculty section (admin only)
-  app.delete("/api/faculty", requireAuth, async (req, res) => {
+  app.delete("/api/faculty", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deleted = await storage.deleteFacultySection();
       if (!deleted) {
@@ -922,7 +931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   //------------------- STUDENTS MEDIA MANAGEMENT ----------------
 
   // Create StudentMedia
-  app.post("/api/admin-students", requireAuth, async (req, res) => {
+  app.post("/api/admin-students", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const validated = StudentMediaZodSchema.parse(req.body);
       const studentMedia = await storage.createStudentMedia(validated);
@@ -956,7 +965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Delete StudentMedia + associated file
   // Delete StudentMedia + associated file
-  app.delete("/api/admin-students/:id", requireAuth, async (req, res) => {
+  app.delete("/api/admin-students/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // 1. Delete the StudentMedia database entry
       const deleted = await storage.deleteStudentMedia(req.params.id);
@@ -1073,14 +1082,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.send(Buffer.from(pending.file));
   });
 
-  app.get("/api/admin/pending-uploads", requireAuth, (_req, res) => {
+  app.get("/api/admin/pending-uploads", requireAuth, adminRateLimiter, (_req, res) => {
     const list = Array.from(pendingUploads.values()).map(({ tempId, type, batch, year, description, filename }) => ({
       tempId, type, batch, year, description, filename
     }));
     res.json(list);
   });
 
-  app.post("/api/admin/approve-upload/:tempId", requireAuth, async (req, res) => {
+  app.post("/api/admin/approve-upload/:tempId", requireAuth, adminRateLimiter, async (req, res) => {
     const pending = pendingUploads.get(req.params.tempId);
     if (!pending) return res.status(404).json({ error: "Upload not found" });
 
@@ -1138,7 +1147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/admin/disapprove-upload/:tempId", requireAuth, (req, res) => {
+  app.delete("/api/admin/disapprove-upload/:tempId", requireAuth, adminRateLimiter, (req, res) => {
     const deleted = pendingUploads.delete(req.params.tempId);
     if (!deleted) return res.status(404).json({ error: "Upload not found" });
     res.json({ success: true });
@@ -1178,7 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create teacher (admin only)
-  app.post("/api/admin/teachers", requireAuth, async (req, res) => {
+  app.post("/api/admin/teachers", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const teacherData = insertTeacherSchema.parse(req.body);
       const teacher = await storage.createTeacher(teacherData);
@@ -1194,7 +1203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Delete teacher (admin only)
   // Delete teacher (admin only)
-  app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/admin/teachers/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deleted = await storage.deleteTeacher(req.params.id);
       if (!deleted) {
@@ -1267,7 +1276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 3. Create or Update entire academic result (admin only)
-  app.post("/api/admin/academic-results", requireAuth, async (req, res) => {
+  app.post("/api/admin/academic-results", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const data = insertOrUpdateAcademicResultSchema.parse(req.body);
       const result = await storage.createOrUpdateAcademicResult(data);
@@ -1283,7 +1292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 4. Update specific year (optional — same as POST but clearer)
-  app.put("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
+  app.put("/api/admin/academic-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1305,7 +1314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 5. Delete entire year's result + ALL associated student photos (admin only)
-  app.delete("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
+  app.delete("/api/admin/academic-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year, 10);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1387,7 +1396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 3. Create or Update entire sports result (admin only)
-  app.post("/api/admin/sports-results", requireAuth, async (req, res) => {
+  app.post("/api/admin/sports-results", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const data = insertOrUpdateSportsResultSchema.parse(req.body);
       const result = await storage.createOrUpdateSportsResult(data);
@@ -1403,7 +1412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 4. Update specific year (optional — same as POST but clearer)
-  app.put("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
+  app.put("/api/admin/sports-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1425,7 +1434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New: Add a single champion to a year
-  app.post("/api/admin/sports-results/:year/champions", requireAuth, async (req, res) => {
+  app.post("/api/admin/sports-results/:year/champions", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1449,7 +1458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
+  app.put("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     const championIndex = parseInt(req.params.championIndex);
 
@@ -1472,7 +1481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
+  app.delete("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     const championIndex = parseInt(req.params.championIndex);
 
@@ -1518,7 +1527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 5. Delete entire year's result + ALL associated media (champions + slideshow)
-  app.delete("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
+  app.delete("/api/admin/sports-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year, 10);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1607,7 +1616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST: Create or Update an Arts & Science result (Admin Protected)
-  app.post("/api/arts-science-results", requireAuth, async (req, res) => {
+  app.post("/api/arts-science-results", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const validatedData = insertOrUpdateArtsScienceResultSchema.parse(req.body);
       const result = await storage.createOrUpdateArtsScienceResult(validatedData);
@@ -1628,7 +1637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // DELETE: Delete a result and associated media (Admin Protected)
-  app.delete("/api/arts-science-results/:year", requireAuth, async (req, res) => {
+  app.delete("/api/arts-science-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     if (isNaN(year)) {
       return res.status(400).json({ error: "Invalid year parameter" });
