@@ -26,6 +26,7 @@ import { randomUUID } from "crypto";
 import { s3Client, R2_BUCKET_NAME } from "./s3.ts";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Resend } from 'resend';
 
 type UploadTracker = {
   count: number;
@@ -45,6 +46,7 @@ const ADMIN_PASS = process.env.ADMIN_PASS || "password";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const DEVELOPER_EMAIL = process.env.DEVELOPER_EMAIL || "navamukundahss@gmail.com";
 export const upload = multer({ storage: multer.memoryStorage() });
+const resend = new Resend(process.env.RESEND_API_KEY || "");
 
 const validContentTypes = {
   image: [
@@ -74,16 +76,34 @@ const validContentTypes = {
   ],
 };
 
-// Auth middleware
+// --- server/routes.ts ---
+
 function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // 1. Try to get the token from the Header (Existing way)
   const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ message: "No token provided" });
-  const token = authHeader.split(" ")[1];
+  const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+
+  // 2. Try to get the token from the Cookie (New secure way for Render)
+  const cookieToken = req.cookies?.adminToken;
+
+  // Use whichever token is available
+  const token = headerToken || cookieToken;
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided. Please log in." });
+  }
+
   try {
-    jwt.verify(token, JWT_SECRET);
+    // Verify the token using your secret
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Attach user info to the request for use in other routes
+    (req as any).user = decoded;
+
     next();
-  } catch {
-    res.status(401).json({ message: "Invalid token" });
+  } catch (err) {
+    console.log(`[AUTH] Invalid token attempt: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    res.status(401).json({ message: "Session expired or invalid. Please log in again." });
   }
 }
 
@@ -109,95 +129,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin login route
   app.post("/api/admin/login", (req, res) => {
     const { username, password } = req.body;
+
     if (username === ADMIN_USER && password === ADMIN_PASS) {
       const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "1h" });
+
+      // SET THE COOKIE FOR BROWSER-LEVEL CSRF PROTECTION
+      res.cookie("adminToken", token, {
+        httpOnly: true,                   // Protects against XSS (scripting) attacks
+        secure: true,                     // Required for Render.com (HTTPS)
+        sameSite: "lax",                  // Recommended for Render to handle redirects
+        maxAge: 60 * 60 * 1000            // 1 hour in milliseconds
+      });
+
+      // Keep the JSON response the same so your existing frontend doesn't break
       res.json({ success: true, token });
     } else {
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
   });
 
+
+
   // Admin token verification route
   app.get("/api/admin/verify", requireAuth, (req, res) => {
     res.json({ success: true, message: "Token is valid" });
   });
 
-  // Developer access request - generate and send code
+  // 1. Developer access request - generate and EMAIL code
   app.post("/api/admin/developer-request", async (req, res) => {
     try {
       const { email } = req.body;
 
-      console.log("Developer request received for email:", email);
-
-      if (!email || typeof email !== "string") {
-        console.log("Invalid email provided");
-        return res.status(400).json({ message: "Invalid email" });
+      // Direct check
+      if (!email || email.toLowerCase() !== DEVELOPER_EMAIL.toLowerCase()) {
+        return res.status(403).json({ message: "Incorrect Email, Try again." });
       }
 
-      // Check if this email matches the configured developer email
-      if (email.toLowerCase() !== DEVELOPER_EMAIL.toLowerCase()) {
-        console.log(`Email ${email} does not match DEVELOPER_EMAIL ${DEVELOPER_EMAIL}`);
-        return res.status(403).json({ message: "Email not authorized for developer access" });
-      }
-
-      // Generate a new code
       const code = generateVerificationCode();
       const codeKey = `${email}-${code}`;
 
-      // Store the code with timestamp
       developerVerificationCodes.set(codeKey, {
         code,
         createdAt: Date.now(),
         email,
       });
 
-      console.log(`Generated verification code for ${email}: ${code}`);
+      // Send directly to your registered email
+      const { error } = await resend.emails.send({
+        from: 'NMHSS Admin <onboarding@resend.dev>',
+        to: [DEVELOPER_EMAIL],
+        subject: `Verification Code for NMHSS Thirunnavaya`,
+        html: `
+    <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; padding: 50px 20px;">
+      <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e1e4e8;">
+        
+        <div style="background-color: #0891b2; padding: 30px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">NMHSS Thirunnavaya</h1>
+          <p style="color: #cffafe; margin: 5px 0 0 0; font-size: 14px;">Admin Dashboard Access</p>
+        </div>
 
-      // Return the code (frontend will send it via email)
-      res.json({ success: true, code });
+        <div style="padding: 40px 30px; text-align: center;">
+          <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 20px;">Verification Code</h2>
+          <p style="color: #4b5563; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
+            A login attempt was made for the developer portal at 
+            <a href="https://nmhss.onrender.com" style="color: #0891b2; text-decoration: none; font-weight: 600;">nmhss.onrender.com</a>.
+            Use the code below to complete the verification.
+          </p>
+          
+          <div style="background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 25px; margin: 0 auto 30px auto; width: fit-content;">
+            <span style="font-family: 'Courier New', Courier, monospace; font-size: 42px; font-weight: 900; color: #0891b2; letter-spacing: 8px;">
+              ${code}
+            </span>
+          </div>
+
+          <p style="color: #6b7280; font-size: 13px; margin: 0;">
+            This code expires in <strong>10 minutes</strong>.
+          </p>
+        </div>
+
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #f1f5f9;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+            &copy; 2026 NMHSS Thirunnavaya Admin System.<br>
+            If you did not request this, please ignore this message .
+          </p>
+        </div>
+
+      </div>
+    </div>
+  `
+      });
+
+      if (error) {
+        console.error("Resend error:", error);
+        return res.status(500).json({ message: "Email failed" });
+      }
+
+      res.json({ success: true });
     } catch (error) {
-      console.error("Error in developer-request:", error);
-      res.status(500).json({ message: "Failed to generate code" });
+      res.status(500).json({ message: "Server error" });
     }
   });
 
-  // Verify developer code and issue token
+  // 2. Verify developer code and issue SECURE COOKIE
   app.post("/api/admin/verify-developer-code", (req, res) => {
     try {
       const { email, code } = req.body;
-
-      if (!email || !code) {
-        return res.status(400).json({ message: "Email and code are required" });
-      }
-
       const codeKey = `${email}-${code}`;
       const storedCode = developerVerificationCodes.get(codeKey);
 
-      // Check if code exists
-      if (!storedCode) {
+      if (!storedCode || (Date.now() - storedCode.createdAt > 10 * 60 * 1000)) {
+        developerVerificationCodes.delete(codeKey);
         return res.status(401).json({ message: "Invalid or expired code" });
       }
 
-      // Check if code is expired (10 minutes)
-      if (Date.now() - storedCode.createdAt > 10 * 60 * 1000) {
-        developerVerificationCodes.delete(codeKey);
-        return res.status(401).json({ message: "Code has expired" });
-      }
-
-      // Code is valid, issue JWT token
+      // Generate Token
       const token = jwt.sign({ email, isDeveloper: true }, JWT_SECRET, { expiresIn: "1h" });
 
-      // Delete the used code
+      // SET SECURE COOKIE FOR RENDER
+      res.cookie("adminToken", token, {
+        httpOnly: true,
+        secure: true,      // Essential for Render's HTTPS
+        sameSite: "lax",
+        maxAge: 3600000
+      });
+
       developerVerificationCodes.delete(codeKey);
 
+      // Return token in body as well for your current frontend state
       res.json({ success: true, token });
     } catch (error) {
-      console.error(error);
       res.status(500).json({ message: "Failed to verify code" });
     }
   });
-
-
 
 
   //------------------- EVENTS ROUTES ----------------
@@ -1295,221 +1358,221 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-//------SPORTS-RESULTS-ENDPOINTS------------------------
+  //------SPORTS-RESULTS-ENDPOINTS------------------------
 
-// 1. Get all available years (for dropdown)
-app.get("/api/sports-results/years", async (_req, res) => {
-  try {
-    const years = await storage.getAllSportsYears();
-    res.json(years);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch years" });
-  }
-});
-
-// 2. Get full result for a specific year (public page uses this)
-app.get("/api/sports-results/:year", async (req, res) => {
-  const year = parseInt(req.params.year);
-  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
-
-  try {
-    const result = await storage.getSportsResultByYear(year);
-    if (!result) return res.status(404).json({ error: "Result not found" });
-    res.json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch result" });
-  }
-});
-
-// 3. Create or Update entire sports result (admin only)
-app.post("/api/admin/sports-results", requireAuth, async (req, res) => {
-  try {
-    const data = insertOrUpdateSportsResultSchema.parse(req.body);
-    const result = await storage.createOrUpdateSportsResult(data);
-    res.json({ success: true, result });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      res.status(400).json({ error: "Validation failed", details: err.errors });
-    } else {
+  // 1. Get all available years (for dropdown)
+  app.get("/api/sports-results/years", async (_req, res) => {
+    try {
+      const years = await storage.getAllSportsYears();
+      res.json(years);
+    } catch (err) {
       console.error(err);
-      res.status(500).json({ error: "Failed to save result" });
+      res.status(500).json({ error: "Failed to fetch years" });
     }
-  }
-});
+  });
 
-// 4. Update specific year (optional — same as POST but clearer)
-app.put("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
-  const year = parseInt(req.params.year);
-  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+  // 2. Get full result for a specific year (public page uses this)
+  app.get("/api/sports-results/:year", async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
-  try {
-    const data = insertOrUpdateSportsResultSchema.parse({
-      ...req.body,
-      year,
-    });
-    const result = await storage.createOrUpdateSportsResult(data);
-    res.json({ success: true, result });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      res.status(400).json({ error: "Validation failed", details: err.errors });
-    } else {
+    try {
+      const result = await storage.getSportsResultByYear(year);
+      if (!result) return res.status(404).json({ error: "Result not found" });
+      res.json(result);
+    } catch (err) {
       console.error(err);
-      res.status(500).json({ error: "Failed to update result" });
+      res.status(500).json({ error: "Failed to fetch result" });
     }
-  }
-});
+  });
 
-// New: Add a single champion to a year
-app.post("/api/admin/sports-results/:year/champions", requireAuth, async (req, res) => {
-  const year = parseInt(req.params.year);
-  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
-
-  try {
-    const championData = insertOrUpdateSportsResultSchema.shape.champions.element.parse(req.body);
-    const { updatedResult, newIndex } = await storage.addChampionToYear(year, championData);
-    if (!updatedResult) return res.status(404).json({ error: "Year not found" });
-
-    res.json({
-      success: true,
-      result: updatedResult,
-      championIndex: newIndex
-    });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      res.status(400).json({ error: "Validation failed", details: err.errors });
-    } else {
-      console.error(err);
-      res.status(500).json({ error: "Failed to add champion" });
-    }
-  }
-});
-
-app.put("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
-  const year = parseInt(req.params.year);
-  const championIndex = parseInt(req.params.championIndex);
-
-  if (isNaN(year) || isNaN(championIndex)) {
-    return res.status(400).json({ error: "Invalid year or champion index" });
-  }
-
-  try {
-    const championData = insertOrUpdateSportsResultSchema.shape.champions.element.parse(req.body);
-    const updatedResult = await storage.updateChampionInYear(year, championIndex, championData);
-    if (!updatedResult) return res.status(404).json({ error: "Year or champion not found" });
-    res.json({ success: true, result: updatedResult });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      res.status(400).json({ error: "Validation failed", details: err.errors });
-    } else {
-      console.error(err);
-      res.status(500).json({ error: "Failed to update champion" });
-    }
-  }
-});
-
-app.delete("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
-  const year = parseInt(req.params.year);
-  const championIndex = parseInt(req.params.championIndex);
-
-  if (isNaN(year) || isNaN(championIndex)) {
-    return res.status(400).json({ error: "Invalid year or champion index" });
-  }
-
-  try {
-    const result = await storage.deleteChampionFromYear(year, championIndex);
-
-    if (!result) {
-      return res.status(404).json({ error: "Champion not found" });
-    }
-
-    const { deletedChampion, mediaId } = result;
-
-    if (mediaId) {
-      try {
-        const media = await MediaModel.findById(mediaId);
-        if (media) {
-          await s3Client.send(
-            new DeleteObjectCommand({
-              Bucket: R2_BUCKET_NAME,
-              Key: media.filename,
-            })
-          );
-          await MediaModel.findByIdAndDelete(mediaId);
-        }
-      } catch (err) {
-        console.warn(`Failed to delete media ${mediaId}:`, err);
+  // 3. Create or Update entire sports result (admin only)
+  app.post("/api/admin/sports-results", requireAuth, async (req, res) => {
+    try {
+      const data = insertOrUpdateSportsResultSchema.parse(req.body);
+      const result = await storage.createOrUpdateSportsResult(data);
+      res.json({ success: true, result });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to save result" });
       }
     }
+  });
 
-    res.json({
-      success: true,
-      message: `Champion deleted${mediaId ? ' and photo removed' : ''}`,
-      deletedChampion,
-    });
-  } catch (err) {
-    console.error("Failed to delete champion:", err);
-    res.status(500).json({ error: "Failed to delete champion" });
-  }
-});
+  // 4. Update specific year (optional — same as POST but clearer)
+  app.put("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
-// 5. Delete entire year's result + ALL associated media (champions + slideshow)
-app.delete("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
-  const year = parseInt(req.params.year, 10);
-  if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+    try {
+      const data = insertOrUpdateSportsResultSchema.parse({
+        ...req.body,
+        year,
+      });
+      const result = await storage.createOrUpdateSportsResult(data);
+      res.json({ success: true, result });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update result" });
+      }
+    }
+  });
 
-  try {
-    const result = await storage.getSportsResultByYear(year);
-    if (!result) return res.status(404).json({ error: "Result not found" });
+  // New: Add a single champion to a year
+  app.post("/api/admin/sports-results/:year/champions", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
-    // Collect mediaIds from champions
-    const championMediaIds = result.champions
-      .map(c => c.mediaId)
-      .filter(Boolean) as string[];
+    try {
+      const championData = insertOrUpdateSportsResultSchema.shape.champions.element.parse(req.body);
+      const { updatedResult, newIndex } = await storage.addChampionToYear(year, championData);
+      if (!updatedResult) return res.status(404).json({ error: "Year not found" });
 
-    // Collect mediaIds from slideshowImages
-    const slideshowMediaIds = (result.slideshowImages || [])
-      .map((img: any) => img.mediaId)
-      .filter(Boolean) as string[];
+      res.json({
+        success: true,
+        result: updatedResult,
+        championIndex: newIndex
+      });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to add champion" });
+      }
+    }
+  });
 
-    const allMediaIds = [...new Set([...championMediaIds, ...slideshowMediaIds])];
+  app.put("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    const championIndex = parseInt(req.params.championIndex);
 
-    // Delete all associated media
-    if (allMediaIds.length > 0) {
-      await Promise.all(
-        allMediaIds.map(async (id) => {
-          try {
-            const media = await MediaModel.findById(id);
-            if (media) {
-              await s3Client.send(
-                new DeleteObjectCommand({
-                  Bucket: R2_BUCKET_NAME,
-                  Key: media.filename,
-                })
-              );
-              await MediaModel.findByIdAndDelete(id);
-            }
-          } catch (err) {
-            console.warn(`Failed to delete media ${id}:`, err);
-          }
-        })
-      );
+    if (isNaN(year) || isNaN(championIndex)) {
+      return res.status(400).json({ error: "Invalid year or champion index" });
     }
 
-    // Delete the sports result document
-    await storage.deleteSportsResult(year);
+    try {
+      const championData = insertOrUpdateSportsResultSchema.shape.champions.element.parse(req.body);
+      const updatedResult = await storage.updateChampionInYear(year, championIndex, championData);
+      if (!updatedResult) return res.status(404).json({ error: "Year or champion not found" });
+      res.json({ success: true, result: updatedResult });
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: err.errors });
+      } else {
+        console.error(err);
+        res.status(500).json({ error: "Failed to update champion" });
+      }
+    }
+  });
 
-    res.json({
-      success: true,
-      message: `Sports result ${year} and ${allMediaIds.length} photos deleted successfully`,
-      deletedPhotos: allMediaIds.length,
-    });
-  } catch (err) {
-    console.error("Failed to delete sports result:", err);
-    res.status(500).json({ error: "Failed to delete result" });
-  }
-});
+  app.delete("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year);
+    const championIndex = parseInt(req.params.championIndex);
+
+    if (isNaN(year) || isNaN(championIndex)) {
+      return res.status(400).json({ error: "Invalid year or champion index" });
+    }
+
+    try {
+      const result = await storage.deleteChampionFromYear(year, championIndex);
+
+      if (!result) {
+        return res.status(404).json({ error: "Champion not found" });
+      }
+
+      const { deletedChampion, mediaId } = result;
+
+      if (mediaId) {
+        try {
+          const media = await MediaModel.findById(mediaId);
+          if (media) {
+            await s3Client.send(
+              new DeleteObjectCommand({
+                Bucket: R2_BUCKET_NAME,
+                Key: media.filename,
+              })
+            );
+            await MediaModel.findByIdAndDelete(mediaId);
+          }
+        } catch (err) {
+          console.warn(`Failed to delete media ${mediaId}:`, err);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Champion deleted${mediaId ? ' and photo removed' : ''}`,
+        deletedChampion,
+      });
+    } catch (err) {
+      console.error("Failed to delete champion:", err);
+      res.status(500).json({ error: "Failed to delete champion" });
+    }
+  });
+
+  // 5. Delete entire year's result + ALL associated media (champions + slideshow)
+  app.delete("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
+    const year = parseInt(req.params.year, 10);
+    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
+
+    try {
+      const result = await storage.getSportsResultByYear(year);
+      if (!result) return res.status(404).json({ error: "Result not found" });
+
+      // Collect mediaIds from champions
+      const championMediaIds = result.champions
+        .map(c => c.mediaId)
+        .filter(Boolean) as string[];
+
+      // Collect mediaIds from slideshowImages
+      const slideshowMediaIds = (result.slideshowImages || [])
+        .map((img: any) => img.mediaId)
+        .filter(Boolean) as string[];
+
+      const allMediaIds = [...new Set([...championMediaIds, ...slideshowMediaIds])];
+
+      // Delete all associated media
+      if (allMediaIds.length > 0) {
+        await Promise.all(
+          allMediaIds.map(async (id) => {
+            try {
+              const media = await MediaModel.findById(id);
+              if (media) {
+                await s3Client.send(
+                  new DeleteObjectCommand({
+                    Bucket: R2_BUCKET_NAME,
+                    Key: media.filename,
+                  })
+                );
+                await MediaModel.findByIdAndDelete(id);
+              }
+            } catch (err) {
+              console.warn(`Failed to delete media ${id}:`, err);
+            }
+          })
+        );
+      }
+
+      // Delete the sports result document
+      await storage.deleteSportsResult(year);
+
+      res.json({
+        success: true,
+        message: `Sports result ${year} and ${allMediaIds.length} photos deleted successfully`,
+        deletedPhotos: allMediaIds.length,
+      });
+    } catch (err) {
+      console.error("Failed to delete sports result:", err);
+      res.status(500).json({ error: "Failed to delete result" });
+    }
+  });
 
   // ---------------- ARTS & SCIENCE RESULTS ENDPOINTS ----------------
 

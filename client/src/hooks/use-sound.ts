@@ -10,10 +10,10 @@ interface SoundConfig {
 }
 
 const SOUND_PATHS: SoundConfig = {
-  hover: "/moving-select-sound.mp3",
-  error: "/error-admin-sound.mp3",
-  success: "/saved-sound.mp3",
-  done: "/sound-done-public.mp3",
+  hover: "/assets/moving-select-sound.mp3",
+  error: "/assets/error-admin-sound.mp3",
+  success: "/assets/saved-sound.mp3",
+  done: "/assets/sound-done-public.mp3",
 };
 
 const SOUND_DELAY = 150; // Delay in ms to prevent overlapping sounds

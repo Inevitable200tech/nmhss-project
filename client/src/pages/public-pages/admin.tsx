@@ -13,9 +13,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const WEB3FORMS_ACCESS_KEY = import.meta.env.VITE_DEVELOPER_KEY_EMAIL;
-const WEB3FORMS_ENDPOINT = "https://api.web3forms.com/submit";
-
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [token, setToken] = useState(localStorage.getItem("adminToken") || "");
@@ -42,7 +39,6 @@ export default function AdminPage() {
   const [lockoutEndTime, setLockoutEndTime] = useState<number | null>(() => {
     const stored = localStorage.getItem("adminLockoutEndTime");
     const endTime = stored ? parseInt(stored, 10) : null;
-    // If lockout has expired, clear it
     if (endTime && Date.now() >= endTime) {
       localStorage.removeItem("adminLockoutEndTime");
       localStorage.removeItem("adminFailedAttempts");
@@ -74,7 +70,6 @@ export default function AdminPage() {
     }
   }, [token]);
 
-  // Lockout countdown timer
   useEffect(() => {
     if (!lockoutEndTime) return;
 
@@ -101,7 +96,6 @@ export default function AdminPage() {
     e.preventDefault();
     setError("");
 
-    // Check if account is locked
     if (lockoutEndTime && Date.now() < lockoutEndTime) {
       playErrorSound();
       setError(`Account temporarily locked. Try again in ${lockoutCountdown}s`);
@@ -121,9 +115,8 @@ export default function AdminPage() {
         setFailedAttempts(newFailedAttempts);
         localStorage.setItem("adminFailedAttempts", newFailedAttempts.toString());
 
-        // Lock account after every 5 failed attempts
         if (newFailedAttempts % 5 === 0) {
-          const lockoutDuration = (Math.floor(newFailedAttempts / 5) * 30) * 1000; // Increases by 30s per 5 failures
+          const lockoutDuration = (Math.floor(newFailedAttempts / 5) * 30) * 1000;
           const newLockoutEndTime = Date.now() + lockoutDuration;
           setLockoutEndTime(newLockoutEndTime);
           localStorage.setItem("adminLockoutEndTime", newLockoutEndTime.toString());
@@ -149,27 +142,35 @@ export default function AdminPage() {
       playErrorSound();
       setError(err.message || "An unknown error occurred");
     }
-  };// Inside your component:
+  };
+
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  // Effect to handle the countdown ticker
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCountdown > 0) {
+      timer = setInterval(() => {
+        setResendCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCountdown]);
+
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    // Set up an interval to update the state every 1 second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
-    // Clean up the interval when the component unmounts to prevent memory leaks
     return () => clearInterval(timer);
   }, []);
-
-  // In your JSX:
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     setToken("");
     setLoggedIn(false);
     setSidebarOpen(false);
-    // Force a reload to clear all state and ensure full logout
     window.location.reload();
   };
 
@@ -183,6 +184,9 @@ export default function AdminPage() {
       });
       return;
     }
+
+    // Prevent clicking if the 60s timer is active
+    if (resendCountdown > 0) return;
 
     setIsLoadingDeveloper(true);
 
@@ -205,42 +209,18 @@ export default function AdminPage() {
         return;
       }
 
-      // Send email with the code
-      const emailPayload = {
-        access_key: WEB3FORMS_ACCESS_KEY,
-        subject: `Developer Verification Code for School Dashboard`,
-        message: `Dear Developer,\n\nYour verification code is: ${data.code}\n\nThis code will expire in 10 minutes.\n\nPlease use this code in the dashboard to gain access.\n\nBest regards,\nSchool Connect Admin System`,
-        email: developerEmail.trim(),
-        "bot-field": "",
-      };
+      // Start the 60-second cooldown timer on success
+      setResendCountdown(60);
 
-
-      const emailResponse = await fetch(WEB3FORMS_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(emailPayload),
+      playSuccessSound();
+      toast({
+        title: "Code sent!",
+        description: `Verification code sent to your inbox.`,
       });
 
-      const emailResult = await emailResponse.json();
+      setSentCodeEmail(developerEmail);
+      setDeveloperStep("code");
 
-
-      if (emailResponse.ok && emailResult.success) {
-        playSuccessSound();
-        toast({
-          title: "Code sent!",
-          description: `Verification code sent to ${developerEmail}`,
-        });
-        setSentCodeEmail(developerEmail);
-        setDeveloperStep("code");
-      } else {
-        playErrorSound();
-        toast({
-          title: "Failed to send email",
-          description: emailResult.message || "Could not send verification code. Check console for details.",
-          variant: "destructive",
-        });
-        console.error("Email service error:", emailResult);
-      }
     } catch (error) {
       playErrorSound();
       toast({
@@ -289,7 +269,6 @@ export default function AdminPage() {
         return;
       }
 
-      // Login successful
       localStorage.setItem("adminToken", data.token);
       setToken(data.token);
       setLoggedIn(true);
@@ -316,7 +295,7 @@ export default function AdminPage() {
     }
   };
 
-  if (!loggedIn) {
+ if (!loggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-lg">
@@ -369,99 +348,121 @@ export default function AdminPage() {
             ← Back to Homepage
           </Button>
 
-      {/* Developer Access Link */}
-      <div className="text-center mt-6 pt-4 border-t border-gray-700">
-        <button
-          onClick={() => {
-            setShowDeveloperDialog(true);
-            playHoverSound();
-          }}
-          className="text-sm text-amber-500 hover:text-amber-400 transition-colors flex items-center justify-center gap-1 w-full"
-        >
-          <Mail className="w-4 h-4" />
-          Are you a developer?
-        </button>
-      </div>
+          <div className="text-center mt-6 pt-4 border-t border-gray-700">
+            <button
+              onClick={() => {
+                setShowDeveloperDialog(true);
+                playHoverSound();
+              }}
+              className="text-sm text-amber-500 hover:text-amber-400 transition-colors flex items-center justify-center gap-1 w-full"
+            >
+              <Mail className="w-4 h-4" />
+              Are you a developer?
+            </button>
+          </div>
 
-      {/* Developer Verification Dialog */}
-      <Dialog open={showDeveloperDialog} onOpenChange={setShowDeveloperDialog}>
-        <DialogContent className="sm:max-w-md">
-          {developerStep === "email" ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>Developer Access</DialogTitle>
-                <DialogDescription>
-                  Enter your email to receive a verification code
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="dev-email" className="text-sm font-medium">
-                    Email Address
-                  </Label>
-                  <Input
-                    id="dev-email"
-                    type="email"
-                    placeholder="developer@example.com"
-                    value={developerEmail}
-                    onChange={(e) => setDeveloperEmail(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendDeveloperCode()}
-                  />
-                </div>
-                <Button
-                  onClick={handleSendDeveloperCode}
-                  disabled={isLoadingDeveloper}
-                  className="w-full"
-                >
-                  {isLoadingDeveloper && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Send Verification Code
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle>Enter Verification Code</DialogTitle>
-                <DialogDescription>
-                  Check your email at <span className="font-semibold text-foreground">{sentCodeEmail}</span> for the code
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="dev-code" className="text-sm font-medium">
-                    Verification Code
-                  </Label>
-                  <Input
-                    id="dev-code"
-                    placeholder="Enter the code from your email"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleVerifyCode()}
-                  />
-                </div>
-                <Button
-                  onClick={handleVerifyCode}
-                  disabled={isLoadingDeveloper}
-                  className="w-full"
-                >
-                  {isLoadingDeveloper && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Verify & Login
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setDeveloperStep("email");
-                    setVerificationCode("");
-                  }}
-                  className="w-full"
-                >
-                  Back
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+          <Dialog open={showDeveloperDialog} onOpenChange={setShowDeveloperDialog}>
+            <DialogContent className="sm:max-w-md">
+              {developerStep === "email" ? (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Developer Access</DialogTitle>
+                    <DialogDescription>
+                      Enter your email to receive a verification code
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="dev-email" className="text-sm font-medium">
+                        Email Address
+                      </Label>
+                      <Input
+                        id="dev-email"
+                        type="email"
+                        placeholder="developer@example.com"
+                        value={developerEmail}
+                        onChange={(e) => setDeveloperEmail(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && resendCountdown === 0 && handleSendDeveloperCode()}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleSendDeveloperCode}
+                      disabled={isLoadingDeveloper || resendCountdown > 0}
+                      className="w-full"
+                    >
+                      {isLoadingDeveloper ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : resendCountdown > 0 ? (
+                        `Wait ${resendCountdown}s to Resend`
+                      ) : (
+                        "Send Verification Code"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Enter Verification Code</DialogTitle>
+                    <DialogDescription>
+                      Check your email at <span className="font-semibold text-foreground">{sentCodeEmail}</span> for the code
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="dev-code" className="text-sm font-medium">
+                        Verification Code
+                      </Label>
+                      <Input
+                        id="dev-code"
+                        placeholder="Enter the code from your email"
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handleVerifyCode()}
+                      />
+                    </div>
+                    <Button
+                      onClick={handleVerifyCode}
+                      disabled={isLoadingDeveloper}
+                      className="w-full"
+                    >
+                      {isLoadingDeveloper && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Verify & Login
+                    </Button>
+
+                    {/* Resend Logic Section */}
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={handleSendDeveloperCode}
+                        disabled={resendCountdown > 0 || isLoadingDeveloper}
+                        className={`text-xs font-medium transition-colors ${
+                          resendCountdown > 0 
+                            ? "text-gray-500 cursor-not-allowed" 
+                            : "text-amber-500 hover:text-amber-400"
+                        }`}
+                      >
+                        {resendCountdown > 0 
+                          ? `Didn't get the code? Resend in ${resendCountdown}s` 
+                          : "Didn't get the code? Click to resend"}
+                      </button>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setDeveloperStep("email");
+                        setVerificationCode("");
+                      }}
+                      className="w-full"
+                    >
+                      Back
+                    </Button>
+                  </div>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     );
@@ -469,8 +470,6 @@ export default function AdminPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-900">
-
-      {/* Mobile Menu Button */}
       <button
         data-drawer-target="default-sidebar"
         data-drawer-toggle="default-sidebar"
@@ -486,15 +485,13 @@ export default function AdminPage() {
         {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
 
-      {/* Sidebar (Desktop & Mobile) */}
       <aside
         id="default-sidebar"
-        className={`fixed top-0 left-0 z-40 w-64 h-screen transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"
-          }`}
+        className={`fixed top-0 left-0 z-40 w-64 h-screen transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"}`}
         aria-label="Sidebar"
       >
         <div className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800 border-r border-gray-700">
-          <h1 className="text-2xl font-black  mb-6 text-cyan-500">Admin Panel</h1>
+          <h1 className="text-2xl font-black mb-6 text-cyan-500">Admin Panel</h1>
           <ul className="space-y-2 font-medium">
             <li>
               <a href="/admin-about">
@@ -503,7 +500,6 @@ export default function AdminPage() {
                 </Button>
               </a>
             </li>
-
             <li>
               <a href="/admin-intro">
                 <Button variant="outline" className="w-full text-left" onMouseEnter={playHoverSound}>
@@ -525,8 +521,6 @@ export default function AdminPage() {
                 </Button>
               </a>
             </li>
-
-            {/* START OF NEW DROPDOWN SECTION: Manage Events & Staff */}
             <li>
               <Button
                 variant="outline"
@@ -538,16 +532,11 @@ export default function AdminPage() {
                 onMouseEnter={playHoverSound}
               >
                 <div className="flex justify-between items-center w-full">
-                  <span>Manage Events & Staff  </span>
+                  <span>Manage Events & Staff</span>
                   {academicDropdownOpen ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
                 </div>
               </Button>
-
-              {/* DROPDOWN CONTENT - Uses max-h/opacity for smooth collapse */}
-              <div
-                className={`overflow-hidden transition-all ease-in-out ${academicDropdownOpen ? "max-h-96 opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"
-                  }`}
-              >
+              <div className={`overflow-hidden transition-all ease-in-out ${academicDropdownOpen ? "max-h-96 opacity-100 mt-2" : "max-h-0 opacity-0 mt-0"}`}>
                 <ul className="ml-4 space-y-1 border-l-2 border-cyan-500 pl-4">
                   <li>
                     <a href="/admin-events">
@@ -566,22 +555,20 @@ export default function AdminPage() {
                   <li>
                     <a href="/admin-teachers-edit">
                       <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300" onMouseEnter={playHoverSound}>
-                        <NotebookPen className="w-4 h-4 mr-2 text-yellow-500" />  Teacher's Section
+                        <NotebookPen className="w-4 h-4 mr-2 text-yellow-500" /> Teacher's Section
                       </Button>
                     </a>
                   </li>
                   <li>
                     <a href="/admin-students-setting">
                       <Button variant="ghost" className="w-full text-left justify-start text-sm hover:bg-gray-700 dark:hover:bg-gray-700/80 text-gray-300" onMouseEnter={playHoverSound}>
-                        <Book className="w-4 h-4 mr-2 text-yellow-500" />  Students's Section
+                        <Book className="w-4 h-4 mr-2 text-yellow-500" /> Students's Section
                       </Button>
                     </a>
                   </li>
                 </ul>
               </div>
             </li>
-            {/* END OF NEW DROPDOWN SECTION */}
-
           </ul>
           <Button variant="outline" className="w-full mt-4 bg-red-800 hover:bg-red-700 border-red-700 text-white" onClick={handleLogout} onMouseEnter={playHoverSound}>
             Logout
@@ -589,15 +576,12 @@ export default function AdminPage() {
         </div>
       </aside>
 
-      {/* Main content */}
-      {/* Added transition to match sidebar */}
       <div className="flex-1 p-4 sm:ml-64 mt-16 sm:mt-0 overflow-y-auto transition-all duration-300">
         <div className="container mx-auto max-w-4xl">
           <h1 className="text-4xl font-extrabold mb-4 text-white">Welcome, Admin</h1>
           <p className="text-gray-400 text-lg">
             Use the sidebar to navigate and manage different sections of the school website content.
           </p>
-
           <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
               <h2 className="text-2xl font-bold text-cyan-400 mb-3">Quick Actions</h2>
@@ -605,14 +589,13 @@ export default function AdminPage() {
                 <li><a href="/admin-academic-results" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><BookOpen className="w-5 h-5" /> Update Academic Results</a></li>
                 <li><a href="/admin-arts-science" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Palette className="w-5 h-5" /> Manage Arts / Science Fair</a></li>
                 <li><a href="/admin-sports-champions" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Medal className="w-5 h-5" /> Manage Sports Champions</a></li>
-                <li><a href="/admin-gallery" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Upload className="w-5 h-5" /> Upload  Media</a></li>
+                <li><a href="/admin-gallery" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Upload className="w-5 h-5" /> Upload Media</a></li>
               </ul>
             </div>
-
             <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
               <h2 className="text-2xl font-bold text-yellow-400 mb-3">System Info</h2>
               <p className="text-gray-400">Status: <span className="text-green-500 font-semibold">Online</span></p>
-              <p className="text-gray-400">Good To See You Sir!! </p>
+              <p className="text-gray-400">Good To See You Sir!!</p>
               <p className="text-gray-400">Server Time: {currentTime.toLocaleTimeString()}</p>
             </div>
           </div>

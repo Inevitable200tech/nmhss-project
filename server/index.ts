@@ -21,6 +21,44 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+
+// --- server/index.ts ---
+
+// 1. Trust proxy is essential for Render.com HTTPS/Cookies
+app.set("trust proxy", 1);
+
+// 2. Simple CSRF Middleware
+// --- server/index.ts ---
+
+const CSRF_EXCLUDE = [
+  "/api/admin/login", 
+  "/api/admin/developer-request", 
+  "/api/admin/verify-developer-code"
+];
+
+app.use((req, res, next) => {
+  // 1. Always allow GET requests
+  if (req.method === "GET") return next();
+
+  // 2. Always allow Excluded routes
+  if (CSRF_EXCLUDE.includes(req.path)) return next();
+
+  // 3. STRICT CHECK for the custom header
+  // Note: Node.js converts all incoming headers to lowercase automatically
+  const csrfHeader = req.headers["x-requested-with"];
+  
+  if (csrfHeader === "SchoolConnect-App") {
+    return next();
+  }
+
+  // LOGGING: This will help you debug in your Render.com logs
+  console.warn(`[CSRF BLOCK] Method: ${req.method} | Path: ${req.path} | Header: ${csrfHeader}`);
+  
+  return res.status(403).json({ 
+    message: "Security Check Failed: Missing Security Header" 
+  });
+});
+
 // ---------------- START ANTI-CACHING MIDDLEWARE ----------------
 
 // Global middleware to disable caching for all API and HTML responses

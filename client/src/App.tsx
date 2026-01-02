@@ -37,6 +37,25 @@ const AdminArtsScience = lazy(() => import("@/pages/admin-pages/admin-arts-scien
 const AdminSportsChampions = lazy(() => import("@/pages/admin-pages/admin-sports-champions"));
 const AdminTutorial = lazy(() => import("@/pages/admin-pages/admin-tutorial"));
 
+// --- Auto add Headers ------------
+
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = async (...args) => {
+    let [resource, config] = args;
+    config = config || {};
+    
+    const headers = new Headers(config.headers || {});
+    
+    // This header acts as our "Simple CSRF Token"
+    // Malicious sites cannot forge this custom header in a cross-site request
+    headers.set("x-requested-with", "SchoolConnect-App");
+    
+    config.headers = headers;
+    return originalFetch(resource, config);
+  };
+}
+
 function App() {
   useEffect(() => {
   if (typeof window === 'undefined') return;
