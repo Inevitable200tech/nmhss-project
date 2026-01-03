@@ -215,7 +215,8 @@ export default function AdminFaculty() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("adminToken")}`
+                    Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+                    "X-Requested-With": "SchoolConnect-App",
                 },
                 body: JSON.stringify(finalPayload),
             });
@@ -273,7 +274,7 @@ export default function AdminFaculty() {
             if (profiles[i].mediaId) {
                 await fetch(`/api/media/${profiles[i].mediaId}`, {
                     method: "DELETE",
-                    headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+                    headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}`, "X-Requested-With": "SchoolConnect-App" },
                 });
             }
 
@@ -310,7 +311,7 @@ export default function AdminFaculty() {
             for (const profile of profiles) {
                 if (profile.mediaId) {
                     try {
-                        await fetch(`/api/media/${profile.mediaId}`, { method: "DELETE", headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` } });
+                        await fetch(`/api/media/${profile.mediaId}`, { method: "DELETE", headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}`, "X-Requested-With": "SchoolConnect-App" } });
                     } catch (err) {
                         console.error(`Failed to delete media ${profile.mediaId}`, err);
                         toast({ title: `❌ Failed to delete media ${profile.mediaId}`, variant: "destructive" });   

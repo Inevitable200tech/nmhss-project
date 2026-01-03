@@ -48,6 +48,19 @@ export default function AdminTeacherEdit() {
     bio: "",
   });
   const [newImage, setNewImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Mutations
   const createTeacher = useMutation({
@@ -59,7 +72,7 @@ export default function AdminTeacherEdit() {
       formData.append("file", newImage);
       const uploadRes = await fetch("/api/media", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
         body: formData,
       });
       if (!uploadRes.ok){ toast({ title: "Error", description: "Image upload failed", variant: "destructive" }); playErrorSound(); throw new Error("Image upload failed"); }
@@ -79,6 +92,7 @@ export default function AdminTeacherEdit() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-Requested-With": "SchoolConnect-App",
         },
         body: JSON.stringify(fullData),
       });
@@ -91,6 +105,7 @@ export default function AdminTeacherEdit() {
       queryClient.invalidateQueries({ queryKey: ["/api/teachers"] });
       setNewTeacher({ name: "", subject: "", bio: "" });
       setNewImage(null);
+      setImagePreview(null);
     },
   });
 
@@ -98,7 +113,7 @@ export default function AdminTeacherEdit() {
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/admin/teachers/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
       });
       if (!res.ok){ toast({ title: "Error", description: "Failed to delete teacher", variant: "destructive" }); playErrorSound(); throw new Error("Failed to delete teacher"); }
       return res.json();
@@ -186,10 +201,32 @@ export default function AdminTeacherEdit() {
             <Input
               type="file"
               accept="image/*"
-              onChange={(e) => setNewImage(e.target.files?.[0] || null)}
+              onChange={handleImageChange}
               onMouseEnter={playHoverSound}
               className="bg-gray-800 text-white border-white/20"
             />
+            {imagePreview && (
+              <div className="flex flex-col items-center space-y-2">
+                <p className="text-sm text-gray-400">Preview:</p>
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-32 h-32 rounded-full object-cover border-2 border-blue-500 shadow-lg"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setNewImage(null);
+                    setImagePreview(null);
+                  }}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  Change Image
+                </Button>
+              </div>
+            )}
             <Button
               onClick={() => createTeacher.mutate()}
               onMouseEnter={playHoverSound}

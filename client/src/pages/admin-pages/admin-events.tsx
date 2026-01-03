@@ -133,6 +133,7 @@ export default function AdminEvents() {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            "X-Requested-With": "SchoolConnect-App",
           },
           body: JSON.stringify(payload),
         });
@@ -142,6 +143,7 @@ export default function AdminEvents() {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            "X-Requested-With": "SchoolConnect-App",
           },
           body: JSON.stringify(payload),
         });
@@ -188,6 +190,7 @@ export default function AdminEvents() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-Requested-With": "SchoolConnect-App",
         },
       });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, Plus, Trash2, Save, Upload, X, AlertTriangle, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSound } from "@/hooks/use-sound";
@@ -10,14 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-// Removed: import Cropper from "react-easy-crop";
-// Removed: import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-// Removed: import { getCroppedImg } from "@/lib/crop-image";
+import { Progress } from "@/components/ui/progress";
 
 type PendingImage = {
   file: File;
   preview: string;
-  // Removed: croppedBlob?: Blob;
 };
 
 type TopStudent = {
@@ -48,25 +45,51 @@ export default function AdminAcademicResults() {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [customYear, setCustomYear] = useState("");
   const [data, setData] = useState<AcademicResult | null>(null);
+  const [originalData, setOriginalData] = useState<AcademicResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const uploadAbortControllerRef = useRef<AbortController | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  // Removed Cropper state variables:
-  // const [cropOpen, setCropOpen] = useState(false);
-  // const [cropImage, setCropImage] = useState("");
-  // const [crop, setCrop] = useState({ x: 0, y: 0 });
-  // const [zoom, setZoom] = useState(1);
-  // const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-  // const [cropTarget, setCropTarget] = useState<{ type: "HS" | "HSS"; index: number } | null>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") || "" : "";
 
+  const handleCancelUpload = () => {
+    if (uploadAbortControllerRef.current) {
+      uploadAbortControllerRef.current.abort();
+      setIsUploading(false);
+      setUploadProgress(0);
+      toast({ title: "Upload cancelled", variant: "default" });
+      playSuccessSound();
+    }
+  };
+
   useEffect(() => {
+    // Debug: Log token status on mount
+    if (!token || token.trim() === "") {
+      console.warn("⚠️ No admin token found in localStorage. User may not be authenticated.");
+    } else {
+      console.log("✓ Admin token found in localStorage");
+    }
+
     fetch("/api/academic-results/years")
       .then(r => r.json())
       .then(setYears)
       .catch(() => toast({ title: "Error", description: "Failed to load years", variant: "destructive" }));
-  }, [toast]);
+
+    // Warn before leaving page with unsaved changes
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+        return "You have unsaved changes. Are you sure you want to leave?";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [toast, hasUnsavedChanges]);
 
   const loadYear = async (year: number) => {
     setIsLoading(true);
@@ -76,6 +99,7 @@ export default function AdminAcademicResults() {
       if (!res.ok) throw new Error();
       const result = await res.json();
       setData(result);
+      setOriginalData(JSON.parse(JSON.stringify(result)));
       setHasUnsavedChanges(false);
     } catch {
       toast({ title: "Not Found", description: `No data for ${year}`, variant: "destructive" });
@@ -133,21 +157,19 @@ export default function AdminAcademicResults() {
     setHasUnsavedChanges(true);
   };
 
-  const removeStudent = async (type: "HS" | "HSS", index: number) => {
+  const removeStudent = (type: "HS" | "HSS", index: number) => {
     if (!data) return;
-    const student = data[type === "HS" ? "topHSStudents" : "topHSSStudents"][index];
-    if (student.mediaId) {
-      await fetch(`/api/media/${student.mediaId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      }).catch(() => { playErrorSound(); toast({ title: "Error", description: "Failed to delete old image", variant: "destructive" }); });
-    }
+
+    // Just remove from local state - don't delete from S3 yet
+    // The actual S3 deletion will happen in saveAll() to keep DB and S3 in sync
     setData({
       ...data,
       [type === "HS" ? "topHSStudents" : "topHSSStudents"]:
         data[type === "HS" ? "topHSStudents" : "topHSSStudents"].filter((_, i) => i !== index)
     });
     setHasUnsavedChanges(true);
+    toast({ title: "Student removed", description: "Click Save to confirm deletion and remove image from storage." });
+    playSuccessSound();
   };
 
   // NEW function to handle image upload without cropping
@@ -167,13 +189,45 @@ export default function AdminAcademicResults() {
 
   const saveAll = async () => {
     if (!data || !selectedYear) return;
+
+    // Validate token before proceeding
+    if (!token || token.trim() === "") {
+      toast({ title: "Authentication Error", description: "No auth token found. Please log in again.", variant: "destructive" });
+      playErrorSound();
+      return;
+    }
+
     setIsSaving(true);
+    setIsUploading(false);
+    setUploadProgress(0);
 
     try {
       let currentData = { ...data }; // Work on a copy
 
+      // STEP 0: Delete images from removed students
+      if (originalData) {
+        const deletedHS = originalData.topHSStudents.filter(
+          orig => !currentData.topHSStudents.some(curr => curr.name === orig.name && curr.aPlusCount === orig.aPlusCount && curr.photoUrl === orig.photoUrl)
+        );
+        const deletedHSS = originalData.topHSSStudents.filter(
+          orig => !currentData.topHSSStudents.some(curr => curr.name === orig.name && curr.aPlusCount === orig.aPlusCount && curr.photoUrl === orig.photoUrl)
+        );
+
+        const allDeleted = [...deletedHS, ...deletedHSS].filter(s => s.mediaId);
+        for (const student of allDeleted) {
+          if (student.mediaId) {
+            await fetch(`/api/media/${student.mediaId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" }
+            }).catch(() => { });
+          }
+        }
+      }
+
       // STEP 1: Upload all pending images
       if (hasPendingImages()) {
+        setIsUploading(true);
+        uploadAbortControllerRef.current = new AbortController();
         toast({ title: "Uploading images...", description: "Please wait" });
 
         const allStudents = [
@@ -183,13 +237,20 @@ export default function AdminAcademicResults() {
 
         // Filter by the new structure: pendingImage.file (instead of croppedBlob)
         const pendingStudents = allStudents.filter(s => s.pendingImage?.file);
+        const totalPending = pendingStudents.length;
+        let uploaded = 0;
 
         for (const student of pendingStudents) {
+          // Check if abort was signaled
+          if (uploadAbortControllerRef.current?.signal.aborted) {
+            throw new Error("Upload cancelled");
+          }
+
           // Delete old image
           if (student.mediaId) {
             await fetch(`/api/media/${student.mediaId}`, {
               method: "DELETE",
-              headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" }
             }).catch(() => { });
           }
 
@@ -199,14 +260,15 @@ export default function AdminAcademicResults() {
 
           const res = await fetch("/api/media", {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
             body: formData,
+            signal: uploadAbortControllerRef.current?.signal,
           });
 
           if (!res.ok) {
             const err = await res.text();
-            toast({ title: "Upload Failed", description: `Failed to upload image for ${student.name}`, variant: "destructive" }); 
-            playErrorSound(); 
+            toast({ title: "Upload Failed", description: `Failed to upload image for ${student.name}. ${res.status === 401 ? "Authentication failed." : ""}`, variant: "destructive" });
+            playErrorSound();
             throw new Error(`Upload failed for ${student.name}: ${err}`);
           }
 
@@ -228,10 +290,16 @@ export default function AdminAcademicResults() {
               pendingImage: undefined,
             };
           }
+
+          uploaded++;
+          setUploadProgress(Math.round((uploaded / totalPending) * 100));
         }
 
         // Update state once
         setData(currentData);
+        setIsUploading(false);
+        setUploadProgress(0);
+        uploadAbortControllerRef.current = null;
         toast({ title: "Images uploaded!", description: "Saving to database..." });
         playHoverSound();
       }
@@ -248,35 +316,42 @@ export default function AdminAcademicResults() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          "X-Requested-With": "SchoolConnect-App",
+
         },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        toast({ title: "Save Failed", description: "Failed to save academic results", variant: "destructive" });  
+        toast({ title: "Save Failed", description: "Failed to save academic results", variant: "destructive" });
         playErrorSound();
         throw new Error("Save failed");
       }
 
       toast({ title: "Success!", description: `Academic results for ${selectedYear} saved with photos!` });
       setHasUnsavedChanges(false);
+      setOriginalData(JSON.parse(JSON.stringify(currentData)));
       // Reload years if a new year was created
       if (!years.includes(selectedYear)) {
-         fetch("/api/academic-results/years")
+        fetch("/api/academic-results/years")
           .then(r => r.json())
           .then(setYears)
       }
     } catch (err: any) {
-
-      toast({
-        title: "Failed",
-        description: err.message,
-        variant: "destructive"
-      });
-      playErrorSound();
+      if (err.message !== "Upload cancelled") {
+        toast({
+          title: "Failed",
+          description: err.message,
+          variant: "destructive"
+        });
+        playErrorSound();
+      }
     } finally {
       setIsSaving(false);
+      setIsUploading(false);
+      setUploadProgress(0);
+      uploadAbortControllerRef.current = null;
     }
   };
 
@@ -360,7 +435,7 @@ export default function AdminAcademicResults() {
               <Button
                 onClick={saveAll}
                 onMouseEnter={playHoverSound}
-                disabled={isSaving || !hasUnsavedChanges}
+                disabled={isSaving || !hasUnsavedChanges || isUploading}
                 size="lg"
                 className="w-full sm:w-auto gap-3 font-semibold shadow-lg order-last"
               >
@@ -369,6 +444,19 @@ export default function AdminAcademicResults() {
               </Button>
             </div>
           </div>
+
+          {/* Upload Progress Bar */}
+          {isUploading && (
+            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-200">Uploading images: {uploadProgress}%</span>
+                <button onClick={handleCancelUpload} onMouseEnter={playHoverSound} className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm text-white font-medium">
+                  Cancel
+                </button>
+              </div>
+              <Progress value={uploadProgress} className="h-2" />
+            </div>
+          )}
 
           {/* Pending Images Alert */}
           {hasPendingImages() && (

@@ -178,6 +178,7 @@ export default function AdminGalleryPage() {
           activeRefs.current.push(xhr);
           xhr.open("POST", type === 'image' ? "/api/gallery/images" : "/api/gallery/videos", true);
           xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("adminToken")}`);
+          xhr.setRequestHeader("X-Requested-With", "SchoolConnect-App");
 
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
@@ -271,6 +272,17 @@ export default function AdminGalleryPage() {
     const d = new Date(vid.uploadedAt);
     return (filterMonth === "all" || d.getMonth().toString() === filterMonth) && (filterYear === "all" || d.getFullYear().toString() === filterYear);
   }).sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isImageUploading || isVideoUploading) { // or isUploading in students
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isImageUploading, isVideoUploading]); // or [isUploading]
 
   return (
     <div className="min-h-screen bg-gray-900 p-4 md:p-8 space-y-6 text-gray-100">

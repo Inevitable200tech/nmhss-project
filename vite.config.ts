@@ -45,6 +45,7 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 1600, // Suppress warning for vendor
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks(id) {

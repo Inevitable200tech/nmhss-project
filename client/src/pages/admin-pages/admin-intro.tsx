@@ -16,6 +16,10 @@ export default function AdminIntroPage() {
   const [newVideo, setNewVideo] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState(0);
+  const [uploadedMediaId, setUploadedMediaId] = useState<string | null>(null);
+  const [xhrRef, setXhrRef] = useState<XMLHttpRequest | null>(null);
+  const [uploadStartTime, setUploadStartTime] = useState<number>(0);
   const { toast } = useToast();
   const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
 
@@ -35,6 +39,52 @@ export default function AdminIntroPage() {
     };
     loadHeroVideo();
   }, []);
+
+  const handleCancelUpload = async () => {
+    playHoverSound();
+    const confirmed = window.confirm("⚠️ Cancel upload and delete uploaded file?");
+    if (!confirmed) return;
+
+    if (xhrRef) {
+      xhrRef.abort();
+      setXhrRef(null);
+    }
+
+    // Delete the uploaded media if it exists
+    if (uploadedMediaId) {
+      try {
+        const res = await fetch(`/api/media/${uploadedMediaId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+        });
+        if (res.ok) {
+          console.log("Deleted media during cancel:", uploadedMediaId);
+        }
+      } catch (err) {
+        console.error("Failed to delete media during cancel:", uploadedMediaId, err);
+      }
+    }
+
+    setIsUploading(false);
+    setUploadProgress(0);
+    setUploadSpeed(0);
+    setUploadedMediaId(null);
+    setNewVideo(null);
+    toast({ title: "Upload cancelled and file deleted" });
+    playSuccessSound();
+  };
+
+  const formatSpeed = (bytesPerSecond: number): string => {
+    if (bytesPerSecond === 0) return "0 B/s";
+    const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+    let speed = bytesPerSecond;
+    let unitIndex = 0;
+    while (speed >= 1024 && unitIndex < units.length - 1) {
+      speed /= 1024;
+      unitIndex++;
+    }
+    return `${speed.toFixed(2)} ${units[unitIndex]}`;
+  };
 
   const handleUpload = async () => {
     if (!newVideo) {
@@ -59,6 +109,9 @@ export default function AdminIntroPage() {
 
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadSpeed(0);
+    const startTime = Date.now();
+    setUploadStartTime(startTime);
 
     try {
       // Step 1: Upload to /api/media
@@ -68,16 +121,24 @@ export default function AdminIntroPage() {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/media", true);
       xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("adminToken")}`);
+      xhr.setRequestHeader("X-Requested-With", "SchoolConnect-App");
+      setXhrRef(xhr);
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
           setUploadProgress(Math.round((event.loaded / event.total) * 100));
+          const elapsedSeconds = (Date.now() - startTime) / 1000;
+          if (elapsedSeconds > 0) {
+            const speed = event.loaded / elapsedSeconds;
+            setUploadSpeed(speed);
+          }
         }
       };
 
       xhr.onload = async () => {
         if (xhr.status === 200) {
           const media = JSON.parse(xhr.responseText); // { id, url }
+          setUploadedMediaId(media.id);
 
           // Step 2: Save hero video entry
           const res = await fetch("/api/hero-video", {
@@ -97,6 +158,7 @@ export default function AdminIntroPage() {
 
           setVideo(data);
           setNewVideo(null);
+          setUploadedMediaId(null);
           toast({ title: "Success", description: "Hero video uploaded successfully" });
           playSuccessSound();
         } else {
@@ -105,12 +167,24 @@ export default function AdminIntroPage() {
         }
         setIsUploading(false);
         setUploadProgress(0);
+        setUploadSpeed(0);
+        setXhrRef(null);
       };
 
       xhr.onerror = () => {
         setIsUploading(false);
+        setUploadProgress(0);
+        setUploadSpeed(0);
+        setXhrRef(null);
         toast({ title: "Error", description: "Upload failed" });
         playErrorSound();
+      };
+
+      xhr.onabort = () => {
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadSpeed(0);
+        setXhrRef(null);
       };
 
       xhr.send(formData);
@@ -185,12 +259,22 @@ export default function AdminIntroPage() {
             {isUploading && (
               <div className="space-y-2">
                 <Progress value={uploadProgress} />
-                <p className="text-sm text-gray-400" onMouseEnter={playHoverSound}>Uploading: {uploadProgress}%</p>
+                <div className="flex justify-between text-sm text-gray-400">
+                  <p onMouseEnter={playHoverSound}>Uploading: {uploadProgress}%</p>
+                  <p onMouseEnter={playHoverSound}>Speed: {formatSpeed(uploadSpeed)}</p>
+                </div>
               </div>
             )}
-            <Button onClick={handleUpload} onMouseEnter={playHoverSound} disabled={isUploading}>
-              {isUploading ? "Uploading..." : "Upload"}
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleUpload} onMouseEnter={playHoverSound} disabled={isUploading} className="flex-1">
+                {isUploading ? "Uploading..." : "Upload"}
+              </Button>
+              {isUploading && (
+                <Button onClick={handleCancelUpload} variant="destructive" onMouseEnter={playHoverSound}>
+                  Cancel
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

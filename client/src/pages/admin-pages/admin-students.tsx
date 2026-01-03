@@ -114,7 +114,7 @@ export default function AdminStudentsPage() {
         setIsPendingLoading(true);
         try {
             const res = await fetch("/api/admin/pending-uploads", {
-                headers: { Authorization: `Bearer ${adminToken}` },
+                headers: { Authorization: `Bearer ${adminToken}`, "X-Requested-With": "SchoolConnect-App" },
             });
             if (res.ok) {
                 const data = await res.json();
@@ -131,7 +131,7 @@ export default function AdminStudentsPage() {
         try {
             const res = await fetch(`/api/admin/approve-upload/${tempId}`, {
                 method: "POST",
-                headers: { Authorization: `Bearer ${adminToken}` },
+                headers: { Authorization: `Bearer ${adminToken}`, "X-Requested-With": "SchoolConnect-App" },
             });
             if (res.ok) {
                 setPendingUploads((prev) => prev.filter(u => u.tempId !== tempId));
@@ -151,7 +151,7 @@ export default function AdminStudentsPage() {
         if (!window.confirm("Reject and delete this pending upload?")) return;
         const res = await fetch(`/api/admin/disapprove-upload/${tempId}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${adminToken}` },
+            headers: { Authorization: `Bearer ${adminToken}`, "X-Requested-With": "SchoolConnect-App" },
         });
         if (res.ok) {
             setPendingUploads(prev => prev.filter(u => u.tempId !== tempId));
@@ -164,7 +164,7 @@ export default function AdminStudentsPage() {
         if (!window.confirm("⚠️ This will delete the media from storage and database. Continue?")) return;
         const res = await fetch(`/api/admin-students/${id}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${adminToken}` },
+            headers: { Authorization: `Bearer ${adminToken}`, "X-Requested-With": "SchoolConnect-App" },
         });
         if (res.ok) {
             setItems((prev) => prev.filter((m) => m.id !== id));
@@ -188,6 +188,17 @@ export default function AdminStudentsPage() {
             videoPreviews.forEach(url => URL.revokeObjectURL(url));
         };
     }, []);
+
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isUploading) {
+                e.preventDefault();
+                e.returnValue = "";
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isUploading]);
 
     // --- Handlers ---
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,7 +248,7 @@ export default function AdminStudentsPage() {
                 // STEP 1: UPLOAD TO R2
                 const mediaRes = await fetch("/api/media", {
                     method: "POST",
-                    headers: { Authorization: `Bearer ${adminToken}` },
+                    headers: { Authorization: `Bearer ${adminToken}`, "X-Requested-With": "SchoolConnect-App" },
                     body: formData,
                     signal: abortControllerRef.current.signal
                 });
@@ -253,7 +264,7 @@ export default function AdminStudentsPage() {
                 // STEP 2: CREATE DATABASE ENTRY
                 const res = await fetch("/api/admin-students", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}`, "X-Requested-With": "SchoolConnect-App" },
                     body: JSON.stringify({
                         mediaId: media.id,
                         url: media.url,
@@ -285,7 +296,7 @@ export default function AdminStudentsPage() {
                     await Promise.all(uploadedMediaIds.map(id =>
                         fetch(`/api/media/${id}`, {
                             method: "DELETE",
-                            headers: { Authorization: `Bearer ${adminToken}` },
+                            headers: { Authorization: `Bearer ${adminToken}`, "X-Requested-With": "SchoolConnect-App" },
                         })
                     ));
                 }

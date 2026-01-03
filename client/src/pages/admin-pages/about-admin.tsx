@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Progress } from "@/components/ui/progress";
 
 type ImageItem = { url: string; mediaId?: string; file?: File; mode: "upload" | "url" };
 type AudioItem = { url: string; mediaId?: string; file?: File; mode: "upload" }; // Restored mode, fixed to "upload"
@@ -69,6 +70,10 @@ export default function AboutAdmin() {
   const [token] = useState(localStorage.getItem("adminToken") || "");
   const [previousParagraphs, setPreviousParagraphs] = useState<string[]>([]);
   const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadAbortController, setUploadAbortController] = useState<AbortController | null>(null);
+  const [uploadedMediaIds, setUploadedMediaIds] = useState<string[]>([]);
 
   const isMalayalam = (text?: string) =>
     text ? /[\u0D00-\u0D7F]/.test(text) : false;
@@ -209,7 +214,7 @@ export default function AboutAdmin() {
       try {
         const res = await fetch(`/api/media/${current.mediaId}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
         });
         if (!res.ok) throw new Error("Failed to delete media file");
         console.log("Deleted media:", current.mediaId);
@@ -235,6 +240,7 @@ export default function AboutAdmin() {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
+            "X-Requested-With": "SchoolConnect-App",
           },
           body: JSON.stringify(payload),
         });
@@ -262,7 +268,7 @@ export default function AboutAdmin() {
       try {
         const res = await fetch(`/api/media/${current.mediaId}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
         });
         if (!res.ok) throw new Error("Failed to delete media file");
         console.log("Deleted media:", current.mediaId);
@@ -289,12 +295,13 @@ export default function AboutAdmin() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-Requested-With": "SchoolConnect-App",
         },
         body: JSON.stringify(payload),
       });
       if (res.ok) {
         toast({ title: "Audio removed, paragraphs reset, & saved" });
-        playSuccessSound ();
+        playSuccessSound();
         refetch();
       }
     } catch {
@@ -311,7 +318,7 @@ export default function AboutAdmin() {
       try {
         const res = await fetch(`/api/media/${current.mediaId}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
         });
         if (!res.ok) throw new Error("Failed to delete media file");
         console.log("Deleted media:", current.mediaId);
@@ -335,6 +342,8 @@ export default function AboutAdmin() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-Requested-With": "SchoolConnect-App",
+
         },
         body: JSON.stringify(payload),
       });
@@ -347,29 +356,80 @@ export default function AboutAdmin() {
     }
   };
 
+  const cleanupUploadedMedia = async (mediaIds: string[]) => {
+    for (const mediaId of mediaIds) {
+      try {
+        await fetch(`/api/media/${mediaId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
+        });
+        console.log("Deleted media during cancel:", mediaId);
+      } catch (err) {
+        console.error("Failed to delete media during cancel:", mediaId, err);
+      }
+    }
+  };
+
+  const handleCancelUpload = async () => {
+    playHoverSound();
+    const confirmed = window.confirm("⚠️ Cancel upload and delete all uploaded files?");
+    if (!confirmed) return;
+
+    if (uploadAbortController) {
+      uploadAbortController.abort();
+      setUploadAbortController(null);
+    }
+
+    await cleanupUploadedMedia(uploadedMediaIds);
+    setUploadedMediaIds([]);
+    setIsUploading(false);
+    setUploadProgress(0);
+    toast({ title: "Upload cancelled and files deleted" });
+    playSuccessSound();
+  };
+
   const handleSave = async () => {
     playHoverSound();
     const confirmed = window.confirm("Continue With Changes ?.");
     if (!confirmed) return;
+
+    const abortController = new AbortController();
+    setUploadAbortController(abortController);
+    setIsUploading(true);
+    setUploadProgress(0);
+    setUploadedMediaIds([]);
+    const uploadedIds: string[] = [];
+
     try {
       const uploadedImages: ImageItem[] = [];
+      const totalItems = aboutData.images.filter(img => img.file).length + (aboutData.audios[0]?.file ? 1 : 0);
+      let uploadedCount = 0;
+
       for (const img of aboutData.images) {
+        if (abortController.signal.aborted) {
+          throw new Error("Upload cancelled");
+        }
+
         if (img.file) {
           const formData = new FormData();
           formData.append("file", img.file);
           const res = await fetch("/api/media", {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
             body: formData,
+            signal: abortController.signal,
           });
           if (!res.ok) throw new Error("Failed to upload image");
           const uploaded = await res.json();
+          uploadedIds.push(uploaded.id);
           uploadedImages.push({
             url: uploaded.url,
             mediaId: uploaded.id,
             mode: "upload",
           });
           URL.revokeObjectURL(img.url);
+          uploadedCount++;
+          setUploadProgress(totalItems > 0 ? Math.round((uploadedCount / totalItems) * 100) : 0);
         } else {
           uploadedImages.push({
             url: img.url,
@@ -381,19 +441,31 @@ export default function AboutAdmin() {
 
       let uploadedAudios: AudioItem[] = [];
       if (aboutData.audios[0]?.file) {
+        if (abortController.signal.aborted) {
+          throw new Error("Upload cancelled");
+        }
+
         const formData = new FormData();
         formData.append("file", aboutData.audios[0].file);
         const res = await fetch("/api/media", {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
           body: formData,
+          signal: abortController.signal,
         });
         if (!res.ok) throw new Error("Failed to upload audio");
         const uploaded = await res.json();
+        uploadedIds.push(uploaded.id);
         uploadedAudios = [{ url: uploaded.url, mediaId: uploaded.id, mode: "upload" }];
         URL.revokeObjectURL(aboutData.audios[0].url);
+        uploadedCount++;
+        setUploadProgress(totalItems > 0 ? Math.round((uploadedCount / totalItems) * 100) : 0);
       } else {
         uploadedAudios = aboutData.audios.map(aud => ({ ...aud, mode: "upload" }));
+      }
+
+      if (abortController.signal.aborted) {
+        throw new Error("Upload cancelled");
       }
 
       const payload = { ...aboutData, images: uploadedImages, audios: uploadedAudios };
@@ -408,10 +480,25 @@ export default function AboutAdmin() {
       if (!res.ok) throw new Error("Failed to save section");
       toast({ title: "Section saved successfully" });
       playSuccessSound();
+      setUploadProgress(100);
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadedMediaIds([]);
+      }, 500);
       refetch();
     } catch (err) {
-      toast({ title: "Error saving section", variant: "destructive" });
-      playErrorSound();
+      if ((err as Error).message === "Upload cancelled") {
+        // Already handled by cleanup function
+      } else {
+        toast({ title: "Error saving section", variant: "destructive" });
+        playErrorSound();
+        // Cleanup on error
+        await cleanupUploadedMedia(uploadedIds);
+      }
+      setIsUploading(false);
+      setUploadProgress(0);
+      setUploadedMediaIds([]);
     }
   };
 
@@ -428,11 +515,11 @@ export default function AboutAdmin() {
         try {
           const res = await fetch(`/api/media/${img.mediaId}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
           });
           if (!res.ok) throw new Error("Failed to delete media file");
           console.log("Deleted media:", img.mediaId);
-          toast({title:`Deleted Image ${img.mediaId}`})
+          toast({ title: `Deleted Image ${img.mediaId}` });
           playSuccessSound();
         } catch (err) {
           toast({ title: `Failed to delete image ${img.mediaId}`, variant: "destructive" });
@@ -450,11 +537,11 @@ export default function AboutAdmin() {
       try {
         const res = await fetch(`/api/media/${currentAudio.mediaId}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
         });
         if (!res.ok) throw new Error("Failed to delete audio file");
         console.log("Deleted media:", currentAudio.mediaId);
-        toast({ title: "Deleted Audio"  })
+        toast({ title: "Deleted Audio" });
         playSuccessSound();
       } catch (err) {
         toast({ title: "Failed to delete audio file", variant: "destructive" });
@@ -481,6 +568,8 @@ export default function AboutAdmin() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-Requested-With": "SchoolConnect-App",
+
         },
         body: JSON.stringify(resetData),
       });
@@ -680,38 +769,58 @@ export default function AboutAdmin() {
           <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0 w-full">
             <Button
               onClick={handleSave}
-              disabled={!audiosValid}
+              disabled={!audiosValid || isUploading}
               className="w-full sm:w-auto"
               onMouseEnter={playHoverSound}
             >
-              Save
+              {isUploading ? "Uploading..." : "Save"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPreviewMode(true)}
-              disabled={!audiosValid}
-              className="w-full sm:w-auto"
-              onMouseEnter={playHoverSound}
-            >
-              Preview
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleRestoreDefaults}
-              className="w-full sm:w-auto"
-              onMouseEnter={playHoverSound}
-            >
-              Restore Defaults
-            </Button>
-            <a href="/admin" className="w-full sm:w-auto">
-              <Button
-                variant="default"
-                className="w-full sm:w-auto"
-                onMouseEnter={playHoverSound}
-              >
-                Back to Dashboard
-              </Button>
-            </a>
+            {isUploading && (
+              <>
+                <div className="flex-1 flex flex-col gap-2">
+                  <Progress value={uploadProgress} className="w-full" />
+                  <p className="text-sm text-gray-600">{uploadProgress}% uploaded</p>
+                </div>
+                <Button
+                  onClick={handleCancelUpload}
+                  variant="destructive"
+                  className="w-full sm:w-auto"
+                  onMouseEnter={playHoverSound}
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
+            {!isUploading && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setPreviewMode(true)}
+                  disabled={!audiosValid}
+                  className="w-full sm:w-auto"
+                  onMouseEnter={playHoverSound}
+                >
+                  Preview
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleRestoreDefaults}
+                  className="w-full sm:w-auto"
+                  onMouseEnter={playHoverSound}
+                >
+                  Restore Defaults
+                </Button>
+                <a href="/admin" className="w-full sm:w-auto">
+                  <Button
+                    variant="default"
+                    className="w-full sm:w-auto"
+                    onMouseEnter={playHoverSound}
+                  >
+                    Back to Dashboard
+                  </Button>
+                </a>
+              </>
+            )}
           </div>
         </div>
       ) : (

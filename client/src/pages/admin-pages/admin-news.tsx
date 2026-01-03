@@ -37,6 +37,7 @@ export default function AdminNews() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+          "X-Requested-With": "SchoolConnect-App",
         },
         body: JSON.stringify(payload),
       });
@@ -68,6 +69,7 @@ export default function AdminNews() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+          "X-Requested-With": "SchoolConnect-App",
         },
         body: JSON.stringify(payload),
       });
@@ -99,7 +101,7 @@ export default function AdminNews() {
       }
       const res = await fetch(`/api/news/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}`, "X-Requested-With": "SchoolConnect-App" },
       });
       if (!res.ok) throw new Error("Failed to delete news");
       return res.json();

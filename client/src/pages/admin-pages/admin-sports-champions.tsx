@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { insertOrUpdateSportsResultSchema, type InsertOrUpdateSportsResult } from '@shared/schema';
 import { useToast } from "@/hooks/use-toast";
 import { useSound } from "@/hooks/use-sound";
@@ -29,6 +30,10 @@ export default function AdminSportsChampions() {
   const [years, setYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [overallProgress, setOverallProgress] = useState(0); // Track overall save/upload progress
+  const uploadAbortControllerRef = useRef<AbortController | null>(null);
   const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
   const [openYearDialog, setOpenYearDialog] = useState(false);
   const [openChampionDialog, setOpenChampionDialog] = useState(false);
@@ -39,6 +44,9 @@ export default function AdminSportsChampions() {
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+
+  // Store champion files separately by index (files don't serialize in form data)
+  const championFilesRef = useRef<Map<number, File>>(new Map());
 
   // Fixed 4 slots for slideshow - always 4 positions
   const [slideshowFiles, setSlideshowFiles] = useState<(File | null)[]>([null, null, null, null]);
@@ -56,6 +64,22 @@ export default function AdminSportsChampions() {
   }>({
     name: '', event: '', position: 1, level: 'HSS', teamMembers: '', featured: false
   });
+
+  // Track last saved form state for detecting deletions
+  const lastSavedFormRef = useRef<InsertOrUpdateSportsResult | null>(null);
+  
+  // Track if there are unsaved changes
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const handleCancelImageUpload = () => {
+    if (uploadAbortControllerRef.current) {
+      uploadAbortControllerRef.current.abort();
+      setIsImageUploading(false);
+      setUploadProgress(0);
+      toast({ title: "Upload cancelled", variant: "default" });
+      playSuccessSound();
+    }
+  };
 
   const {
     register, control, handleSubmit, reset, watch, setValue, getValues,
@@ -90,6 +114,24 @@ export default function AdminSportsChampions() {
     fetchYears();
   }, [fetchYears]);
 
+  // Warn before leaving page with unsaved changes
+  useEffect(() => {
+    setHasUnsavedChanges(isDirty);
+  }, [isDirty]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+        return "You have unsaved changes. Are you sure you want to leave?";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   useEffect(() => {
     const g = watch('gold') || 0;
     const s = watch('silver') || 0;
@@ -120,6 +162,20 @@ export default function AdminSportsChampions() {
             })),
             slideshowImages: data.slideshowImages || []
           });
+          
+          // Track last saved form state for detecting deletions
+          lastSavedFormRef.current = JSON.parse(JSON.stringify({
+            year: data.year,
+            gold: data.gold || 0,
+            silver: data.silver || 0,
+            bronze: data.bronze || 0,
+            totalNationalMedals: data.totalNationalMedals || 0,
+            totalParticipants: data.totalParticipants || 0,
+            events: data.events || [],
+            champions: data.champions || [],
+            slideshowImages: data.slideshowImages || []
+          }));
+          setHasUnsavedChanges(false);
 
           // Load into fixed 4 slots (pad with empty if less than 4)
           const loadedMediaIds = (data.slideshowImages || []).map((img: any) => img.mediaId || '');
@@ -131,6 +187,8 @@ export default function AdminSportsChampions() {
 
         } else {
           reset({ year: selectedYear, gold: 0, silver: 0, bronze: 0, totalNationalMedals: 0, totalParticipants: 0, events: [], champions: [], slideshowImages: [] });
+          lastSavedFormRef.current = null;
+          setHasUnsavedChanges(false);
           setSlideshowPreviews([null, null, null, null]);
           setSlideshowMediaIds(['', '', '', '']);
         }
@@ -193,25 +251,91 @@ export default function AdminSportsChampions() {
     if (isLoading || !selectedYear) return;
 
     setIsLoading(true);
+    setOverallProgress(0);
     try {
-      // Build uploaded IDs for fixed 4 slots
+      // STEP 0: Delete orphaned champion media from removed champions
+      setOverallProgress(10);
+      if (lastSavedFormRef.current) {
+        const deletedChampions = lastSavedFormRef.current.champions.filter(
+          orig => !data.champions.some(curr => curr.mediaId === orig.mediaId && curr.name === orig.name)
+        );
+        
+        for (const champion of deletedChampions) {
+          if (champion.mediaId) {
+            await deleteMedia(champion.mediaId).catch(() => {});
+          }
+        }
+      }
+
+      // STEP 1: Upload champion photos that have files in the ref
+      setOverallProgress(20);
+      const championsWithUploadedMedia = await Promise.all(
+        data.champions.map(async (champ: any, index: number) => {
+          // Check if this champion has a file in the ref
+          const file = championFilesRef.current.get(index);
+          if (file) {
+            try {
+              const fd = new FormData();
+              fd.append('file', file);
+              
+              const res = await fetch('/api/media', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`, 'X-Requested-With': 'SchoolConnect-App' },
+                body: fd
+              });
+              
+              if (!res.ok) throw new Error('Upload failed');
+              const json = await res.json();
+              
+              // Clear from ref after successful upload
+              championFilesRef.current.delete(index);
+              
+              return {
+                ...champ,
+                mediaId: json.id,
+                photoUrl: getPhotoUrl(json.id)
+              };
+            } catch (err) {
+              toast({ title: "Error", description: "Failed to upload champion photo", variant: "destructive" });
+              playErrorSound();
+              throw err;
+            }
+          }
+          // Remove photoUrl if no mediaId (it's just for UI display)
+          const { photoUrl, ...rest } = champ;
+          return rest.mediaId 
+            ? { ...rest, photoUrl: getPhotoUrl(rest.mediaId) }
+            : rest;
+        })
+      );
+      setOverallProgress(50);
+
+      // STEP 2: Upload slideshow images that have files
       const uploadedSlideshowMediaIds: string[] = [];
       for (let i = 0; i < 4; i++) {
         const file = slideshowFiles[i];
         if (file) {
-          const fd = new FormData();
-          fd.append('file', file);
-          const res = await fetch('/api/media', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` },
-            body: fd
-          });
-          const json = await res.json();
-          if (!res.ok) throw new Error(json.error || 'Slideshow upload failed');
-          uploadedSlideshowMediaIds[i] = json.id;
+          try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/media', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`, 'X-Requested-With': 'SchoolConnect-App' },
+              body: fd
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'Slideshow upload failed');
+            uploadedSlideshowMediaIds[i] = json.id;
+          } catch (err) {
+            toast({ title: "Error", description: "Failed to upload slideshow image", variant: "destructive" });
+            playErrorSound();
+            throw err;
+          }
         } else {
           uploadedSlideshowMediaIds[i] = slideshowMediaIds[i] || '';
         }
+        // Update progress for each slideshow image
+        setOverallProgress(50 + ((i + 1) / 4) * 30);
       }
 
       // Filter non-empty for form array
@@ -219,10 +343,11 @@ export default function AdminSportsChampions() {
         .filter(id => id && id !== '')
         .map(id => ({ mediaId: id }));
 
+      setOverallProgress(80);
       const res = await fetch('/api/admin/sports-results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` },
-        body: JSON.stringify({ ...data, slideshowImages: finalSlideshowImages })
+        body: JSON.stringify({ ...data, champions: championsWithUploadedMedia, slideshowImages: finalSlideshowImages })
       });
 
       if (!res.ok) {
@@ -232,9 +357,10 @@ export default function AdminSportsChampions() {
         throw new Error(errorData.error || 'Failed to save');
       }
 
+      setOverallProgress(90);
       toast({
         title: "Saved successfully",
-        description: "Record saved successfully.",
+        description: "All champions and photos uploaded and saved.",
       });
       playSuccessSound();
 
@@ -248,6 +374,20 @@ export default function AdminSportsChampions() {
 
           const previews = paddedMediaIds.map(id => getPhotoUrl(id) || null);
           setSlideshowPreviews(previews);
+          
+          // Track last saved form state for detecting future deletions
+          lastSavedFormRef.current = JSON.parse(JSON.stringify({
+            year: freshData.year,
+            gold: freshData.gold || 0,
+            silver: freshData.silver || 0,
+            bronze: freshData.bronze || 0,
+            totalNationalMedals: freshData.totalNationalMedals || 0,
+            totalParticipants: freshData.totalParticipants || 0,
+            events: freshData.events || [],
+            champions: freshData.champions || [],
+            slideshowImages: freshData.slideshowImages || []
+          }));
+          setHasUnsavedChanges(false); // Clear unsaved changes flag after successful save
         });
 
       // Clean up blob URLs and reset files
@@ -255,6 +395,11 @@ export default function AdminSportsChampions() {
         if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
       });
       setSlideshowFiles([null, null, null, null]);
+      
+      // Clear champion files ref
+      championFilesRef.current.clear();
+      
+      setOverallProgress(100);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -264,6 +409,8 @@ export default function AdminSportsChampions() {
       playErrorSound();
     } finally {
       setIsLoading(false);
+      setIsImageUploading(false);
+      setOverallProgress(0);
     }
   };
 
@@ -271,46 +418,18 @@ export default function AdminSportsChampions() {
     if (!tempChampion.name.trim()){ playErrorSound(); return toast({ title: "Error", description: "Name required", variant: "destructive" });}
     if (!tempChampion.event) { playErrorSound(); return toast({ title: "Error", description: "Event required", variant: "destructive" }); }
 
-    let mediaId = tempChampion.mediaId;
-    let newPhotoUrl = getPhotoUrl(mediaId);
-
-    if (imageFile) {
-      setIsLoading(true);
-      try {
-        const fd = new FormData();
-        fd.append('file', imageFile);
-        const res = await fetch('/api/media', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` },
-          body: fd
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Upload failed');
-        mediaId = json.id;
-        newPhotoUrl = getPhotoUrl(mediaId);
-      } catch (e: any) {
-        setIsLoading(false);
-        toast({ title: "Error", description: e.message || 'Image upload failed', variant: "destructive" });
-        playErrorSound();
-        return;
-      }
-
-      if (imagePreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(imagePreviewUrl);
-      setImageFile(null);
-      setImagePreviewUrl(newPhotoUrl ?? null);
-    }
-
     const payload = {
       name: tempChampion.name.trim(),
       event: tempChampion.event,
       position: tempChampion.position,
       level: tempChampion.level,
       teamMembers: tempChampion.teamMembers.split(',').map(s => s.trim()).filter(Boolean),
-      mediaId: mediaId || undefined,
-      featured: tempChampion.featured
+      mediaId: tempChampion.mediaId,
+      featured: tempChampion.featured,
+      photoUrl: imagePreviewUrl // For UI display only
     };
 
-    const championWithPhoto = { ...payload, photoUrl: newPhotoUrl } as ChampionForm;
+    const championWithPhoto = { ...payload } as ChampionForm;
     let newChampionsArray = [...watchedChampions];
 
     if (payload.featured && (payload.level === 'HS' || payload.level === 'HSS')) {
@@ -331,23 +450,32 @@ export default function AdminSportsChampions() {
       }
     }
 
+    // Store the file in ref, keyed by the champion's index
+    if (imageFile) {
+      const champIndex = editingIndex !== null ? editingIndex : newChampionsArray.length - 1;
+      championFilesRef.current.set(champIndex, imageFile);
+    }
+
     setOpenChampionDialog(false);
     toast({
-      title: "Champion saved locally. Save all at top.",
-      description: "Champion saved locally. Save all at top."
+      title: "Champion saved locally. Click 'Save All' to upload and finalize.",
+      description: "Photo will be uploaded when you click Save All."
     });
     playSuccessSound();
     const currentFormData = getValues();
     currentFormData.champions = newChampionsArray;
     reset(currentFormData, { keepDirty: true });
-    setIsLoading(false);
+    
+    // Clear the image state for next champion
+    setImageFile(null);
+    setImagePreviewUrl(null);
   };
 
   const deleteMedia = async (mediaId: string) => {
     try {
       await fetch(`/api/media/${mediaId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`, 'X-Requested-With': 'SchoolConnect-App' },
       });
     } catch (e) {
       console.error('Media deletion failed:', e);
@@ -358,17 +486,22 @@ export default function AdminSportsChampions() {
 
   const handleRemoveChampion = async (index: number) => {
     const championToRemove = watchedChampions[index];
-    const mediaIdToRemove = championToRemove?.mediaId;
 
     if (!window.confirm(`Delete champion: ${championToRemove.name}?`)) return;
 
+    // Clear file from ref if it exists
+    championFilesRef.current.delete(index);
+    
     removeChampion(index);
+    
+    toast({ title: "Champion removed. Saving...", variant: "default" });
+    playSuccessSound();
+    
+    // Trigger immediate save to ensure atomic deletion
     const newChampionsArray = watchedChampions.filter((_, i) => i !== index);
     const currentFormData = getValues();
     currentFormData.champions = newChampionsArray;
     await onMainFormSubmit(currentFormData);
-
-    if (mediaIdToRemove) await deleteMedia(mediaIdToRemove);
   };
 
   const handleDeleteYear = async () => {
@@ -488,6 +621,19 @@ return (
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />} Save All
             </Button>
           </div>
+
+          {/* Progress Bar during save/upload */}
+          {isLoading && overallProgress > 0 && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-600 dark:text-gray-400">
+                  {overallProgress < 20 ? "Cleaning up..." : overallProgress < 50 ? "Uploading champions..." : overallProgress < 80 ? "Uploading slides..." : "Saving to database..."}
+                </span>
+                <span className="font-semibold text-orange-600">{overallProgress}%</span>
+              </div>
+              <Progress value={overallProgress} className="h-2" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -662,12 +808,13 @@ return (
                             <span className="font-semibold text-lg truncate">{c.name}</span>
                             {c.featured && <Star className="w-5 h-5 text-yellow-500 fill-yellow-500 flex-shrink-0" />}
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {c.event} •
-                            <Badge className={`ml-2 text-xs ${c.position === 1 ? 'bg-yellow-500' : c.position === 2 ? 'bg-gray-400' : 'bg-orange-700'}`}>
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <span>{c.event}</span>
+                            <span>•</span>
+                            <Badge className={`text-xs ${c.position === 1 ? 'bg-yellow-500' : c.position === 2 ? 'bg-gray-400' : 'bg-orange-700'}`}>
                               {c.position === 1 ? 'Gold' : c.position === 2 ? 'Silver' : 'Bronze'}
                             </Badge>
-                          </p>
+                          </div>
                           {c.teamMembers?.length > 0 && <p className="text-xs text-gray-500 dark:text-gray-500 mt-1 truncate">Team: {c.teamMembers.join(', ')}</p>}
                         </div>
                         <div className="flex gap-2 self-end sm:self-center">
@@ -799,7 +946,11 @@ return (
           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-6">
             <Button variant="outline" onClick={() => setOpenChampionDialog(false)} className="w-full sm:w-auto" onMouseEnter={playHoverSound}>Cancel</Button>
             <Button onClick={saveChampion} disabled={isLoading || !tempChampion.name.trim() || !tempChampion.event} className="w-full sm:w-auto" onMouseEnter={playHoverSound}>
-              {editingIndex !== null ? 'Update Champion' : 'Add Champion'}
+              {editingIndex !== null ? (
+                'Update Champion'
+              ) : (
+                'Add Champion'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
