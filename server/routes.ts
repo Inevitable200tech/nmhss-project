@@ -1291,29 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 4. Update specific year (optional — same as POST but clearer)
-  app.put("/api/admin/academic-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
-    const year = parseInt(req.params.year);
-    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
-
-    try {
-      const data = insertOrUpdateAcademicResultSchema.parse({
-        ...req.body,
-        year,
-      });
-      const result = await storage.createOrUpdateAcademicResult(data);
-      res.json({ success: true, result });
-    } catch (err: any) {
-      if (err instanceof z.ZodError) {
-        res.status(400).json({ error: "Validation failed", details: err.errors });
-      } else {
-        console.error(err);
-        res.status(500).json({ error: "Failed to update result" });
-      }
-    }
-  });
-
-  // 5. Delete entire year's result + ALL associated student photos (admin only)
+  // 4. Delete entire year's result + ALL associated student photos (admin only)
   app.delete("/api/admin/academic-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year, 10);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });

@@ -196,6 +196,10 @@ export default function AdminAcademicResults() {
       playErrorSound();
       return;
     }
+    const confirmed = window.confirm(
+      "⚠️ Are you sure you want to save all changes?"
+    );
+    if (!confirmed) return;
 
     setIsSaving(true);
     setIsUploading(false);
@@ -361,6 +365,52 @@ export default function AdminAcademicResults() {
     return [...data.topHSStudents, ...data.topHSSStudents].some(s => s.pendingImage);
   };
 
+  const deleteYear = async () => {
+    if (!selectedYear) return;
+
+    const confirmed = window.confirm(
+      `⚠️ Are you sure you want to DELETE the entire academic results for ${selectedYear}?\n\nThis will permanently delete:\n- All student records\n- All student photos from storage\n\nThis action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/academic-results/${selectedYear}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Requested-With": "SchoolConnect-App",
+        },
+      });
+
+      if (!res.ok) {
+        toast({ title: "Delete Failed", description: "Failed to delete academic results", variant: "destructive" });
+        playErrorSound();
+        return;
+      }
+
+      toast({ title: "Success!", description: `Academic results for ${selectedYear} deleted successfully` });
+      playSuccessSound();
+      setSelectedYear(null);
+      setData(null);
+      setOriginalData(null);
+      
+      // Reload years
+      fetch("/api/academic-results/years")
+        .then(r => r.json())
+        .then(setYears);
+    } catch (err: any) {
+      toast({
+        title: "Failed",
+        description: err.message,
+        variant: "destructive"
+      });
+      playErrorSound();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (!selectedYear) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-800 p-6">
@@ -431,17 +481,30 @@ export default function AdminAcademicResults() {
                 Academic Results {selectedYear}
               </h1>
 
-              {/* Save Button — Right aligned */}
-              <Button
-                onClick={saveAll}
-                onMouseEnter={playHoverSound}
-                disabled={isSaving || !hasUnsavedChanges || isUploading}
-                size="lg"
-                className="w-full sm:w-auto gap-3 font-semibold shadow-lg order-last"
-              >
-                {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                {isSaving ? "Saving..." : "Save All Changes"}
-              </Button>
+              {/* Action Buttons — Right side */}
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto order-last">
+                <Button
+                  onClick={saveAll}
+                  onMouseEnter={playHoverSound}
+                  disabled={isSaving || !hasUnsavedChanges || isUploading}
+                  size="lg"
+                  className="gap-3 font-semibold shadow-lg flex-1 sm:flex-none"
+                >
+                  {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                  {isSaving ? "Saving..." : "Save All Changes"}
+                </Button>
+                <Button
+                  onClick={deleteYear}
+                  onMouseEnter={playHoverSound}
+                  disabled={isSaving || isUploading}
+                  size="lg"
+                  variant="destructive"
+                  className="gap-2 font-semibold flex-1 sm:flex-none"
+                >
+                  <Trash2 className="h-5 w-5" />
+                  Delete Year
+                </Button>
+              </div>
             </div>
           </div>
 

@@ -175,7 +175,8 @@ export default function AdminFaculty() {
                             const uploadRes = await fetch("/api/media", {
                                 method: "POST",
                                 headers: {
-                                    Authorization: `Bearer ${localStorage.getItem("adminToken")}`
+                                    Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+                                    "X-Requested-With": "SchoolConnect-App",
                                 },
                                 body: formData
                             });

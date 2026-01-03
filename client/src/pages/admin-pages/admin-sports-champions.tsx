@@ -248,10 +248,19 @@ export default function AdminSportsChampions() {
   };
 
   const onMainFormSubmit = async (data: InsertOrUpdateSportsResult) => {
+
     if (isLoading || !selectedYear) return;
+    const confirmed = window.confirm(
+      "Are you sure you want to save these changes? This will overwrite the current data."
+    );
+
+    if (!confirmed) return;
 
     setIsLoading(true);
     setOverallProgress(0);
+    uploadAbortControllerRef.current = new AbortController();
+    const uploadedMediaIds: string[] = []; // Track for rollback
+    
     try {
       // STEP 0: Delete orphaned champion media from removed champions
       setOverallProgress(10);
@@ -275,17 +284,26 @@ export default function AdminSportsChampions() {
           const file = championFilesRef.current.get(index);
           if (file) {
             try {
+              // Check if abort was signaled
+              if (uploadAbortControllerRef.current?.signal.aborted) {
+                throw new Error('Upload cancelled');
+              }
+
               const fd = new FormData();
               fd.append('file', file);
               
               const res = await fetch('/api/media', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`, 'X-Requested-With': 'SchoolConnect-App' },
-                body: fd
+                body: fd,
+                signal: uploadAbortControllerRef.current?.signal
               });
               
               if (!res.ok) throw new Error('Upload failed');
               const json = await res.json();
+              
+              // Track uploaded media for rollback if needed
+              uploadedMediaIds.push(json.id);
               
               // Clear from ref after successful upload
               championFilesRef.current.delete(index);
@@ -316,16 +334,23 @@ export default function AdminSportsChampions() {
         const file = slideshowFiles[i];
         if (file) {
           try {
+            // Check if abort was signaled
+            if (uploadAbortControllerRef.current?.signal.aborted) {
+              throw new Error('Upload cancelled');
+            }
+
             const fd = new FormData();
             fd.append('file', file);
             const res = await fetch('/api/media', {
               method: 'POST',
               headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`, 'X-Requested-With': 'SchoolConnect-App' },
-              body: fd
+              body: fd,
+              signal: uploadAbortControllerRef.current?.signal
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error || 'Slideshow upload failed');
             uploadedSlideshowMediaIds[i] = json.id;
+            uploadedMediaIds.push(json.id); // Track for rollback
           } catch (err) {
             toast({ title: "Error", description: "Failed to upload slideshow image", variant: "destructive" });
             playErrorSound();
@@ -344,10 +369,16 @@ export default function AdminSportsChampions() {
         .map(id => ({ mediaId: id }));
 
       setOverallProgress(80);
+      // Check if abort was signaled before final save
+      if (uploadAbortControllerRef.current?.signal.aborted) {
+        throw new Error('Upload cancelled');
+      }
+
       const res = await fetch('/api/admin/sports-results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` },
-        body: JSON.stringify({ ...data, champions: championsWithUploadedMedia, slideshowImages: finalSlideshowImages })
+        body: JSON.stringify({ ...data, champions: championsWithUploadedMedia, slideshowImages: finalSlideshowImages }),
+        signal: uploadAbortControllerRef.current?.signal
       });
 
       if (!res.ok) {
@@ -401,9 +432,29 @@ export default function AdminSportsChampions() {
       
       setOverallProgress(100);
     } catch (error: any) {
+      // ROLLBACK: Delete all successfully uploaded media on failure
+      if (uploadedMediaIds.length > 0) {
+        toast({
+          title: "Cleaning up...",
+          description: `Upload failed. Removing ${uploadedMediaIds.length} orphaned file(s) from storage...`,
+          variant: "default"
+        });
+        
+        for (const mediaId of uploadedMediaIds) {
+          try {
+            await fetch(`/api/media/${mediaId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}`, 'X-Requested-With': 'SchoolConnect-App' }
+            });
+          } catch (deleteErr) {
+            console.warn(`Failed to delete orphaned media ${mediaId}:`, deleteErr);
+          }
+        }
+      }
+
       toast({
         title: "Error",
-        description: error.message || 'Save failed',
+        description: error.message === 'Upload cancelled' ? 'Upload cancelled. All uploaded files have been cleaned up.' : (error.message || 'Save failed'),
         variant: "destructive"
       });
       playErrorSound();
@@ -411,6 +462,7 @@ export default function AdminSportsChampions() {
       setIsLoading(false);
       setIsImageUploading(false);
       setOverallProgress(0);
+      uploadAbortControllerRef.current = null;
     }
   };
 
@@ -629,7 +681,12 @@ return (
                 <span className="text-gray-600 dark:text-gray-400">
                   {overallProgress < 20 ? "Cleaning up..." : overallProgress < 50 ? "Uploading champions..." : overallProgress < 80 ? "Uploading slides..." : "Saving to database..."}
                 </span>
-                <span className="font-semibold text-orange-600">{overallProgress}%</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-orange-600">{overallProgress}%</span>
+                  <Button size="sm" variant="destructive" onClick={handleCancelImageUpload} onMouseEnter={playHoverSound}>
+                    Cancel
+                  </Button>
+                </div>
               </div>
               <Progress value={overallProgress} className="h-2" />
             </div>

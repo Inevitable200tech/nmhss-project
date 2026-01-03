@@ -127,6 +127,8 @@ export default function AdminStudentsPage() {
 
     // --- Actions ---
     const approveUpload = async (tempId: string) => {
+        const confirmed = window.confirm("Approve this pending upload?");
+        if (!confirmed) return;
         setApprovingId(tempId);
         try {
             const res = await fetch(`/api/admin/approve-upload/${tempId}`, {

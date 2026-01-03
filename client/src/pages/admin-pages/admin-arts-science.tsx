@@ -253,7 +253,7 @@ export default function AdminArtsScience() {
             try {
               await fetch(`/api/media/${item.mediaId}`, {
                 method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
+                headers: { Authorization: `Bearer ${token}`,"X-Requested-With": "SchoolConnect-App"  },
               }).catch(() => { });
             } catch { }
           }
@@ -283,7 +283,7 @@ export default function AdminArtsScience() {
 
       const res = await fetch("/api/arts-science-results", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`,"X-Requested-With": "SchoolConnect-App" },
         body: JSON.stringify(body),
       });
 
@@ -314,6 +314,8 @@ export default function AdminArtsScience() {
 
   // ---- Slideshow management helpers ----
   const handleSlideUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const confirm = window.confirm("Upload this slide? It will be added to the slideshow and saved automatically.");
+    if (!confirm) return;
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -344,6 +346,8 @@ export default function AdminArtsScience() {
   };
 
   const removeSlide = (index: number) => {
+    const confirmed = window.confirm("Delete this slide? This action cannot be undone.");
+    if (!confirmed) return;
     if (!data) return;
     const ev = data[currentEventKey];
 
@@ -614,7 +618,7 @@ export default function AdminArtsScience() {
     try {
       const res = await fetch(`/api/arts-science-results/${selectedYear}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App"  },
       });
       if (!res.ok) throw new Error();
 

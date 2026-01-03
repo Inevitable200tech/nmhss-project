@@ -106,12 +106,12 @@ export default function AdminGalleryPage() {
       await Promise.all(idsToRollback.map(id =>
         fetch(`/api/gallery/${type}s/${id}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+          headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}`, "X-Requested-With": "SchoolConnect-App" },
         })
       ));
       if (type === 'image') setImages(p => p.filter(img => !idsToRollback.includes(img.id)));
       else setVideos(p => p.filter(vid => !idsToRollback.includes(vid.id)));
-    } catch (err) { console.error("Rollback failed", err); toast({ title: "Error", description: "Rollback failed", variant: "destructive" });  playErrorSound();}
+    } catch (err) { console.error("Rollback failed", err); toast({ title: "Error", description: "Rollback failed", variant: "destructive" }); playErrorSound(); }
   };
 
 
@@ -151,6 +151,8 @@ export default function AdminGalleryPage() {
 
   // --- Upload Logic ---
   const handleBatchUpload = async (type: 'image' | 'video') => {
+    const confirm = window.confirm(`Upload ${type === 'image' ? selectedImages.length : selectedVideos.length} ${type === 'image' ? 'images' : 'videos'}?`);
+    if (!confirm) return;
     const files = type === 'image' ? selectedImages : selectedVideos;
     const date = type === 'image' ? imageDate : videoDate;
     const setIsUploading = type === 'image' ? setIsImageUploading : setIsVideoUploading;
@@ -158,7 +160,7 @@ export default function AdminGalleryPage() {
     const activeRefs = type === 'image' ? activeImageXHRs : activeVideoXHRs;
     const batchTracker = type === 'image' ? currentBatchImageIds : currentBatchVideoIds;
 
-    if (!files.length || !date){ playErrorSound(); return toast({ title: "Error", description: "Select files and date." });}
+    if (!files.length || !date) { playErrorSound(); return toast({ title: "Error", description: "Select files and date." }); }
 
     setIsUploading(true);
     setProgress(0);
@@ -206,9 +208,10 @@ export default function AdminGalleryPage() {
       playSuccessSound();
       type === 'image' ? resetImageForm() : resetVideoForm();
     } catch (e) {
-      if (e !== "ABORTED") {toast({ title: "Error", description: "Upload failed.", variant: "destructive" });
-      playErrorSound();
-    }
+      if (e !== "ABORTED") {
+        toast({ title: "Error", description: "Upload failed.", variant: "destructive" });
+        playErrorSound();
+      }
       setIsUploading(false);
     }
   };
@@ -236,7 +239,7 @@ export default function AdminGalleryPage() {
     if (!window.confirm("Permanently delete?")) return;
     const res = await fetch(`/api/gallery/${type}s/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+      headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}`, "X-Requested-With": "SchoolConnect-App" },
     });
     if (res.ok) {
       type === 'image' ? setImages(p => p.filter(i => i.id !== id)) : setVideos(p => p.filter(v => v.id !== id));
@@ -250,11 +253,13 @@ export default function AdminGalleryPage() {
   };
 
   const handleBulkDelete = async (type: 'image' | 'video') => {
+    const confirm = window.confirm(`Are you sure you want to delete the selected ${type === 'image' ? 'images' : 'videos'}? This action cannot be undone.`);
+    if (!confirm) return;
     const ids = type === 'image' ? selectedImageIds : selectedVideoIds;
     if (!window.confirm(`Delete ${ids.length} items?`)) return;
     await Promise.all(ids.map(id => fetch(`/api/gallery/${type}s/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+      headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}`, "X-Requested-With": "SchoolConnect-App" },
     })));
     type === 'image' ? setImages(p => p.filter(i => !ids.includes(i.id))) : setVideos(p => p.filter(v => !ids.includes(v.id)));
     type === 'image' ? setSelectedImageIds([]) : setSelectedVideoIds([]);
@@ -315,10 +320,12 @@ export default function AdminGalleryPage() {
                 {imagePreviews.map((src, i) => (
                   <div key={i} className="relative aspect-square">
                     <img src={src} className="h-full w-full object-cover rounded border border-gray-600" />
-                    <button onClick={() => {
-                      setImagePreviews(p => p.filter((_, idx) => idx !== i));
-                      setSelectedImages(p => p.filter((_, idx) => idx !== i));
-                    }} className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5" onMouseEnter={playHoverSound}><X className="w-3 h-3" /></button>
+                    {!isImageUploading && (
+                      <button onClick={() => {
+                        setImagePreviews(p => p.filter((_, idx) => idx !== i));
+                        setSelectedImages(p => p.filter((_, idx) => idx !== i));
+                      }} className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5" onMouseEnter={playHoverSound}><X className="w-3 h-3" /></button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -340,12 +347,15 @@ export default function AdminGalleryPage() {
                 {videoPreviews.map((src, i) => (
                   <div key={i} className="relative bg-black rounded-lg overflow-hidden border border-gray-700">
                     <video src={src} className="w-full aspect-video object-cover" controls playsInline muted />
-                    <button onClick={() => {
-                      setVideoPreviews(p => p.filter((_, idx) => idx !== i));
-                      setSelectedVideos(p => p.filter((_, idx) => idx !== i));
-                    }} className="absolute top-2 right-2 z-10 bg-red-500 p-1 rounded-full shadow-lg hover:bg-red-600" onMouseEnter={playHoverSound}>
-                      <X className="w-6 h-6 text-white" />
-                    </button>
+                    {!isVideoUploading && (
+                      <button onClick={() => {
+                        setVideoPreviews(p => p.filter((_, idx) => idx !== i));
+                        setSelectedVideos(p => p.filter((_, idx) => idx !== i));
+                      }} className="absolute top-2 right-2 z-10 bg-red-500 p-1 rounded-full shadow-lg hover:bg-red-600" onMouseEnter={playHoverSound}>
+                        <X className="w-6 h-6 text-white" />
+                      </button>
+                    )
+                    }
                   </div>
                 ))}
               </div>

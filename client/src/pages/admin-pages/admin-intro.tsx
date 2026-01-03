@@ -87,6 +87,7 @@ export default function AdminIntroPage() {
   };
 
   const handleUpload = async () => {
+
     if (!newVideo) {
       toast({
         title: "No file selected",
@@ -106,6 +107,10 @@ export default function AdminIntroPage() {
       playErrorSound();
       return;
     }
+    const confirmed = window.confirm(
+      "⚠️ Are you sure you want to upload this video?"
+    );
+    if (!confirmed) return;
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -153,7 +158,7 @@ export default function AdminIntroPage() {
             }),
           });
 
-          if (!res.ok){ toast({title: "Error", description: "Failed to save hero video"}); playErrorSound(); throw new Error("Failed to save hero video");}
+          if (!res.ok) { toast({ title: "Error", description: "Failed to save hero video" }); playErrorSound(); throw new Error("Failed to save hero video"); }
           const data = await res.json();
 
           setVideo(data);
@@ -197,6 +202,11 @@ export default function AdminIntroPage() {
 
   const handleDelete = async () => {
     if (!video) return;
+    playHoverSound();
+    const confirmed = window.confirm(
+      "⚠️ Are you sure you want to delete the video?"
+    );
+    if (!confirmed) return;
     try {
       const res = await fetch(`/api/hero-video/${video.id}`, {
         method: "DELETE",

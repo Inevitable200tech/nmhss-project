@@ -31,10 +31,10 @@ export default function AdminTeacherEdit() {
     queryKey: ["/api/teachers"],
     queryFn: async () => {
       const res = await fetch("/api/teachers");
-      if (!res.ok){
+      if (!res.ok) {
         toast({ title: "Error", description: "Failed to fetch teachers", variant: "destructive" });
         playErrorSound();
-       throw new Error("Failed to fetch teachers");
+        throw new Error("Failed to fetch teachers");
       }
       return res.json();
     },
@@ -64,9 +64,13 @@ export default function AdminTeacherEdit() {
 
   // Mutations
   const createTeacher = useMutation({
-    mutationFn: async () => {
-      if (!newImage){ toast({ title: "Error", description: "Image is required", variant: "destructive" }); playErrorSound(); throw new Error("Image is required")}
 
+    mutationFn: async () => {
+      if (!newImage) { toast({ title: "Error", description: "Image is required", variant: "destructive" }); playErrorSound(); throw new Error("Image is required") }
+      const confirmed = window.confirm(
+        "⚠️ Are you sure you want to create this new teacher?"
+      );
+      if (!confirmed) return;
       // Upload image to /api/media
       const formData = new FormData();
       formData.append("file", newImage);
@@ -75,7 +79,7 @@ export default function AdminTeacherEdit() {
         headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
         body: formData,
       });
-      if (!uploadRes.ok){ toast({ title: "Error", description: "Image upload failed", variant: "destructive" }); playErrorSound(); throw new Error("Image upload failed"); }
+      if (!uploadRes.ok) { toast({ title: "Error", description: "Image upload failed", variant: "destructive" }); playErrorSound(); throw new Error("Image upload failed"); }
       const { id: mediaId, url: imageUrl } = await uploadRes.json();
 
       // Create full InsertTeacher and post to /api/admin/teachers
@@ -96,7 +100,7 @@ export default function AdminTeacherEdit() {
         },
         body: JSON.stringify(fullData),
       });
-      if (!res.ok){ toast({ title: "Error", description: "Failed to create teacher", variant: "destructive" }); playErrorSound(); throw new Error("Failed to create teacher"); }
+      if (!res.ok) { toast({ title: "Error", description: "Failed to create teacher", variant: "destructive" }); playErrorSound(); throw new Error("Failed to create teacher"); }
       return res.json();
     },
     onSuccess: () => {
@@ -111,11 +115,15 @@ export default function AdminTeacherEdit() {
 
   const deleteTeacher = useMutation({
     mutationFn: async (id: string) => {
+      const confirmed = window.confirm(
+        "⚠️ Are you sure you want to delete this teacher? This action cannot be undone."
+      );
+      if (!confirmed) return;
       const res = await fetch(`/api/admin/teachers/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}`, "X-Requested-With": "SchoolConnect-App" },
       });
-      if (!res.ok){ toast({ title: "Error", description: "Failed to delete teacher", variant: "destructive" }); playErrorSound(); throw new Error("Failed to delete teacher"); }
+      if (!res.ok) { toast({ title: "Error", description: "Failed to delete teacher", variant: "destructive" }); playErrorSound(); throw new Error("Failed to delete teacher"); }
       return res.json();
     },
     onSuccess: () => {
@@ -130,8 +138,7 @@ export default function AdminTeacherEdit() {
       <div className="relative min-h-screen flex flex-col">
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-900 via-gray-900 to-black animate-gradient" />
         <div className="flex items-center justify-center h-screen">
-          <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-          <span className="ml-2 text-white">Loading...</span>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
         </div>
       </div>
     );
