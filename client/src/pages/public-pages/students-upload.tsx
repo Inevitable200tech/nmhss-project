@@ -234,7 +234,7 @@ export default function StudentsUploadPage(): JSX.Element {
                             <div className="border border-gray-700 rounded-lg bg-gray-900 p-3 min-h-[120px] flex items-center justify-center">
                                 {previewUrl ? (
                                     type === "image" ? (
-                                        <img src={previewUrl} alt="preview" className="max-h-64 w-auto rounded object-contain" />
+                                        <img loading="lazy" src={previewUrl} alt="preview" className="max-h-64 w-auto rounded object-contain" />
                                     ) : (
                                         <video src={previewUrl} controls className="max-h-64 w-full rounded" />
                                     )

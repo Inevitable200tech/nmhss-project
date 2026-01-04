@@ -234,7 +234,7 @@ const renderFeaturedHero = (achievements: Achievement[], eventName: ActiveTab, s
   );
 };
 
-const renderGradeGrid = (achievements: Achievement[], setSelectedAchievement: (a: Achievement) => void) => {
+const renderGradeGrid = (achievements: Achievement[], setSelectedAchievement: (a: Achievement) => void, expandedGrades: Set<string>, setExpandedGrades: (set: Set<string>) => void) => {
   if (achievements.length === 0) {
     return (
       <p className="text-center text-gray-500 dark:text-gray-400 py-6 italic text-xl">
@@ -245,47 +245,67 @@ const renderGradeGrid = (achievements: Achievement[], setSelectedAchievement: (a
   const byGrade = groupByGrade(achievements);
   const glassBgClass = 'bg-white/20 dark:bg-gray-800/20 backdrop-blur-md border border-white/30 dark:border-gray-700/30';
 
+  const toggleExpanded = (gradeKey: string) => {
+    const newSet = new Set(expandedGrades);
+    if (newSet.has(gradeKey)) {
+      newSet.delete(gradeKey);
+    } else {
+      newSet.add(gradeKey);
+    }
+    setExpandedGrades(newSet);
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mt-10">
       {(['A', 'B', 'C'] as const).map(grade => {
         const winners = byGrade[grade];
         const count = winners.length;
         const styles = getGradeStyles(grade);
+        const gradeKey = `grade-${grade}`;
+        const isExpanded = expandedGrades.has(gradeKey);
+        const displayedWinners = isExpanded ? winners : winners.slice(0, 4);
 
         return (
-          <div key={grade} className={`rounded-3xl shadow-2xl p-6 text-center flex flex-col ${glassBgClass} border-4 ${styles.borderClass}`}>
-            <div className="pt-2 pb-6 flex flex-col items-center justify-center">
-              <div className="text-5xl">{gradeEmoji(grade)}</div>
-              <h4 className={`text-2xl font-black tracking-wide uppercase text-gray-900 dark:text-white mt-2`}>
+          <div key={grade} className={`rounded-3xl shadow-2xl p-4 md:p-6 text-center flex flex-col ${glassBgClass} border-4 ${styles.borderClass}`}>
+            <div className="pt-2 pb-4 md:pb-6 flex flex-col items-center justify-center">
+              <div className="text-4xl md:text-5xl">{gradeEmoji(grade)}</div>
+              <h4 className={`text-lg md:text-2xl font-black tracking-wide uppercase text-gray-900 dark:text-white mt-2`}>
                 Grade {grade} Achievers
               </h4>
-              <p className="text-5xl font-extrabold text-gray-900 dark:text-white mt-2 drop-shadow-sm">{count}</p>
+              <p className="text-3xl md:text-5xl font-extrabold text-gray-900 dark:text-white mt-2 drop-shadow-sm">{count}</p>
             </div>
 
-            <div className="flex-1 space-y-4 border-t border-white/50 dark:border-gray-700/50 pt-6">
-              {winners.slice(0, 4).map((a, i) => (
+            <div className="flex-1 space-y-2 md:space-y-4 border-t border-white/50 dark:border-gray-700/50 pt-4 md:pt-6">
+              {displayedWinners.map((a, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-4 p-3 bg-white/10 dark:bg-gray-900/10 backdrop-blur-sm rounded-xl transition-all duration-200 shadow-inner hover:shadow-lg cursor-pointer" // ADDED cursor-pointer
-                  onClick={() => setSelectedAchievement(a)} // ADDED CLICK HANDLER
+                  className="flex items-center gap-2 md:gap-4 p-2 md:p-3 bg-white/10 dark:bg-gray-900/10 backdrop-blur-sm rounded-xl transition-all duration-200 shadow-inner hover:shadow-lg cursor-pointer"
+                  onClick={() => setSelectedAchievement(a)}
                 >
                   <img
                     src={a.photoUrl}
                     alt={a.name}
-                    className={`w-14 h-14 rounded-full object-cover border-2 ${styles.photoBorderClass}`}
+                    className={`w-10 h-10 md:w-14 md:h-14 rounded-full object-cover border-2 ${styles.photoBorderClass} flex-shrink-0`}
                   />
                   <div className="text-left flex-1 min-w-0">
-                    <div className="font-bold text-lg overflow-hidden whitespace-nowrap text-ellipsis text-gray-900 dark:text-white" title={a.name}>
+                    <div className="font-bold text-xs md:text-lg overflow-hidden whitespace-nowrap text-ellipsis text-gray-900 dark:text-white" title={a.name}>
                       {a.name}
                     </div>
-                    <div className="text-sm overflow-hidden whitespace-nowrap text-ellipsis text-red-600 dark:text-red-400 font-medium" title={a.item}>
+                    <div className="text-xs md:text-sm overflow-hidden whitespace-nowrap text-ellipsis text-red-600 dark:text-red-400 font-medium" title={a.item}>
                       {a.item} ({a.competitionLevel})
                     </div>
                   </div>
                 </div>
               ))}
-              {count === 0 && <p className="text-base text-gray-400 italic pt-2">None in this category.</p>}
-              {count > 4 && <p className="text-base text-gray-600 dark:text-gray-400 pt-2 font-semibold">+{count - 4} more achievements</p>}
+              {count === 0 && <p className="text-sm md:text-base text-gray-400 italic pt-2">None in this category.</p>}
+              {count > 4 && (
+                <button
+                  onClick={() => toggleExpanded(gradeKey)}
+                  className="w-full mt-3 md:mt-4 px-3 md:px-4 py-2 md:py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs md:text-sm rounded-lg transition-colors duration-200"
+                >
+                  {isExpanded ? `Show Less (${count - 4} hidden)` : `Show All (${count} total)`}
+                </button>
+              )}
             </div>
           </div>
         );
@@ -306,6 +326,9 @@ export default function ArtsSciencePage() {
   
   // NEW STATE FOR DIALOG
   const [selectedAchievement, setSelectedAchievement] = useState<Achievement | null>(null);
+
+  // NEW STATE FOR EXPANDED SECTIONS
+  const [expandedGrades, setExpandedGrades] = useState<Set<string>>(new Set());
 
   // Derive a safe `eventData` and slideshow list early so hooks are not declared conditionally.
   const eventDataSafe: EventResult = data ? data[activeTab] : {
@@ -466,7 +489,7 @@ export default function ArtsSciencePage() {
           </span>
         </h2>
         <div className="p-6 sm:p-10">
-          {renderGradeGrid(achievements, setSelectedAchievement)}
+          {renderGradeGrid(achievements, setSelectedAchievement, expandedGrades, setExpandedGrades)}
         </div>
       </section>
     );
@@ -500,7 +523,7 @@ export default function ArtsSciencePage() {
                   transition={{ duration: 1.2 }}
                   className="absolute inset-0"
                 >
-                  <img src={slideshowImages[currentSlide]} alt={`${activeTab} slide`} className="w-full h-full object-cover" />
+                  <img loading="lazy" src={slideshowImages[currentSlide]} alt={`${activeTab} slide`} className="w-full h-full object-cover" />
                 </motion.div>
               </AnimatePresence>
 

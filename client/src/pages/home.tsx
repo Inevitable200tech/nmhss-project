@@ -1,6 +1,7 @@
 import Navigation from "@/components/static-pages/navigation";
 import AcademicsSection from "@/components/static-pages/academics-section";
 import Footer from "@/components/static-pages/footer";
+import { LoadingFallback } from "@/components/LoadingFallback";
 import { Helmet } from "react-helmet";
 import { lazy, Suspense } from "react";
 
@@ -49,29 +50,34 @@ export default function Home() {
       
 
       {/* Dynamic content loaded on client */}
-      <Suspense fallback={<div className="py-16 text-center">Loading...</div>}>
+      <Suspense fallback={<LoadingFallback />}>
         <HeroSection />
       </Suspense>
 
-      <Suspense fallback={<div className="py-16 text-center">Loading...</div>}>
+      <Suspense fallback={<LoadingFallback />}>
         <AboutSection />
       </Suspense>
 
-      <AcademicsSection />
-
-      <Suspense fallback={<div className="py-16 text-center">Loading...</div>}>
+       <Suspense fallback={<LoadingFallback />}>
         <FacultySection />
       </Suspense>
 
-      <Suspense fallback={<div className="py-16 text-center">Loading...</div>}>
+
+           <Suspense fallback={<LoadingFallback />}>
+
+      <AcademicsSection />
+    </Suspense>
+     
+
+      <Suspense fallback={<LoadingFallback />}>
         <AchievementsSection />
       </Suspense>
 
-      <Suspense fallback={<div className="py-16 text-center">Loading...</div>}>
+      <Suspense fallback={<LoadingFallback />}>
         <EventsSection />
       </Suspense>
 
-      <Suspense fallback={<div className="py-16 text-center">Loading...</div>}>
+      <Suspense fallback={<LoadingFallback />}>
         <ContactSection />
       </Suspense>
 

@@ -352,7 +352,7 @@ export default function StudentsPage() {
                     onClick={() => showMedia(getFullIndex(indexInPage))}
                   >
                     {item.type === "image" ? (
-                      <img src={item.url} alt={item.description || "student media"} className="w-full h-64 object-cover" />
+                      <img loading="lazy" src={item.url} alt={item.description || "student media"} className="w-full h-64 object-cover" />
                     ) : (
                       <video src={item.url} className="w-full h-64 object-cover" muted loop playsInline />
                     )}
@@ -402,7 +402,7 @@ export default function StudentsPage() {
           >
             <div
               ref={lightboxWrapperRef}
-              className="relative w-full max-w-5xl max-h-[90vh] p-4 flex items-center justify-center"
+              className="relative w-full max-w-5xl max-h-[90vh] p-4 flex flex-col items-center justify-center"
               onClick={(e) => e.stopPropagation()}
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
@@ -418,44 +418,37 @@ export default function StudentsPage() {
                 <X className="w-8 h-8" />
               </button>
 
-              {/* Prev/Next (desktop only) */}
-              {!isMobile && (
-                <>
-                  <button
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 z-10 bg-black/20 rounded-full p-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      showPrev();
-                    }}
-                  >
-                    <ArrowLeft className="w-12 h-12" />
-                  </button>
-                  <button
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 z-10 bg-black/20 rounded-full p-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      showNext();
-                    }}
-                  >
-                    <ArrowRight className="w-12 h-12" />
-                  </button>
-                </>
-              )}
+              {/* Desktop side arrows */}
+              <button
+                className="hidden md:block absolute left-2 md:-left-20 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 z-10 p-2 rounded-full hover:bg-white/10 transition"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showPrev();
+                }}
+              >
+                <ArrowLeft className="w-12 h-12" />
+              </button>
+              <button
+                className="hidden md:block absolute right-2 md:-right-20 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 z-10 p-2 rounded-full hover:bg-white/10 transition"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showNext();
+                }}
+              >
+                <ArrowRight className="w-12 h-12" />
+              </button>
 
-              {/* Media wrapper: Option B - expand as much as possible while preserving aspect ratio */}
+              {/* Media wrapper */}
               <div
-                className="relative w-full flex items-center justify-center"
+                className="relative w-full flex items-center justify-center flex-1"
                 style={{
-                  maxHeight: "86vh",
-                  // width is 100% but constrained by max-w-5xl parent
+                  maxHeight: "70vh",
                 }}
               >
                 <div
                   className="flex items-center justify-center"
                   style={{
-                    // allow the media element to grow until one dimension hits the max constraints,
-                    // while preserving natural aspect ratio with object-contain.
-                    maxHeight: "86vh",
+                    maxHeight: "70vh",
                     maxWidth: "100%",
                     transform: `scale(${scale})`,
                     transformOrigin: "center",
@@ -467,7 +460,7 @@ export default function StudentsPage() {
                       ref={(el) => (mediaElementRef.current = el)}
                       src={allMedia[selectedIndex].url}
                       alt={allMedia[selectedIndex].description || "student media"}
-                      className="max-h-[86vh] max-w-full object-contain rounded-xl"
+                      className="max-h-[70vh] max-w-full object-contain rounded-xl"
                       style={{ display: "block" }}
                     />
                   ) : (
@@ -475,8 +468,9 @@ export default function StudentsPage() {
                       ref={(el) => (mediaElementRef.current = el)}
                       src={allMedia[selectedIndex].url}
                       controls
-                      className="max-h-[86vh] max-w-full object-contain rounded-xl"
+                      className="max-h-[70vh] max-w-full object-contain rounded-xl"
                       playsInline
+                      autoPlay
                     />
                   )}
                 </div>
@@ -491,6 +485,31 @@ export default function StudentsPage() {
                     <p className="text-white text-lg font-medium">{allMedia[selectedIndex].description}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Mobile bottom navigation */}
+              <div className="flex md:hidden justify-center items-center gap-8 mt-4 pt-4">
+                <button
+                  className="text-white hover:text-gray-300 p-2 rounded-full hover:bg-white/10 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showPrev();
+                  }}
+                >
+                  <ArrowLeft className="w-10 h-10" />
+                </button>
+                <span className="text-white text-sm font-medium">
+                  {selectedIndex + 1} / {allMedia.length}
+                </span>
+                <button
+                  className="text-white hover:text-gray-300 p-2 rounded-full hover:bg-white/10 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showNext();
+                  }}
+                >
+                  <ArrowRight className="w-10 h-10" />
+                </button>
               </div>
             </div>
           </div>

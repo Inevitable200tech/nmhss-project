@@ -272,6 +272,19 @@ export default function AcademicResultsPage() {
     maxAplus: number;
   }
   const [selectedStudent, setSelectedStudent] = useState<StudentDetail | null>(null);
+  
+  // NEW STATE FOR EXPANDED GROUPS
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  
+  const toggleExpandedGroup = (groupId: string) => {
+    const newSet = new Set(expandedGroups);
+    if (newSet.has(groupId)) {
+      newSet.delete(groupId);
+    } else {
+      newSet.add(groupId);
+    }
+    setExpandedGroups(newSet);
+  };
 
   const groupStudents = (students: TopStudent[] = []) => {
     const grouped = students.reduce((acc, s) => {
@@ -423,31 +436,45 @@ export default function AcademicResultsPage() {
           ) : hsGrouped.length === 0 ? (
             <p className="text-center text-gray-500">No HS toppers recorded for {year}</p>
           ) : (
-            hsGrouped.map(([count, students]) => (
-              <div key={count} className="mb-10 p-4 sm:p-6 bg-gray-100 dark:bg-gray-900/40 rounded-xl shadow-inner">
-                <div className="flex items-center justify-between flex-wrap gap-4 mb-6 border-b border-gray-300 dark:border-gray-700 pb-3">
-                  <h4 className="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-gray-100 flex items-center space-x-2">
-                    <Award className="h-6 w-6 text-yellow-500 fill-yellow-500" />
-                    <span>{count} A+ Achievers</span>
-                  </h4>
-                  <Badge className="bg-rose-600 text-white dark:bg-rose-700 text-base">
-                    Total: {students.length} Students
-                  </Badge>
+            hsGrouped.map(([count, students]) => {
+              const groupId = `hs-${count}`;
+              const isExpanded = expandedGroups.has(groupId);
+              const displayedStudents = isExpanded ? students : students.slice(0, 4);
+              
+              return (
+                <div key={count} className="mb-10 p-4 sm:p-6 bg-gray-100 dark:bg-gray-900/40 rounded-xl shadow-inner">
+                  <div className="flex items-center justify-between flex-wrap gap-4 mb-6 border-b border-gray-300 dark:border-gray-700 pb-3">
+                    <h4 className="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-gray-100 flex items-center space-x-2">
+                      <Award className="h-6 w-6 text-yellow-500 fill-yellow-500" />
+                      <span>{count} A+ Achievers</span>
+                    </h4>
+                    <Badge className="bg-rose-600 text-white dark:bg-rose-700 text-base">
+                      Total: {students.length} Students
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                    {displayedStudents.map((s, i) => (
+                      <StudentGridCard
+                        key={i}
+                        name={s.name}
+                        aPlusCount={s.aPlusCount}
+                        mediaId={s.mediaId}
+                        maxAplus={10}
+                        onClick={() => setSelectedStudent({ ...s, section: 'HS', maxAplus: 10 })}
+                      />
+                    ))}
+                  </div>
+                  {students.length > 4 && (
+                    <button
+                      onClick={() => toggleExpandedGroup(groupId)}
+                      className="w-full mt-4 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition-colors duration-200"
+                    >
+                      {isExpanded ? `Show Less (${students.length - 4} hidden)` : `Show All (${students.length} total)`}
+                    </button>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-                  {students.map((s, i) => (
-                    <StudentGridCard
-                      key={i}
-                      name={s.name}
-                      aPlusCount={s.aPlusCount}
-                      mediaId={s.mediaId}
-                      maxAplus={10}
-                      onClick={() => setSelectedStudent({ ...s, section: 'HS', maxAplus: 10 })} // ADDED CLICK HANDLER
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </section>
 
@@ -511,32 +538,46 @@ export default function AcademicResultsPage() {
           ) : hssGrouped.length === 0 ? (
             <p className="text-center text-gray-500">No HSS toppers recorded for {year}</p>
           ) : (
-            hssGrouped.map(([count, students]) => (
-              <div key={count} className="mb-10 p-4 sm:p-6 bg-gray-100 dark:bg-gray-900/40 rounded-xl shadow-inner">
-                <div className="flex items-center justify-between flex-wrap gap-4 mb-6 border-b border-gray-300 dark:border-gray-700 pb-3">
-                  <h4 className="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-gray-100 flex items-center space-x-2">
-                    <Award className="h-6 w-6 text-yellow-500 fill-yellow-500" />
-                    <span>{count} A+ Achievers</span>
-                  </h4>
-                  <Badge className="bg-rose-600 text-white dark:bg-rose-700 text-base">
-                    Total: {students.length} Students
-                  </Badge>
+            hssGrouped.map(([count, students]) => {
+              const groupId = `hss-${count}`;
+              const isExpanded = expandedGroups.has(groupId);
+              const displayedStudents = isExpanded ? students : students.slice(0, 4);
+              
+              return (
+                <div key={count} className="mb-10 p-4 sm:p-6 bg-gray-100 dark:bg-gray-900/40 rounded-xl shadow-inner">
+                  <div className="flex items-center justify-between flex-wrap gap-4 mb-6 border-b border-gray-300 dark:border-gray-700 pb-3">
+                    <h4 className="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-gray-100 flex items-center space-x-2">
+                      <Award className="h-6 w-6 text-yellow-500 fill-yellow-500" />
+                      <span>{count} A+ Achievers</span>
+                    </h4>
+                    <Badge className="bg-rose-600 text-white dark:bg-rose-700 text-base">
+                      Total: {students.length} Students
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                    {displayedStudents.map((s, i) => (
+                      <StudentGridCard
+                        key={i}
+                        name={s.name}
+                        aPlusCount={s.aPlusCount}
+                        mediaId={s.mediaId}
+                        maxAplus={6}
+                        stream={s.stream}
+                        onClick={() => setSelectedStudent({ ...s, section: 'HSS', maxAplus: 6 })}
+                      />
+                    ))}
+                  </div>
+                  {students.length > 4 && (
+                    <button
+                      onClick={() => toggleExpandedGroup(groupId)}
+                      className="w-full mt-4 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition-colors duration-200"
+                    >
+                      {isExpanded ? `Show Less (${students.length - 4} hidden)` : `Show All (${students.length} total)`}
+                    </button>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-                  {students.map((s, i) => (
-                    <StudentGridCard
-                      key={i}
-                      name={s.name}
-                      aPlusCount={s.aPlusCount}
-                      mediaId={s.mediaId}
-                      maxAplus={6}
-                      stream={s.stream}
-                      onClick={() => setSelectedStudent({ ...s, section: 'HSS', maxAplus: 6 })} // ADDED CLICK HANDLER
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </section>
       </div>

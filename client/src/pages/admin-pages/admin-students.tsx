@@ -88,6 +88,21 @@ export default function AdminStudentsPage() {
             setUploadProgress(0);
             toast({ title: "Cancelled", description: "Upload process stopped." });
             playSuccessSound();
+
+            // Reset both image and video forms
+            imagePreviews.forEach(url => URL.revokeObjectURL(url));
+            setImageFiles([]);
+            setImagePreviews([]);
+            setImageBatch("");
+            setImageYear("");
+            setImageDescription("");
+
+            videoPreviews.forEach(url => URL.revokeObjectURL(url));
+            setVideoFiles([]);
+            setVideoPreviews([]);
+            setVideoBatch("");
+            setVideoYear("");
+            setVideoDescription("");
         }
     };
 
@@ -289,6 +304,23 @@ export default function AdminStudentsPage() {
 
             toast({ title: "Done", description: `Uploaded ${successCount}/${totalFiles} items.` });
             playSuccessSound();
+
+            // Reset form after successful upload
+            if (type === "image") {
+                imagePreviews.forEach(url => URL.revokeObjectURL(url));
+                setImageFiles([]);
+                setImagePreviews([]);
+                setImageBatch("");
+                setImageYear("");
+                setImageDescription("");
+            } else {
+                videoPreviews.forEach(url => URL.revokeObjectURL(url));
+                setVideoFiles([]);
+                setVideoPreviews([]);
+                setVideoBatch("");
+                setVideoYear("");
+                setVideoDescription("");
+            }
         } catch (error: any) {
             if (error.name === 'AbortError' || error.message === 'AbortError') {
                 if (uploadedMediaIds.length > 0) {

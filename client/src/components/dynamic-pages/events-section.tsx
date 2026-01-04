@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Clock, FlaskConical, Dumbbell, Music, Users,
 import type { ClientEvent, ClientNews } from "@shared/schema";
 
 export default function EventsSection() {
-  const [currentMonth, setCurrentMonth] = useState("January 2024");
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   const { data: events = [], isLoading: eventsLoading } = useQuery<ClientEvent[]>({
     queryKey: ["/api/events"],
@@ -72,30 +72,47 @@ export default function EventsSection() {
 
   const mockNews: ClientNews[] = [
     {
-      id: "1",
       title: "Admission Open for Academic Year 2024-25",
       content: "Admission forms are now available for grades 5-11. Interested parents can collect forms from the school office or download from our website. Last date for submission is February 28, 2024.",
       type: "announcement",
       createdAt: new Date("2024-01-10"),
-    },
+    } as ClientNews,
     {
-      id: "2",
       title: "Student Wins State Level Science Competition",
       content: "Congratulations to Arjun Krishnan (Class 11) for securing first place in the Kerala State Science Olympiad. His innovative project on renewable energy solutions impressed the judges.",
       type: "news",
       createdAt: new Date("2024-01-08"),
-    },
+    } as ClientNews,
     {
-      id: "3",
       title: "New Computer Lab Inaugurated",
       content: "The school has inaugurated a state-of-the-art computer laboratory with 15 new computers, enhancing digital learning opportunities for our students.",
       type: "update",
       createdAt: new Date("2024-01-05"),
-    },
+    } as ClientNews,
   ];
 
   const displayEvents = events.length > 0 ? events : mockEvents;
   const displayNews = news.length > 0 ? news : mockNews;
+
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const currentMonthDisplay = `${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+
+  const handlePreviousMonth = () => {
+    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
+  };
+
+  const filteredEvents = displayEvents.filter((event) => {
+    const eventDate = new Date(event.date);
+    return eventDate.getFullYear() === selectedDate.getFullYear() &&
+           eventDate.getMonth() === selectedDate.getMonth();
+  });
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
@@ -177,20 +194,20 @@ export default function EventsSection() {
         >
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-2xl font-bold text-foreground" data-testid="current-month">
-              {currentMonth}
+              {currentMonthDisplay}
             </h3>
             <div className="flex space-x-2">
               <button
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
                 data-testid="previous-month"
-                onClick={() => setCurrentMonth("December 2023")}
+                onClick={handlePreviousMonth}
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
                 data-testid="next-month"
-                onClick={() => setCurrentMonth("February 2024")}
+                onClick={handleNextMonth}
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -198,7 +215,8 @@ export default function EventsSection() {
           </div>
 
           <div className="space-y-4">
-            {displayEvents.map((event, index) => {
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map((event, index) => {
               const [month, day] = formatDate(new Date(event.date));
               return (
                 <div
@@ -225,7 +243,12 @@ export default function EventsSection() {
                   </div>
                 </div>
               );
-            })}
+              })
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No events scheduled for {currentMonthDisplay}</p>
+              </div>
+            )}
           </div>
         </div>
 

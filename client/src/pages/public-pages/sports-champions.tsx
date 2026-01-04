@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import Footer from "@/components/static-pages/footer";
 import Navigation from "@/components/static-pages/navigation";
-import { Calendar, Trophy, Star, X, Users, Medal } from 'lucide-react';
+import {  Trophy, Star, X, Users, Medal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ResponsiveContainer,
@@ -55,7 +55,7 @@ const ChampionCard = ({ c, onClick }: { c: Champion; onClick: () => void }) => (
     className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden cursor-pointer"
   >
     <div className="relative h-64">
-      <img src={c.photoUrl} alt={c.name} className="w-full h-full object-cover" />
+      <img loading="lazy" src={c.photoUrl} alt={c.name} className="w-full h-full object-cover" />
       <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
         <p className="text-2xl font-bold text-white">{c.name}</p>
         <p className="text-lg text-white/90">{c.event}</p>
@@ -87,7 +87,7 @@ const ChampionDetailDialog: React.FC<{ champion: Champion; onClose: () => void }
           <X className="w-8 h-8" />
         </button>
         <div className="flex flex-col items-center space-y-6">
-          <img src={photoUrl} alt={name} className={`w-48 h-48 rounded-full object-cover border-8 ${positionColor} shadow-2xl`} />
+          <img loading="lazy" src={photoUrl} alt={name} className={`w-48 h-48 rounded-full object-cover border-8 ${positionColor} shadow-2xl`} />
           <h3 className="text-4xl font-black text-center">{name}</h3>
           <div className="text-center space-y-2">
             <p className="text-xl"><span className="font-semibold">Level:</span> {level}</p>
@@ -117,6 +117,17 @@ export default function SportsChampionsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedChampion, setSelectedChampion] = useState<Champion | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
+  
+  const toggleExpandedLevel = (levelKey: string) => {
+    const newSet = new Set(expandedLevels);
+    if (newSet.has(levelKey)) {
+      newSet.delete(levelKey);
+    } else {
+      newSet.add(levelKey);
+    }
+    setExpandedLevels(newSet);
+  };
 
   useEffect(() => {
     fetch('/api/sports-results/years')
@@ -280,31 +291,53 @@ export default function SportsChampionsPage() {
 
         <p className="text-center text-3xl mb-20">Total Participants: <span className="font-bold text-orange-600">{data.totalParticipants}</span></p>
 
-        {levels.map((level, i) => (
-          <section key={level.key} className="mb-32 px-4 overflow-hidden">
-            <motion.h2
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-bold text-center mb-16 text-gray-800 dark:text-white"
-            >
-              {level.title}
-            </motion.h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10 max-w-7xl mx-auto">
-              {level.champs.map((c, j) => (
-                <motion.div
-                  key={j}
-                  initial={{ opacity: 0, y: 60 }}
+        <>
+          {levels.map((level, i) => {
+            const isExpanded = expandedLevels.has(level.key);
+            const displayedChamps = isExpanded ? level.champs : level.champs.slice(0, 4);
+            
+            return (
+              <section key={level.key} className="mb-32 px-4 overflow-hidden">
+                <motion.h2
+                  initial={{ opacity: 0, y: 40 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: j * 0.1 }}
+                  className="text-4xl md:text-6xl font-bold text-center mb-16 text-gray-800 dark:text-white"
                 >
-                  <ChampionCard c={c} onClick={() => setSelectedChampion(c)} />
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        ))}
+                  {level.title}
+                </motion.h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10 max-w-7xl mx-auto">
+                  {displayedChamps.map((c, j) => (
+                    <motion.div
+                      key={j}
+                      initial={{ opacity: 0, y: 60 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: j * 0.1 }}
+                    >
+                      <ChampionCard c={c} onClick={() => setSelectedChampion(c)} />
+                    </motion.div>
+                  ))}
+                </div>
+                {level.champs.length > 4 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    className="flex justify-center mt-8"
+                  >
+                    <button
+                      onClick={() => toggleExpandedLevel(level.key)}
+                      className="px-8 py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg transition-colors duration-200"
+                    >
+                      {isExpanded ? `Show Less (${level.champs.length - 4} hidden)` : `Show All (${level.champs.length} total)`}
+                    </button>
+                  </motion.div>
+                )}
+              </section>
+            );
+          })}
+        </>
 
         <motion.section initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="max-w-5xl mx-auto px-4 mb-20">
           <h3 className="text-4xl font-bold text-center mb-12">Medal Tally</h3>

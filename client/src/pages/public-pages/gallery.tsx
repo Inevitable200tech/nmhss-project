@@ -4,10 +4,9 @@ import { ArrowLeft, ArrowRight, X, Calendar, Loader2, ChevronLeft, ChevronRight 
 import Navigation from "@/components/static-pages/navigation";
 import Footer from "@/components/static-pages/footer";
 import { Helmet } from "react-helmet";
-import Plyr from "plyr"; // Moved to dynamic import
-import "plyr/dist/plyr.css"; // Plyr styles
 
-const ITEMS_PER_PAGE = 6; // Number of items (or date groups) to show per page
+
+const ITEMS_PER_PAGE = 9; // Number of items (or date groups) to show per page
 
 const fallbackVideos = [
   "https://www.w3schools.com/html/mov_bbb.mp4",
@@ -26,18 +25,18 @@ const fallbackImages = [
 ];
 
 const fallbackTimeline = [
-  { value: "1946", label: "School Founded", description: "Established in Thirunavaya as a beacon of education." },
-  { value: "1970", label: "First Expansion", description: "Added higher secondary classes." },
-  { value: "2000", label: "Modern Facilities", description: "Introduced computer laboratory and library expansion." },
-  { value: "2010", label: "Academic Excellence Award", description: "Received state-level recognition for outstanding performance." },
-  { value: "2020", label: "Digital Transformation", description: "Implemented online learning during the pandemic." },
+  { value: "1998", label: "School Founded", description: "NMHSS Established in Thirunavaya as a beacon of education." },
+  { value: "2000", label: "First Expansion", description: "Added higher secondary classes." },
+  { value: "2019", label: "Modern Facilities", description: "Introduced computer laboratory and library expansion." },
+  { value: "2024", label: "Academic Excellence Award", description: "Received state-level recognition for school by the performance of website creator Abhishek.P ." },
+  { value: "2024", label: "Sports Achievement", description: "Adithya Aji Won state and national sports." },
+  { value: "2025", label: "Digital Transformation", description: "Implemented school website ." },
 ];
 
 export default function GalleryPage() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [mediaType, setMediaType] = useState<"images" | "videos">("images");
   const [currentPage, setCurrentPage] = useState(1);
-  const videoPlayerRef = useRef<Plyr | null>(null);
   const lightboxVideoRef = useRef<HTMLVideoElement | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -94,22 +93,6 @@ export default function GalleryPage() {
     );
   }
 
-  // Initialize Plyr for lightbox video
-  useEffect(() => {
-    // Using native HTML5 video controls instead of Plyr to avoid DOM initialization errors
-    // The video element renders with native controls attribute
-    return () => {
-      if (videoPlayerRef.current) {
-        try {
-          videoPlayerRef.current.destroy?.();
-        } catch (e) {
-          console.warn("Plyr destroy failed:", e);
-        }
-        videoPlayerRef.current = null;
-      }
-    };
-  }, [selectedIndex, mediaType]);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (selectedIndex === null) return;
@@ -150,7 +133,7 @@ export default function GalleryPage() {
   // Prepare full flat arrays for lightbox navigation (keeps lightbox working across all pages)
   const images = data?.images?.length > 0 ? data.images : fallbackImages.map((url) => ({ url, uploadedAt: new Date() }));
   const videos = data?.videos?.length > 0 ? data.videos : fallbackVideos.map((url) => ({ url, uploadedAt: new Date() }));
-  const timelineItems = data?.stats?.length > 0 ? data.stats : fallbackTimeline;
+  const timelineItems = fallbackTimeline;
 
   // Prepare grouped data
   const groupedImages = data?.images?.length > 0 ? groupByDate(data.images) : [];
@@ -181,53 +164,21 @@ export default function GalleryPage() {
   // -------------------------
 
   const showMedia = (index: number) => {
-    if (videoPlayerRef.current && lightboxVideoRef.current) {
-      try {
-        videoPlayerRef.current.destroy();
-      } catch (e) {
-        console.warn("Plyr destroy failed:", e);
-      }
-      videoPlayerRef.current = null;
-    }
     setSelectedIndex(index);
   };
 
   const closeLightbox = () => {
-    if (videoPlayerRef.current && lightboxVideoRef.current) {
-      try {
-        videoPlayerRef.current.destroy();
-      } catch (e) {
-        console.warn("Plyr destroy failed:", e);
-      }
-      videoPlayerRef.current = null;
-    }
     setSelectedIndex(null);
   };
 
   const showNext = () => {
     if (selectedIndex !== null && selectedIndex < (mediaType === "images" ? images : videos).length - 1) {
-      if (videoPlayerRef.current && lightboxVideoRef.current) {
-        try {
-          videoPlayerRef.current.destroy();
-        } catch (e) {
-          console.warn("Plyr destroy failed:", e);
-        }
-        videoPlayerRef.current = null;
-      }
       setSelectedIndex(selectedIndex + 1);
     }
   };
 
   const showPrev = () => {
     if (selectedIndex !== null && selectedIndex > 0) {
-      if (videoPlayerRef.current && lightboxVideoRef.current) {
-        try {
-          videoPlayerRef.current.destroy();
-        } catch (e) {
-          console.warn("Plyr destroy failed:", e);
-        }
-        videoPlayerRef.current = null;
-      }
       setSelectedIndex(selectedIndex - 1);
     }
   };
@@ -362,6 +313,7 @@ export default function GalleryPage() {
                           onClick={() => showMedia(actualIndex)}
                         >
                           <img
+                            loading="lazy"
                             src={typeof item === "string" ? item : item.url}
                             alt={`Media ${actualIndex + 1}`}
                             className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
@@ -457,12 +409,14 @@ export default function GalleryPage() {
       {/* Lightbox Modal */}
       {selectedIndex !== null && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50" onClick={closeLightbox}>
-          <div className="relative max-w-4xl max-h-[90vh] w-full p-4" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-w-4xl max-h-[90vh] w-full p-4 flex flex-col" onClick={(e) => e.stopPropagation()}>
             <button className="absolute -top-10 right-4 text-white hover:text-gray-300" onClick={closeLightbox} aria-label="Close">
               <X className="w-8 h-8" />
             </button>
+            
+            {/* Desktop side arrows */}
             <button
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 disabled:opacity-50"
+              className="hidden md:block absolute left-2 md:-left-20 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 disabled:opacity-50 p-2 rounded-full hover:bg-white/10 transition"
               onClick={showPrev}
               disabled={selectedIndex === 0}
               aria-label="Previous"
@@ -470,30 +424,58 @@ export default function GalleryPage() {
               <ArrowLeft className="w-12 h-12" />
             </button>
             <button
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 disabled:opacity-50"
+              className="hidden md:block absolute right-2 md:-right-20 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 disabled:opacity-50 p-2 rounded-full hover:bg-white/10 transition"
               onClick={showNext}
               disabled={selectedIndex === (mediaType === "images" ? images : videos).length - 1}
               aria-label="Next"
             >
               <ArrowRight className="w-12 h-12" />
             </button>
-            {mediaType === "images" ? (
-              <img
-                src={typeof images[selectedIndex] === "string" ? (images[selectedIndex] as string) : (images[selectedIndex] as any).url}
-                alt={`Enlarged image ${selectedIndex + 1}`}
-                className="w-full h-auto max-h-[80vh] object-contain"
-              />
-            ) : (
-              <video
-                ref={lightboxVideoRef}
-                id="lightbox-video"
-                src={typeof videos[selectedIndex] === "string" ? (videos[selectedIndex] as string) : (videos[selectedIndex] as any).url}
-                className="w-full h-auto max-h-[80vh] object-contain"
-                preload="auto"
-                controls 
-                autoPlay
-              />
-            )}
+            
+            {/* Media Container */}
+            <div className="flex-1 flex items-center justify-center">
+              {mediaType === "images" ? (
+                <img
+                  loading="lazy"
+                  src={typeof images[selectedIndex] === "string" ? (images[selectedIndex] as string) : (images[selectedIndex] as any).url}
+                  alt={`Enlarged image ${selectedIndex + 1}`}
+                  className="w-full h-auto max-h-[70vh] object-contain"
+                />
+              ) : (
+                <video
+                  ref={lightboxVideoRef}
+                  id="lightbox-video"
+                  src={typeof videos[selectedIndex] === "string" ? (videos[selectedIndex] as string) : (videos[selectedIndex] as any).url}
+                  className="w-full h-auto max-h-[70vh] object-contain"
+                  preload="auto"
+                  controls 
+                  autoPlay
+                />
+              )}
+            </div>
+            
+            {/* Mobile bottom arrows */}
+            <div className="flex md:hidden justify-center items-center gap-8 mt-4 pt-4">
+              <button
+                className="text-white hover:text-gray-300 disabled:opacity-50 p-2 rounded-full hover:bg-white/10 transition"
+                onClick={showPrev}
+                disabled={selectedIndex === 0}
+                aria-label="Previous"
+              >
+                <ArrowLeft className="w-10 h-10" />
+              </button>
+              <span className="text-white text-sm font-medium">
+                {selectedIndex + 1} / {mediaType === "images" ? images.length : videos.length}
+              </span>
+              <button
+                className="text-white hover:text-gray-300 disabled:opacity-50 p-2 rounded-full hover:bg-white/10 transition"
+                onClick={showNext}
+                disabled={selectedIndex === (mediaType === "images" ? images : videos).length - 1}
+                aria-label="Next"
+              >
+                <ArrowRight className="w-10 h-10" />
+              </button>
+            </div>
           </div>
         </div>
       )}

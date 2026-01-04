@@ -22,6 +22,9 @@ const AboutTeachers = lazy(() => import("@/pages/public-pages/about-teachers"));
 const SportsChampionsPage = lazy(() => import("@/pages/public-pages/sports-champions"));
 const AcademicResultsPage = lazy(() => import("@/pages/public-pages/academic-results"));
 const ArtsSciencePage = lazy(() => import("@/pages/public-pages/arts-science"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/public-pages/privacy-policy"));
+const TermsOfServicePage = lazy(() => import("@/pages/public-pages/terms-of-service"));
+const AccessibilityPage = lazy(() => import("@/pages/public-pages/accessibility"));
 
 // Admin pages (already protected)
 const AboutAdminPage = lazy(() => import("@/pages/admin-pages/about-admin"));
@@ -85,6 +88,9 @@ function App() {
               <Route path="/academic-results" element={<AcademicResultsPage />} />
               <Route path="/arts-science" element={<ArtsSciencePage />} />
               <Route path="/news" element={<NewsSection />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+              <Route path="/accessibility" element={<AccessibilityPage />} />
               {/* Protected admin routes */}
               <Route path="/admin-gallery" element={<ProtectedRoute><AdminGalleryPage /></ProtectedRoute>} />
               <Route path="/admin-about" element={<ProtectedRoute><AboutAdminPage /></ProtectedRoute>} />
