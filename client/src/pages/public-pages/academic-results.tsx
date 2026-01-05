@@ -262,7 +262,7 @@ const AcademicSummaryCard: React.FC<{
 // --------------------------------------------------------------------
 
 export default function AcademicResultsPage() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear() - 1;
   const [year, setYear] = useState(currentYear);
   const { data, isLoading, error, years, isLoadingYears } = useAcademicResults(year);
 
