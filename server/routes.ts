@@ -42,8 +42,8 @@ export const envPath = fs.existsSync(rootEnvPath) ? rootEnvPath : folderEnvPath;
 
 dotenv.config({ path: envPath }); // Adjust the path if your .env is elsewhere
 
-const ADMIN_USER = process.env.ADMIN_USER || "admin";
-const ADMIN_PASS = process.env.ADMIN_PASS || "password";
+let ADMIN_USER = process.env.ADMIN_USER || "admin";
+let ADMIN_PASS = process.env.ADMIN_PASS || "password";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const DEVELOPER_EMAIL = process.env.DEVELOPER_EMAIL || "navamukundahss@gmail.com";
 export const upload = multer({ storage: multer.memoryStorage() });
@@ -162,6 +162,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin token verification route
   app.get("/api/admin/verify", requireAuth, adminRateLimiter, (req, res) => {
     res.json({ success: true, message: "Token is valid" });
+  });
+
+  // Update admin credentials route
+  app.post("/api/admin/update-credentials", requireAuth, adminRateLimiter, (req, res) => {
+    try {
+      const { currentPassword, newUsername, newPassword } = req.body;
+
+      // Validate current password
+      if (currentPassword !== ADMIN_PASS) {
+        return res.status(401).json({ success: false, message: "Current password is incorrect" });
+      }
+
+      // Validate new credentials
+      if (!newUsername || newUsername.trim().length < 3) {
+        return res.status(400).json({ success: false, message: "Username must be at least 3 characters" });
+      }
+
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+      }
+
+      // Update in-memory credentials
+      ADMIN_USER = newUsername.trim();
+      ADMIN_PASS = newPassword;
+
+      // Also update environment variables
+      process.env.ADMIN_USER = ADMIN_USER;
+      process.env.ADMIN_PASS = ADMIN_PASS;
+
+      res.json({ 
+        success: true, 
+        message: "Credentials updated successfully. You will need to log in again with the new credentials.",
+        newUsername: ADMIN_USER
+      });
+    } catch (error) {
+      console.error("Failed to update credentials:", error);
+      res.status(500).json({ success: false, message: "Failed to update credentials" });
+    }
   });
 
   // 1. Developer access request - generate and EMAIL code
@@ -1687,6 +1725,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Failed to delete arts and science result:", err);
       res.status(500).json({ error: "Failed to delete result" });
+    }
+  });
+
+  //----------------STORAGE ANALYTICS-------------------------
+  app.get("/api/admin/storage-stats", requireAuth, adminRateLimiter, async (req, res) => {
+    try {
+      // Get file counts from database
+      const galleryImages = await storage.getGalleryImages();
+      const galleryVideos = await storage.getGalleryVideos();
+      const studentMedia = await storage.getStudentMedia();
+      
+      // Get media collection stats
+      const mediaCollection = mongoose.connection.collection('medias');
+      const mediaDocuments = await mediaCollection.countDocuments();
+      
+      // Get MongoDB database stats - count ALL documents from all collections
+      let totalDocumentsInDb = 0;
+      try {
+        const collections = await mongoose.connection.db?.listCollections().toArray();
+        if (collections) {
+          for (const collectionInfo of collections) {
+            const collectionName = collectionInfo.name;
+            const collection = mongoose.connection.collection(collectionName);
+            const count = await collection.countDocuments();
+            totalDocumentsInDb += count;
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to count all documents:", err);
+        // Fallback: estimate based on collections we know about
+        totalDocumentsInDb = galleryImages.length + galleryVideos.length + studentMedia.length + mediaDocuments;
+      }
+      
+      // Get actual bucket usage from R2 using S3 API
+      let bucketUsageMB = 0;
+      let bucketObjectCount = 0;
+      
+      try {
+        const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+        const listCommand = new ListObjectsV2Command({
+          Bucket: R2_BUCKET_NAME,
+        });
+        
+        let isTruncated = true;
+        let continuationToken: string | undefined = undefined;
+        
+        while (isTruncated) {
+          const listParams: any = {
+            Bucket: R2_BUCKET_NAME,
+          };
+          if (continuationToken) {
+            listParams.ContinuationToken = continuationToken;
+          }
+          
+          const listCmd = new ListObjectsV2Command(listParams);
+          const response = await s3Client.send(listCmd);
+          
+          if (response.Contents) {
+            bucketObjectCount += response.Contents.length;
+            response.Contents.forEach((obj) => {
+              if (obj.Size) {
+                bucketUsageMB += obj.Size / (1024 * 1024);
+              }
+            });
+          }
+          
+          isTruncated = response.IsTruncated || false;
+          continuationToken = response.NextContinuationToken;
+        }
+      } catch (err) {
+        console.error("Failed to get R2 bucket stats:", err);
+        // Fallback to estimation if S3 API fails
+        const estimatedImageSize = galleryImages.length * 3;
+        const estimatedVideoSize = galleryVideos.length * 50 + studentMedia.filter(m => m.type === 'video').length * 50;
+        const estimatedStudentImageSize = studentMedia.filter(m => m.type === 'image').length * 3;
+        bucketUsageMB = estimatedImageSize + estimatedVideoSize + estimatedStudentImageSize;
+        bucketObjectCount = galleryImages.length + galleryVideos.length + studentMedia.length;
+      }
+      
+      // Get MongoDB database stats - sum actual collection sizes
+      let dbSizeMB = 0;
+      let dbName = 'unknown';
+      
+      try {
+        const db = mongoose.connection.db;
+        if (db) {
+          dbName = mongoose.connection.name || 'unknown';
+          
+          // Get stats for each collection and sum them up
+          const collections = await db.listCollections().toArray();
+          if (collections) {
+            for (const collectionInfo of collections) {
+              try {
+                // Use collStats command to get collection stats
+                const stats = await db.command({ collStats: collectionInfo.name });
+                // Add the actual size from each collection
+                if (stats.size) {
+                  dbSizeMB += stats.size / (1024 * 1024);
+                }
+              } catch (err) {
+                console.warn(`Failed to get stats for collection ${collectionInfo.name}:`, err);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to get MongoDB collection stats:", err);
+        // Fallback: use 100 bytes per document (more conservative estimate)
+        dbSizeMB = (totalDocumentsInDb * 0.1) / 1024;
+        dbName = mongoose.connection.name || 'unknown';
+      }
+      
+      // Storage limits (configurable)
+      const BUCKET_LIMIT_GB = 10; // R2 bucket limit in GB
+      const DB_LIMIT_GB = 0.5; // Database limit in GB
+      
+      const BUCKET_LIMIT_MB = BUCKET_LIMIT_GB * 1024;
+      const DB_LIMIT_MB = DB_LIMIT_GB * 1024;
+      
+      const bucketUsagePercent = Math.min(100, (bucketUsageMB / BUCKET_LIMIT_MB) * 100);
+      const dbUsagePercent = Math.min(100, (dbSizeMB / DB_LIMIT_MB) * 100);
+      
+      res.json({
+        success: true,
+        bucket: {
+          used: Math.round(bucketUsageMB * 100) / 100,
+          total: BUCKET_LIMIT_MB,
+          usagePercent: Math.round(bucketUsagePercent * 100) / 100,
+          objectCount: bucketObjectCount,
+          itemCount: {
+            images: galleryImages.length,
+            videos: galleryVideos.length,
+          },
+          breakdown: {
+            galleryImages: galleryImages.length,
+            galleryVideos: galleryVideos.length,
+            studentMedia: studentMedia.length,
+          },
+        },
+        database: {
+          used: Math.round(dbSizeMB * 100) / 100,
+          total: DB_LIMIT_MB,
+          usagePercent: Math.round(dbUsagePercent * 100) / 100,
+          name: dbName,
+          itemCount: {
+            galleryImages: galleryImages.length,
+            galleryVideos: galleryVideos.length,
+            studentMedia: studentMedia.length,
+            totalDocuments: totalDocumentsInDb,
+          },
+        },
+        warning: bucketUsagePercent > 80 || dbUsagePercent > 80 ? "Storage usage is high" : null,
+        critical: bucketUsagePercent > 95 || dbUsagePercent > 95 ? "Storage is almost full" : null,
+      });
+    } catch (err) {
+      console.error("Failed to get storage stats:", err);
+      res.status(500).json({ error: "Failed to retrieve storage statistics" });
     }
   });
 

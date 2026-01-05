@@ -38,7 +38,8 @@ const AdminTeacherEdit = lazy(() => import("@/pages/admin-pages/admin-teachers-e
 const AdminAcademicResults = lazy(() => import("@/pages/admin-pages/admin-academic"));
 const AdminArtsScience = lazy(() => import("@/pages/admin-pages/admin-arts-science"));
 const AdminSportsChampions = lazy(() => import("@/pages/admin-pages/admin-sports-champions"));
-const AdminTutorial = lazy(() => import("@/pages/admin-pages/admin-tutorial"));
+const AdminStorage = lazy(() => import("@/pages/admin-pages/admin-storage"));
+const AdminCredentials = lazy(() => import("@/pages/admin-pages/admin-credentials"));
 const NewsSection = lazy(() => import("@/components/dynamic-pages/news-section"));
 
 // --- Auto add Headers ------------
@@ -103,7 +104,8 @@ function App() {
               <Route path="/admin-teachers-edit" element={<ProtectedRoute><AdminTeacherEdit /></ProtectedRoute>} />
               <Route path="/admin-academic-results" element={<ProtectedRoute><AdminAcademicResults /></ProtectedRoute>} />
               <Route path="/admin-arts-science" element={<ProtectedRoute><AdminArtsScience /></ProtectedRoute>} />
-              <Route path="/admin-tutorial" element={<ProtectedRoute><AdminTutorial /></ProtectedRoute>} />
+              <Route path="/admin-storage" element={<ProtectedRoute><AdminStorage /></ProtectedRoute>} />
+              <Route path="/admin-credentials" element={<ProtectedRoute><AdminCredentials /></ProtectedRoute>} />
 
               {/* Fallback route for 404 */}
               <Route path="*" element={<NotFound />} />
