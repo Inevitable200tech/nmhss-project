@@ -42,7 +42,6 @@ export default function AccessibilityPage() {
                 <li><strong>Responsive Design:</strong> Website adapts to different screen sizes and zoom levels</li>
                 <li><strong>Dark Mode:</strong> Users can switch to dark mode for reduced eye strain</li>
                 <li><strong>Semantic HTML:</strong> Proper heading structure and semantic elements for better navigation</li>
-                <li><strong>Video Captions:</strong> Educational videos include captions and transcripts where available</li>
               </ul>
             </section>
 
@@ -61,7 +60,7 @@ export default function AccessibilityPage() {
             <section>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Known Issues</h2>
               <p>
-                While we strive for full accessibility, some third-party content or older pages may have limited accessibility. We are continuously working to improve these areas. If you encounter any accessibility barriers, please contact us immediately.
+                While we strive for full accessibility, some third-party content or older pages may have limited accessibility. We are continuously working to improve these areas. If you encounter any accessibility barriers, please contact us.
               </p>
             </section>
 
@@ -71,8 +70,8 @@ export default function AccessibilityPage() {
                 We welcome your feedback on the accessibility of our website. If you experience any difficulty accessing content or have suggestions for improvement, please contact us:
               </p>
               <div className="bg-gray-100 dark:bg-gray-900 p-4 rounded-lg mt-4">
-                <p><strong>Email:</strong> accessibility@nmhss.edu.in</p>
-                <p><strong>Phone:</strong> +91-XXXXXXXXXX</p>
+                <p><strong>Email:</strong> navamukundahss@gmail.com</p>
+                <p><strong>Phone:</strong> +91 0494 260 1534</p>
                 <p><strong>Mailing Address:</strong> Navamukunda Higher Secondary School, Thirunavaya, Kerala, India</p>
               </div>
             </section>
