@@ -1,8 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import {
-  insertContactMessageSchema,
   insertEventSchema,
   insertNewsSchema,
   insertOrUpdateAcademicResultSchema,
@@ -10,7 +10,8 @@ import {
   insertTeacherSchema,
   StudentMediaZodSchema,
   insertOrUpdateSportsResultSchema,
-  insertOrUpdateArtsScienceResultSchema
+  insertOrUpdateArtsScienceResultSchema,
+  StudentMediaModel
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
@@ -26,30 +27,13 @@ import { randomUUID } from "crypto";
 import { s3Client, R2_BUCKET_NAME } from "./s3.ts";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { rateLimit } from 'express-rate-limit';
+import { Resend } from 'resend';
 
 type UploadTracker = {
   count: number;
   month: number; // track month (1-12)
   lastUpload: number;
 };
-
-const contactFormLimiter = rateLimit({
-  // windowMs: 15 * 60 * 1000, // 15 minutes
-  windowMs: 60 * 60 * 1000, // Set to 1 hour to be more conservative
-  max: 5, // Limit each IP to 5 requests per hour. Adjust this based on traffic.
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: "Too many contact form requests. Please try again in an hour."
-  },
-  statusCode: 429 // Too Many Requests
-});
-
-interface Web3FormsResult {
-  success: boolean;
-  message?: string; // Optional message field for errors or success
-}
 
 const userUploadTracker = new Map<string, UploadTracker>();
 const rootEnvPath = path.resolve("cert.env");
@@ -61,7 +45,9 @@ dotenv.config({ path: envPath }); // Adjust the path if your .env is elsewhere
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
 const ADMIN_PASS = process.env.ADMIN_PASS || "password";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const DEVELOPER_EMAIL = process.env.DEVELOPER_EMAIL || "navamukundahss@gmail.com";
 export const upload = multer({ storage: multer.memoryStorage() });
+const resend = new Resend(process.env.RESEND_API_KEY || "");
 
 const validContentTypes = {
   image: [
@@ -91,37 +77,199 @@ const validContentTypes = {
   ],
 };
 
-// Auth middleware
+// --- server/routes.ts ---
+
 function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // 1. Try to get the token from the Header (Existing way)
   const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ message: "No token provided" });
-  const token = authHeader.split(" ")[1];
+  const headerToken = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+
+  // 2. Try to get the token from the Cookie (New secure way for Render)
+  const cookieToken = req.cookies?.adminToken;
+
+  // Use whichever token is available
+  const token = headerToken || cookieToken;
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided. Please log in." });
+  }
+
   try {
-    jwt.verify(token, JWT_SECRET);
+    // Verify the token using your secret
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Attach user info to the request for use in other routes
+    (req as any).user = decoded;
+
     next();
-  } catch {
-    res.status(401).json({ message: "Invalid token" });
+  } catch (err) {
+    console.log(`[AUTH] Invalid token attempt: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    res.status(401).json({ message: "Session expired or invalid. Please log in again." });
   }
 }
+
+// Rate limiter for admin-protected routes
+const adminRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Store temporary verification codes in memory (expires after 10 minutes)
+const developerVerificationCodes = new Map<string, { code: string; createdAt: number; email: string }>();
+
+// Generate a 6-digit random code
+function generateVerificationCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Clean up expired verification codes (runs every minute)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of developerVerificationCodes.entries()) {
+    if (now - value.createdAt > 10 * 60 * 1000) { // 10 minutes
+      developerVerificationCodes.delete(key);
+    }
+  }
+}, 60 * 1000);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Admin login route
   app.post("/api/admin/login", (req, res) => {
     const { username, password } = req.body;
+
     if (username === ADMIN_USER && password === ADMIN_PASS) {
       const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: "1h" });
+
+      // SET THE COOKIE FOR BROWSER-LEVEL CSRF PROTECTION
+      res.cookie("adminToken", token, {
+        httpOnly: true,                   // Protects against XSS (scripting) attacks
+        secure: true,                     // Required for Render.com (HTTPS)
+        sameSite: "lax",                  // Recommended for Render to handle redirects
+        maxAge: 60 * 60 * 1000            // 1 hour in milliseconds
+      });
+
+      // Keep the JSON response the same so your existing frontend doesn't break
       res.json({ success: true, token });
     } else {
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
   });
 
+
+
   // Admin token verification route
-  app.get("/api/admin/verify", requireAuth, (req, res) => {
+  app.get("/api/admin/verify", requireAuth, adminRateLimiter, (req, res) => {
     res.json({ success: true, message: "Token is valid" });
   });
 
+  // 1. Developer access request - generate and EMAIL code
+  app.post("/api/admin/developer-request", async (req, res) => {
+    try {
+      const { email } = req.body;
 
+      // Direct check
+      if (!email || email.toLowerCase() !== DEVELOPER_EMAIL.toLowerCase()) {
+        return res.status(403).json({ message: "Incorrect Email, Try again." });
+      }
+
+      const code = generateVerificationCode();
+      const codeKey = `${email}-${code}`;
+
+      developerVerificationCodes.set(codeKey, {
+        code,
+        createdAt: Date.now(),
+        email,
+      });
+
+      // Send directly to your registered email
+      const { error } = await resend.emails.send({
+        from: 'NMHSS Admin <onboarding@resend.dev>',
+        to: [DEVELOPER_EMAIL],
+        subject: `Verification Code for NMHSS Thirunnavaya`,
+        html: `
+    <div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; padding: 50px 20px;">
+      <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e1e4e8;">
+        
+        <div style="background-color: #0891b2; padding: 30px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">NMHSS Thirunnavaya</h1>
+          <p style="color: #cffafe; margin: 5px 0 0 0; font-size: 14px;">Admin Dashboard Access</p>
+        </div>
+
+        <div style="padding: 40px 30px; text-align: center;">
+          <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 20px;">Verification Code</h2>
+          <p style="color: #4b5563; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">
+            A login attempt was made for the developer portal at 
+            <a href="https://nmhss.onrender.com" style="color: #0891b2; text-decoration: none; font-weight: 600;">nmhss.onrender.com</a>.
+            Use the code below to complete the verification.
+          </p>
+          
+          <div style="background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 25px; margin: 0 auto 30px auto; width: fit-content;">
+            <span style="font-family: 'Courier New', Courier, monospace; font-size: 42px; font-weight: 900; color: #0891b2; letter-spacing: 8px;">
+              ${code}
+            </span>
+          </div>
+
+          <p style="color: #6b7280; font-size: 13px; margin: 0;">
+            This code expires in <strong>10 minutes</strong>.
+          </p>
+        </div>
+
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #f1f5f9;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+            &copy; 2026 NMHSS Thirunnavaya Admin System.<br>
+            If you did not request this, please ignore this message .
+          </p>
+        </div>
+
+      </div>
+    </div>
+  `
+      });
+
+      if (error) {
+        console.error("Resend error:", error);
+        return res.status(500).json({ message: "Email failed" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // 2. Verify developer code and issue SECURE COOKIE
+  app.post("/api/admin/verify-developer-code", (req, res) => {
+    try {
+      const { email, code } = req.body;
+      const codeKey = `${email}-${code}`;
+      const storedCode = developerVerificationCodes.get(codeKey);
+
+      if (!storedCode || (Date.now() - storedCode.createdAt > 10 * 60 * 1000)) {
+        developerVerificationCodes.delete(codeKey);
+        return res.status(401).json({ message: "Invalid or expired code" });
+      }
+
+      // Generate Token
+      const token = jwt.sign({ email, isDeveloper: true }, JWT_SECRET, { expiresIn: "1h" });
+
+      // SET SECURE COOKIE FOR RENDER
+      res.cookie("adminToken", token, {
+        httpOnly: true,
+        secure: true,      // Essential for Render's HTTPS
+        sameSite: "lax",
+        maxAge: 3600000
+      });
+
+      developerVerificationCodes.delete(codeKey);
+
+      // Return token in body as well for your current frontend state
+      res.json({ success: true, token });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to verify code" });
+    }
+  });
 
 
   //------------------- EVENTS ROUTES ----------------
@@ -137,7 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create event (admin only)
-  app.post("/api/events", requireAuth, async (req, res) => {
+  app.post("/api/events", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(eventData);
@@ -151,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/events/:id", requireAuth, async (req, res) => {
+  app.delete("/api/events/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deleted = await storage.deleteEvent(req.params.id);
       if (!deleted) return res.status(404).json({ error: "Event not found" });
@@ -162,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update event (admin only)
-  app.put("/api/events/:id", requireAuth, async (req, res) => {
+  app.put("/api/events/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const eventData = insertEventSchema.parse(req.body);
       const updated = await storage.updateEvent(req.params.id, eventData);
@@ -190,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create news (admin only)
-  app.post("/api/news", requireAuth, async (req, res) => {
+  app.post("/api/news", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -218,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Update news (admin only)
-  app.put("/api/news/:id", requireAuth, async (req, res) => {
+  app.put("/api/news/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const newsData = insertNewsSchema
         .extend({
@@ -246,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete news (admin only)
-  app.delete("/api/news/:id", requireAuth, async (req, res) => {
+  app.delete("/api/news/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deleted = await storage.deleteNews(req.params.id);
       if (!deleted) return res.status(404).json({ error: "News not found" });
@@ -274,7 +422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create section (admin only)
-  app.post("/api/sections", requireAuth, async (req, res) => {
+  app.post("/api/sections", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const section = await storage.createSection(sectionData);
@@ -289,7 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update section (admin only)
-  app.put("/api/sections/:name", requireAuth, async (req, res) => {
+  app.put("/api/sections/:name", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const sectionData = insertSectionSchema.parse(req.body);
       const updated = await storage.updateSection(req.params.name, sectionData);
@@ -336,7 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/gallery/images
-  app.post("/api/gallery/images", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/gallery/images", requireAuth, adminRateLimiter, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -387,7 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/gallery/videos
-  app.post("/api/gallery/videos", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/gallery/videos", requireAuth, adminRateLimiter, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -437,7 +585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/gallery/images/:id
-  app.delete("/api/gallery/images/:id", requireAuth, async (req, res) => {
+  app.delete("/api/gallery/images/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // 1. Delete from Gallery collection and get returned doc
       const deletedGalleryItem = await storage.deleteGalleryImage(req.params.id);
@@ -465,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/gallery/videos/:id
-  app.delete("/api/gallery/videos/:id", requireAuth, async (req, res) => {
+  app.delete("/api/gallery/videos/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deletedGalleryItem = await storage.deleteGalleryVideo(req.params.id);
       if (!deletedGalleryItem) return res.status(404).json({ error: "Item not found" });
@@ -530,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // POST /api/media
   // Modified endpoint
-  app.post("/api/media", requireAuth, upload.single("file"), async (req, res) => {
+  app.post("/api/media", requireAuth, adminRateLimiter, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -597,7 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/media/:id
-  app.delete("/api/media/:id", requireAuth, async (req, res) => {
+  app.delete("/api/media/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // 1. Find metadata in main DB
       const mediaDoc = await MediaModel.findById(req.params.id);
@@ -623,6 +771,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await MediaModel.deleteOne({ _id: mediaDoc._id });
 
       // --- R2 MODIFICATION END ---
+
+      await StudentMediaModel.deleteMany({ mediaId: req.params.id });
 
       // 4. Remove references from Sections (This logic remains intact)
       await SectionModel.updateMany(
@@ -652,7 +802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create/replace hero video (admin only)
-  app.post("/api/hero-video", requireAuth, async (req, res) => {
+  app.post("/api/hero-video", requireAuth, adminRateLimiter, async (req, res) => {
     const schema = z.object({
       mediaId: z.string().min(1, "mediaId is required"),
       url: z.string().min(1, "URL is required"), // ✅ allow relative paths
@@ -667,7 +817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // DELETE /api/hero-video/:id
-  app.delete("/api/hero-video/:id", requireAuth, async (req, res) => {
+  app.delete("/api/hero-video/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // 1. Delete the HeroVideo entry from the main DB
       const deleted = await storage.deleteHeroVideo(req.params.id);
@@ -725,7 +875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create or update faculty section (admin only)
-  app.post("/api/faculty", requireAuth, async (req, res) => {
+  app.post("/api/faculty", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // validate with zod
       const schema = z.object({
@@ -763,7 +913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete faculty section (admin only)
-  app.delete("/api/faculty", requireAuth, async (req, res) => {
+  app.delete("/api/faculty", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deleted = await storage.deleteFacultySection();
       if (!deleted) {
@@ -781,7 +931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   //------------------- STUDENTS MEDIA MANAGEMENT ----------------
 
   // Create StudentMedia
-  app.post("/api/admin-students", requireAuth, async (req, res) => {
+  app.post("/api/admin-students", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const validated = StudentMediaZodSchema.parse(req.body);
       const studentMedia = await storage.createStudentMedia(validated);
@@ -815,7 +965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Delete StudentMedia + associated file
   // Delete StudentMedia + associated file
-  app.delete("/api/admin-students/:id", requireAuth, async (req, res) => {
+  app.delete("/api/admin-students/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       // 1. Delete the StudentMedia database entry
       const deleted = await storage.deleteStudentMedia(req.params.id);
@@ -932,14 +1082,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.send(Buffer.from(pending.file));
   });
 
-  app.get("/api/admin/pending-uploads", requireAuth, (_req, res) => {
+  app.get("/api/admin/pending-uploads", requireAuth, adminRateLimiter, (_req, res) => {
     const list = Array.from(pendingUploads.values()).map(({ tempId, type, batch, year, description, filename }) => ({
       tempId, type, batch, year, description, filename
     }));
     res.json(list);
   });
 
-  app.post("/api/admin/approve-upload/:tempId", requireAuth, async (req, res) => {
+  app.post("/api/admin/approve-upload/:tempId", requireAuth, adminRateLimiter, async (req, res) => {
     const pending = pendingUploads.get(req.params.tempId);
     if (!pending) return res.status(404).json({ error: "Upload not found" });
 
@@ -997,7 +1147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/admin/disapprove-upload/:tempId", requireAuth, (req, res) => {
+  app.delete("/api/admin/disapprove-upload/:tempId", requireAuth, adminRateLimiter, (req, res) => {
     const deleted = pendingUploads.delete(req.params.tempId);
     if (!deleted) return res.status(404).json({ error: "Upload not found" });
     res.json({ success: true });
@@ -1037,7 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create teacher (admin only)
-  app.post("/api/admin/teachers", requireAuth, async (req, res) => {
+  app.post("/api/admin/teachers", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const teacherData = insertTeacherSchema.parse(req.body);
       const teacher = await storage.createTeacher(teacherData);
@@ -1053,7 +1203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Delete teacher (admin only)
   // Delete teacher (admin only)
-  app.delete("/api/admin/teachers/:id", requireAuth, async (req, res) => {
+  app.delete("/api/admin/teachers/:id", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const deleted = await storage.deleteTeacher(req.params.id);
       if (!deleted) {
@@ -1126,7 +1276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 3. Create or Update entire academic result (admin only)
-  app.post("/api/admin/academic-results", requireAuth, async (req, res) => {
+  app.post("/api/admin/academic-results", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const data = insertOrUpdateAcademicResultSchema.parse(req.body);
       const result = await storage.createOrUpdateAcademicResult(data);
@@ -1141,30 +1291,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 4. Update specific year (optional — same as POST but clearer)
-  app.put("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
-    const year = parseInt(req.params.year);
-    if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
-
-    try {
-      const data = insertOrUpdateAcademicResultSchema.parse({
-        ...req.body,
-        year,
-      });
-      const result = await storage.createOrUpdateAcademicResult(data);
-      res.json({ success: true, result });
-    } catch (err: any) {
-      if (err instanceof z.ZodError) {
-        res.status(400).json({ error: "Validation failed", details: err.errors });
-      } else {
-        console.error(err);
-        res.status(500).json({ error: "Failed to update result" });
-      }
-    }
-  });
-
-  // 5. Delete entire year's result + ALL associated student photos (admin only)
-  app.delete("/api/admin/academic-results/:year", requireAuth, async (req, res) => {
+  // 4. Delete entire year's result + ALL associated student photos (admin only)
+  app.delete("/api/admin/academic-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year, 10);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1217,7 +1345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  //------sports-results------------------------
+  //------SPORTS-RESULTS-ENDPOINTS------------------------
 
   // 1. Get all available years (for dropdown)
   app.get("/api/sports-results/years", async (_req, res) => {
@@ -1246,7 +1374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 3. Create or Update entire sports result (admin only)
-  app.post("/api/admin/sports-results", requireAuth, async (req, res) => {
+  app.post("/api/admin/sports-results", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const data = insertOrUpdateSportsResultSchema.parse(req.body);
       const result = await storage.createOrUpdateSportsResult(data);
@@ -1262,7 +1390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 4. Update specific year (optional — same as POST but clearer)
-  app.put("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
+  app.put("/api/admin/sports-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1284,7 +1412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // New: Add a single champion to a year
-  app.post("/api/admin/sports-results/:year/champions", requireAuth, async (req, res) => {
+  app.post("/api/admin/sports-results/:year/champions", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1296,7 +1424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         result: updatedResult,
-        championIndex: newIndex // Return the index for future updates/deletes
+        championIndex: newIndex
       });
     } catch (err: any) {
       if (err instanceof z.ZodError) {
@@ -1308,7 +1436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
+  app.put("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     const championIndex = parseInt(req.params.championIndex);
 
@@ -1331,8 +1459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-
-  app.delete("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, async (req, res) => {
+  app.delete("/api/admin/sports-results/:year/champions/:championIndex", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     const championIndex = parseInt(req.params.championIndex);
 
@@ -1343,17 +1470,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const result = await storage.deleteChampionFromYear(year, championIndex);
 
-      // result can be null → handle it safely
       if (!result) {
         return res.status(404).json({ error: "Champion not found" });
       }
 
       const { deletedChampion, mediaId } = result;
 
-      // Delete associated media if exists
       if (mediaId) {
         try {
-          // Reuse your existing /api/media/:id DELETE logic via direct call
           const media = await MediaModel.findById(mediaId);
           if (media) {
             await s3Client.send(
@@ -1366,7 +1490,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (err) {
           console.warn(`Failed to delete media ${mediaId}:`, err);
-          // Don't fail the whole request if media cleanup fails
         }
       }
 
@@ -1381,8 +1504,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 5. Delete entire year's result + ALL associated champion photos (admin only)
-  app.delete("/api/admin/sports-results/:year", requireAuth, async (req, res) => {
+  // 5. Delete entire year's result + ALL associated media (champions + slideshow)
+  app.delete("/api/admin/sports-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year, 10);
     if (isNaN(year)) return res.status(400).json({ error: "Invalid year" });
 
@@ -1390,41 +1513,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.getSportsResultByYear(year);
       if (!result) return res.status(404).json({ error: "Result not found" });
 
-      // Collect all mediaIds from champions
-      const mediaIds = result.champions.map(c => c.mediaId).filter(Boolean) as string[];
+      // Collect mediaIds from champions
+      const championMediaIds = result.champions
+        .map(c => c.mediaId)
+        .filter(Boolean) as string[];
 
-      // Delete all associated media from R2 + DB
-      if (mediaIds.length > 0) {
+      // Collect mediaIds from slideshowImages
+      const slideshowMediaIds = (result.slideshowImages || [])
+        .map((img: any) => img.mediaId)
+        .filter(Boolean) as string[];
+
+      const allMediaIds = [...new Set([...championMediaIds, ...slideshowMediaIds])];
+
+      // Delete all associated media
+      if (allMediaIds.length > 0) {
         await Promise.all(
-          mediaIds.map(async (id) => {
+          allMediaIds.map(async (id) => {
             try {
               const media = await MediaModel.findById(id);
               if (media) {
-                // Delete from R2
                 await s3Client.send(
                   new DeleteObjectCommand({
                     Bucket: R2_BUCKET_NAME,
                     Key: media.filename,
                   })
                 );
-                // Delete from MongoDB
                 await MediaModel.findByIdAndDelete(id);
               }
             } catch (err) {
               console.warn(`Failed to delete media ${id}:`, err);
-              // Don't fail the whole operation if one image fails
             }
           })
         );
       }
 
-      // Now delete the sports result document
+      // Delete the sports result document
       await storage.deleteSportsResult(year);
 
       res.json({
         success: true,
-        message: `Sports result ${year} and ${mediaIds.length} photos deleted successfully`,
-        deletedPhotos: mediaIds.length,
+        message: `Sports result ${year} and ${allMediaIds.length} photos deleted successfully`,
+        deletedPhotos: allMediaIds.length,
       });
     } catch (err) {
       console.error("Failed to delete sports result:", err);
@@ -1465,7 +1594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST: Create or Update an Arts & Science result (Admin Protected)
-  app.post("/api/arts-science-results", requireAuth, async (req, res) => {
+  app.post("/api/arts-science-results", requireAuth, adminRateLimiter, async (req, res) => {
     try {
       const validatedData = insertOrUpdateArtsScienceResultSchema.parse(req.body);
       const result = await storage.createOrUpdateArtsScienceResult(validatedData);
@@ -1486,7 +1615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // DELETE: Delete a result and associated media (Admin Protected)
-  app.delete("/api/arts-science-results/:year", requireAuth, async (req, res) => {
+  app.delete("/api/arts-science-results/:year", requireAuth, adminRateLimiter, async (req, res) => {
     const year = parseInt(req.params.year);
     if (isNaN(year)) {
       return res.status(400).json({ error: "Invalid year parameter" });
@@ -1507,7 +1636,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(a => a.mediaId)
         .filter((id): id is string => !!id);
 
-      const mediaIds = [...kalolsavamMediaIds, ...sasthrosavamMediaIds];
+      // Also gather mediaIds referenced by slideshowImages for both events (if present)
+      const kalolsavamSlideIds = (docToDelete.kalolsavam.slideshowImages || [])
+        .map((s: any) => s.mediaId)
+        .filter((id: any): id is string => !!id);
+      const sasthrosavamSlideIds = (docToDelete.sasthrosavam.slideshowImages || [])
+        .map((s: any) => s.mediaId)
+        .filter((id: any): id is string => !!id);
+
+      const mediaIds = [
+        ...kalolsavamMediaIds,
+        ...sasthrosavamMediaIds,
+        ...kalolsavamSlideIds,
+        ...sasthrosavamSlideIds,
+      ];
 
       // 2. Delete associated media from R2 and MongoDB
       if (mediaIds.length > 0) {

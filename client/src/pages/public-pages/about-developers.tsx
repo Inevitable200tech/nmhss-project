@@ -7,6 +7,14 @@ import { Helmet } from "react-helmet";
 
 // Developer data with tech stack
 const developers = [
+    {
+    name: "Abhishek P",
+    role: "Backend Developer",
+    bio: "Building scalable, secure backend systems and APIs that power next-gen applications. As a creator, Abhishek ensures robust performance.",
+    photo: "https://avatars.githubusercontent.com/Inevitable200tech", // Replace with valid URL
+    social: { github: "https://inevitable200tech.github.io/Inevitable200tech/" },
+    techStack: ["Node.js", "Express", "MongoDB", "TypeScript"],
+  },
   {
     name: "Pranav P",
     role: "Frontend Developer",
@@ -15,14 +23,7 @@ const developers = [
     social: { github: "https://pranav-pradeesh.github.io/pranav-pradeesh" },
     techStack: ["React", "TypeScript", "Framer Motion", "Tailwind CSS"],
   },
-  {
-    name: "Abhishek P",
-    role: "Backend Developer",
-    bio: "Building scalable, secure backend systems and APIs that power next-gen applications. As a creator, Abhishek ensures robust performance.",
-    photo: "https://avatars.githubusercontent.com/Inevitable200tech", // Replace with valid URL
-    social: { github: "https://inevitable200tech.github.io/Inevitable200tech/" },
-    techStack: ["Node.js", "Express", "MongoDB", "TypeScript"],
-  },
+
 ];
 
 export default function AboutDevelopers() {
@@ -140,14 +141,14 @@ export default function AboutDevelopers() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+          <div className="flex flex-col sm:flex-row gap-10 justify-center items-center">
             {developers.map((dev, index) => {
               const [showStack, setShowStack] = useState(false);
 
               return (
                 <motion.div
                   key={index}
-                  className="bg-black/70 backdrop-blur-lg border border-white/10 rounded-2xl p-8 shadow-xl text-center relative"
+                  className="bg-black/70 backdrop-blur-lg border border-white/10 rounded-2xl p-6 sm:p-8 shadow-xl text-center relative w-[30vh] sm:w-full"
                   custom={index}
                   variants={cardVariants}
                   initial="hidden"

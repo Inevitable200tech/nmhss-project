@@ -18,6 +18,7 @@ export default defineConfig({
         "/sports-champions",
         "/academic-results",
         "/arts-science",
+        "/news",
       ],
       outDir: "dist/public",
     }),
@@ -44,6 +45,7 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 1600, // Suppress warning for vendor
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks(id) {

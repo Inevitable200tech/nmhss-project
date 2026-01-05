@@ -121,21 +121,21 @@ export default function Footer() {
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a
-              href="#privacy"
+              href="/privacy-policy"
               className="text-sm opacity-80 hover:opacity-100 transition-opacity"
               data-testid="footer-link-privacy"
             >
               Privacy Policy
             </a>
             <a
-              href="#terms"
+              href="/terms-of-service"
               className="text-sm opacity-80 hover:opacity-100 transition-opacity"
               data-testid="footer-link-terms"
             >
               Terms of Service
             </a>
             <a
-              href="#accessibility"
+              href="/accessibility"
               className="text-sm opacity-80 hover:opacity-100 transition-opacity"
               data-testid="footer-link-accessibility"
             >

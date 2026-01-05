@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/hooks/use-sound";
 import type { ClientEvent } from "@shared/schema";
 
 export default function AdminEvents() {
+  const { toast } = useToast();
+  const { playHoverSound, playErrorSound, playSuccessSound } = useSound();
+
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -11,7 +16,6 @@ export default function AdminEvents() {
 
   // UI state
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   // Events list state
   const [events, setEvents] = useState<ClientEvent[]>([]);
@@ -22,10 +26,8 @@ export default function AdminEvents() {
   // Fetch all events
   const fetchEvents = async () => {
     try {
-      console.log("[Event Management] Fetching all events...");
       const res = await fetch("/api/events");
       const data = await res.json();
-      console.log("[Event Management] Events fetched:", data);
 
       setEvents(
         data.map((event: any) => ({
@@ -35,71 +37,140 @@ export default function AdminEvents() {
         }))
       );
     } catch (err) {
-      console.error("[Event Management] Failed to load events", err);
+      toast({ title: "Error", description: "Failed to load events", variant: "destructive" });
     }
   };
 
   useEffect(() => {
-    console.log("[Event Management] useEffect: Component mounted, fetching events...");
     fetchEvents();
   }, []);
 
   // Submit handler (add or update)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[Event Management] Handle submit triggered.");
     setLoading(true);
-    setMessage(null);
+
+    // Validation: Check all required fields
+    const titleTrimmed = title.trim();
+    const descTrimmed = description.trim();
+    const timeTrimmed = time.trim();
+
+    if (!titleTrimmed) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Title is required and cannot be empty", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    if (!descTrimmed) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Description is required and cannot be empty", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    if (!date) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Date is required", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    if (!timeTrimmed) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Time is required", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    // Edge case: Check if date is in the past
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today && !editId) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Event date cannot be in the past", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    // Edge case: Check title length
+    if (titleTrimmed.length > 200) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Title must be 200 characters or less", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    // Edge case: Check description length
+    if (descTrimmed.length > 5000) {
+      playErrorSound();
+      toast({ title: "Validation Error", description: "Description must be 5000 characters or less", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
 
     try {
       const payload = {
-        title,
-        description,
+        title: titleTrimmed,
+        description: descTrimmed,
         date: new Date(date),
-        time,
+        time: timeTrimmed,
         category,
       };
-      console.log("[Event Management] Payload:", payload);
 
       const token = localStorage.getItem("adminToken");
+      if (!token) {
+        toast({ title: "Error", description: "Authentication token not found. Please log in again.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
 
       let res;
       if (editId) {
-        console.log("[Event Management] Updating event with ID:", editId);
         res = await fetch(`/api/events/${editId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,  // Attach the token here
+            Authorization: `Bearer ${token}`,
+            "X-Requested-With": "SchoolConnect-App",
           },
           body: JSON.stringify(payload),
         });
       } else {
-        console.log("[Event Management] Creating new event...");
         res = await fetch("/api/events", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,  // Attach the token here
+            Authorization: `Bearer ${token}`,
+            "X-Requested-With": "SchoolConnect-App",
           },
           body: JSON.stringify(payload),
         });
       }
 
       const data = await res.json();
-      console.log("[Event Management] Server response:", data);
-      if (!res.ok) throw new Error(data.error || "Failed to save event");
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save event");
+      }
 
-      setMessage(editId ? "✅ Event updated successfully!" : "✅ Event added successfully!");
-      console.log("[Event Management] Event saved successfully.");
+      toast({
+        title: "Success",
+        description: editId ? "Event updated successfully!" : "Event added successfully!",
+        variant: "default",
+      });
+      playSuccessSound();
       resetForm();
       fetchEvents();
     } catch (err: any) {
-      setMessage("❌ " + err.message);
-      console.error("[Event Management] Error saving event:", err.message);
+      playErrorSound();
+      toast({
+        title: "Save Failed",
+        description: err.message || "An error occurred while saving the event",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
-      console.log("[Event Management] Submit process complete.");
     }
   };
 
@@ -107,36 +178,40 @@ export default function AdminEvents() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this event?")) return;
 
-    // Add the Authorization header with the Bearer token
     try {
       const token = localStorage.getItem("adminToken");
-      console.log("[Event Management] Handle Delete triggered for event ID:", id);
-      console.log("[Event Management] Token:", token);
+      if (!token) {
+        toast({ title: "Error", description: "Authentication token not found", variant: "destructive" });
+        return;
+      }
 
       const res = await fetch(`/api/events/${id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,  // Make sure this is included
+          Authorization: `Bearer ${token}`,
+          "X-Requested-With": "SchoolConnect-App",
         },
       });
 
       const data = await res.json();
-      console.log("[Event Management] Delete event response:", data);
-
       if (!res.ok) throw new Error(data.error || "Failed to delete event");
 
-      setMessage("🗑️ Event deleted successfully!");
+      playSuccessSound();
+      toast({ title: "Success", description: "Event deleted successfully!", variant: "default" });
       fetchEvents();
     } catch (err: any) {
-      setMessage("❌ " + err.message);
-      console.error("[Event Management] Error deleting event:", err.message);
+      playErrorSound();
+      toast({
+        title: "Delete Failed",
+        description: err.message || "An error occurred while deleting the event",
+        variant: "destructive",
+      });
     }
   };
 
   // Load event into form for editing
   const handleEdit = (event: ClientEvent) => {
-    console.log("[Event Management] Edit event triggered:", event);
     setEditId(event.id);
     setTitle(event.title);
     setDescription(event.description);
@@ -147,7 +222,6 @@ export default function AdminEvents() {
 
   // Reset form
   const resetForm = () => {
-    console.log("[Event Management] Resetting form.");
     setEditId(null);
     setTitle("");
     setDescription("");
@@ -161,6 +235,7 @@ export default function AdminEvents() {
       {/* Back Button */}
       <button
         onClick={() => (window.location.href = "/admin")}
+        onMouseEnter={playHoverSound}
         className="mb-6 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg shadow"
       >
         ← Back to Admin Dashboard
@@ -168,18 +243,6 @@ export default function AdminEvents() {
 
       <div className="max-w-3xl mx-auto bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-700">
         <h2 className="text-2xl font-bold mb-6">📅 Manage Events</h2>
-
-        {/* Status Message */}
-        {message && (
-          <div
-            className={`mb-4 p-3 rounded ${message.startsWith("✅") || message.startsWith("🗑️")
-              ? "bg-green-700 text-green-100"
-              : "bg-red-700 text-red-100"
-              }`}
-          >
-            {message}
-          </div>
-        )}
 
         {/* Event Form */}
         <form onSubmit={handleSubmit} className="space-y-5 mb-10">
@@ -245,6 +308,7 @@ export default function AdminEvents() {
             <button
               type="submit"
               disabled={loading}
+              onMouseEnter={playHoverSound}
               className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg shadow transition disabled:opacity-50"
             >
               {loading ? "Saving..." : editId ? "Update Event" : "Add Event"}
@@ -253,6 +317,7 @@ export default function AdminEvents() {
               <button
                 type="button"
                 onClick={resetForm}
+                onMouseEnter={playHoverSound}
                 className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg shadow"
               >
                 Cancel
@@ -285,12 +350,14 @@ export default function AdminEvents() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEdit(event)}
+                    onMouseEnter={playHoverSound}
                     className="px-3 py-1 bg-yellow-600 hover:bg-yellow-500 text-white text-sm rounded"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(event.id)}
+                    onMouseEnter={playHoverSound}
                     className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-sm rounded"
                   >
                     Delete

@@ -22,6 +22,9 @@ const AboutTeachers = lazy(() => import("@/pages/public-pages/about-teachers"));
 const SportsChampionsPage = lazy(() => import("@/pages/public-pages/sports-champions"));
 const AcademicResultsPage = lazy(() => import("@/pages/public-pages/academic-results"));
 const ArtsSciencePage = lazy(() => import("@/pages/public-pages/arts-science"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/public-pages/privacy-policy"));
+const TermsOfServicePage = lazy(() => import("@/pages/public-pages/terms-of-service"));
+const AccessibilityPage = lazy(() => import("@/pages/public-pages/accessibility"));
 
 // Admin pages (already protected)
 const AboutAdminPage = lazy(() => import("@/pages/admin-pages/about-admin"));
@@ -35,16 +38,37 @@ const AdminTeacherEdit = lazy(() => import("@/pages/admin-pages/admin-teachers-e
 const AdminAcademicResults = lazy(() => import("@/pages/admin-pages/admin-academic"));
 const AdminArtsScience = lazy(() => import("@/pages/admin-pages/admin-arts-science"));
 const AdminSportsChampions = lazy(() => import("@/pages/admin-pages/admin-sports-champions"));
+const AdminTutorial = lazy(() => import("@/pages/admin-pages/admin-tutorial"));
+const NewsSection = lazy(() => import("@/components/dynamic-pages/news-section"));
+
+// --- Auto add Headers ------------
+
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = async (...args) => {
+    let [resource, config] = args;
+    config = config || {};
+
+    const headers = new Headers(config.headers || {});
+
+    // This header acts as our "Simple CSRF Token"
+    // Malicious sites cannot forge this custom header in a cross-site request
+    headers.set("x-requested-with", "SchoolConnect-App");
+
+    config.headers = headers;
+    return originalFetch(resource, config);
+  };
+}
 
 function App() {
   useEffect(() => {
-  if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return;
 
-  import("aos/dist/aos.css");
-  import("aos").then((AOS) => {
-    AOS.init({ duration: 750, easing: 'ease-out', once: true, offset: 50 });
-  });
-}, []);
+    import("aos/dist/aos.css");
+    import("aos").then((AOS) => {
+      AOS.init({ duration: 750, easing: 'ease-out', once: true, offset: 50 });
+    });
+  }, []);
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="navamukunda-theme">
@@ -63,6 +87,10 @@ function App() {
               <Route path="/sports-champions" element={<SportsChampionsPage />} />
               <Route path="/academic-results" element={<AcademicResultsPage />} />
               <Route path="/arts-science" element={<ArtsSciencePage />} />
+              <Route path="/news" element={<NewsSection />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+              <Route path="/accessibility" element={<AccessibilityPage />} />
               {/* Protected admin routes */}
               <Route path="/admin-gallery" element={<ProtectedRoute><AdminGalleryPage /></ProtectedRoute>} />
               <Route path="/admin-about" element={<ProtectedRoute><AboutAdminPage /></ProtectedRoute>} />
@@ -75,6 +103,7 @@ function App() {
               <Route path="/admin-teachers-edit" element={<ProtectedRoute><AdminTeacherEdit /></ProtectedRoute>} />
               <Route path="/admin-academic-results" element={<ProtectedRoute><AdminAcademicResults /></ProtectedRoute>} />
               <Route path="/admin-arts-science" element={<ProtectedRoute><AdminArtsScience /></ProtectedRoute>} />
+              <Route path="/admin-tutorial" element={<ProtectedRoute><AdminTutorial /></ProtectedRoute>} />
 
               {/* Fallback route for 404 */}
               <Route path="*" element={<NotFound />} />

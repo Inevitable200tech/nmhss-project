@@ -525,8 +525,13 @@ export interface Champion {
   teamMembers?: string[];
   mediaId?: string;
   photoUrl?: string; // signed R2 URL (/api/media/:id)
-  level?: 'HSS' | 'HS' | 'State' | 'District'; // Added for grouping (e.g., school level or competition tier)
-  featured?: boolean; // Added for highlighting top champions in UI
+  level?: 'HSS' | 'HS' | 'State' | 'District';
+  featured?: boolean;
+}
+
+export interface SlideshowImage {
+  mediaId?: string;
+  photoUrl?: string; // signed R2 URL (/api/media/:id)
 }
 
 export interface SportsResultDocument extends Document {
@@ -538,6 +543,7 @@ export interface SportsResultDocument extends Document {
   totalParticipants: number;
   events: SportEvent[];
   champions: Champion[];
+  slideshowImages?: SlideshowImage[]; // New field for slideshow images
   lastUpdated: Date;
 }
 
@@ -570,10 +576,15 @@ export const SportsResultSchema = new Schema<SportsResultDocument>({
       teamMembers: [{ type: String }],
       mediaId: { type: String },
       photoUrl: { type: String },
-      level: { type: String, enum: ["HSS", "HS", "State", "District"] }, // Added
-      featured: { type: Boolean }, // Added
+      level: { type: String, enum: ["HSS", "HS", "State", "District"] },
+      featured: { type: Boolean },
     },
   ],
+
+  slideshowImages: [{
+    mediaId: { type: String },
+    photoUrl: { type: String },
+  }],
 
   lastUpdated: { type: Date, default: Date.now },
 });
@@ -605,17 +616,22 @@ export const insertOrUpdateSportsResultSchema = z.object({
       event: z.string().min(1, "Event name is required"),
       position: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 
-      // Always store an array (empty for individuals)
       teamMembers: z.array(z.string()).default([]),
 
       mediaId: z.string().optional(),
       photoUrl: z.string().optional(),
 
-      // Added fields
       level: z.enum(["HSS", "HS", "State", "District"]).optional(),
       featured: z.boolean().optional(),
     })
   ),
+
+  slideshowImages: z.array(
+    z.object({
+      mediaId: z.string().optional(),
+      photoUrl: z.string().optional(),
+    })
+  ).optional(),
 });
 
 export type InsertOrUpdateSportsResult = z.infer<
@@ -644,6 +660,7 @@ export interface ArtsScienceEventResult {
   totalC: number;
   totalParticipants: number;
   achievements: Achievement[];
+  slideshowImages?: SlideshowImage[];
 }
 
 export interface ArtsScienceResultDocument extends Document {
@@ -677,6 +694,12 @@ const ArtsScienceEventResultSchema = new Schema<ArtsScienceEventResult>({
   totalC: { type: Number, required: true, min: 0 },
   totalParticipants: { type: Number, required: true, min: 0 },
   achievements: [AchievementSchema],
+  slideshowImages: [
+    {
+      mediaId: { type: String },
+      photoUrl: { type: String },
+    },
+  ],
 }, { _id: false }); // Do not create a separate _id for the embedded schema
 
 
@@ -707,6 +730,14 @@ export const ArtsScienceEventResultZodSchema = z.object({
   totalC: z.number().int().min(0),
   totalParticipants: z.number().int().min(0),
   achievements: z.array(AchievementZodSchema),
+  slideshowImages: z
+    .array(
+      z.object({
+        mediaId: z.string().optional(),
+        photoUrl: z.string().optional(),
+      })
+    )
+    .optional(),
 });
 
 export const insertOrUpdateArtsScienceResultSchema = z.object({

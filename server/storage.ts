@@ -563,199 +563,212 @@ export class MongoStorage implements IStorage {
   }
 
   // ------------------------------------------------------------
-  // SPORTS RESULT STORAGE SERVICE (UPDATED)
-  // ------------------------------------------------------------
+// SPORTS RESULT STORAGE SERVICE (UPDATED WITH SLIDESHOW)
+// ------------------------------------------------------------
 
-  async getSportsResultByYear(
-    year: number
-  ): Promise<SportsResultDocument | null> {
-    const doc = await SportsResultModelInstance.findOne({ year })
-      .lean()
-      .exec();
+async getSportsResultByYear(
+  year: number
+): Promise<SportsResultDocument | null> {
+  const doc = await SportsResultModelInstance.findOne({ year })
+    .lean()
+    .exec();
 
-    if (!doc) return null;
+  if (!doc) return null;
 
-    return {
-      ...doc,
-      id: doc._id.toString(),
-      lastUpdated: new Date(doc.lastUpdated),
+  return {
+    ...doc,
+    id: doc._id.toString(),
+    lastUpdated: new Date(doc.lastUpdated),
 
-      events: (doc.events || []).map((e) => ({
-        name: e.name,
-        category: e.category,
-        gender: e.gender,
-      })),
+    events: (doc.events || []).map((e: any) => ({
+      name: e.name,
+      category: e.category,
+      gender: e.gender,
+    })),
 
-      champions: (doc.champions || []).map((c) => ({
-        name: c.name,
-        event: c.event,
-        position: c.position,
-        teamMembers: c.teamMembers || [],
-        mediaId: c.mediaId,
-        photoUrl: c.photoUrl,
-        level: c.level,       // Added: Include level for grouping
-        featured: c.featured, // Added: Include featured flag for UI highlighting
-      })),
-    } as unknown as SportsResultDocument;
-  }
+    champions: (doc.champions || []).map((c: any) => ({
+      name: c.name,
+      event: c.event,
+      position: c.position,
+      teamMembers: c.teamMembers || [],
+      mediaId: c.mediaId,
+      photoUrl: c.photoUrl,
+      level: c.level,
+      featured: c.featured,
+    })),
 
-  // ------------------------------------------------------------
+    slideshowImages: (doc.slideshowImages || []).map((img: any) => ({
+      mediaId: img.mediaId,
+      photoUrl: img.photoUrl,
+    })),
+  } as unknown as SportsResultDocument;
+}
 
-  async getAllSportsYears(): Promise<number[]> {
-    const docs = await SportsResultModelInstance.find({}, { year: 1 })
-      .sort({ year: -1 })
-      .lean()
-      .exec();
+// ------------------------------------------------------------
 
-    return docs.map((d) => d.year);
-  }
+async getAllSportsYears(): Promise<number[]> {
+  const docs = await SportsResultModelInstance.find({}, { year: 1 })
+    .sort({ year: -1 })
+    .lean()
+    .exec();
 
-  // ------------------------------------------------------------
+  return docs.map((d) => d.year);
+}
 
-  async createOrUpdateSportsResult(
-    data: InsertOrUpdateSportsResult
-  ): Promise<SportsResultDocument> {
-    const result = await SportsResultModelInstance.findOneAndUpdate(
-      { year: data.year },
-      {
-        ...data,
-        lastUpdated: new Date(),
-      },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
-    )
-      .lean()
-      .exec();
+// ------------------------------------------------------------
 
-    if (!result) throw new Error("Failed to save sports result");
+async createOrUpdateSportsResult(
+  data: InsertOrUpdateSportsResult
+): Promise<SportsResultDocument> {
+  const result = await SportsResultModelInstance.findOneAndUpdate(
+    { year: data.year },
+    {
+      ...data,
+      lastUpdated: new Date(),
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  )
+    .lean()
+    .exec();
 
-    return {
-      ...result,
-      id: result._id.toString(),
-      lastUpdated: new Date(result.lastUpdated),
+  if (!result) throw new Error("Failed to save sports result");
 
-      events: (result.events || []).map((e) => ({
-        name: e.name,
-        category: e.category,
-        gender: e.gender,
-      })),
+  return {
+    ...result,
+    id: result._id.toString(),
+    lastUpdated: new Date(result.lastUpdated),
 
-      champions: (result.champions || []).map((c) => ({
-        name: c.name,
-        event: c.event,
-        position: c.position,
-        teamMembers: c.teamMembers || [],
-        mediaId: c.mediaId,
-        photoUrl: c.photoUrl,
-        level: c.level,       // Added: Include level for grouping
-        featured: c.featured, // Added: Include featured flag for UI highlighting
-      })),
-    } as unknown as SportsResultDocument;
-  }
+    events: (result.events || []).map((e: any) => ({
+      name: e.name,
+      category: e.category,
+      gender: e.gender,
+    })),
 
-  // ------------------------------------------------------------
+    champions: (result.champions || []).map((c: any) => ({
+      name: c.name,
+      event: c.event,
+      position: c.position,
+      teamMembers: c.teamMembers || [],
+      mediaId: c.mediaId,
+      photoUrl: c.photoUrl,
+      level: c.level,
+      featured: c.featured,
+    })),
 
-  async deleteSportsResult(
-    year: number
-  ): Promise<SportsResultDocument | null> {
-    const doc = await SportsResultModelInstance.findOneAndDelete({ year })
-      .lean()
-      .exec();
+    slideshowImages: (result.slideshowImages || []).map((img: any) => ({
+      mediaId: img.mediaId,
+      photoUrl: img.photoUrl,
+    })),
+  } as unknown as SportsResultDocument;
+}
 
-    if (!doc) return null;
+// ------------------------------------------------------------
 
-    return {
-      ...doc,
-      id: doc._id.toString(),
-    } as unknown as SportsResultDocument;
-  }
+async deleteSportsResult(
+  year: number
+): Promise<SportsResultDocument | null> {
+  const doc = await SportsResultModelInstance.findOneAndDelete({ year })
+    .lean()
+    .exec();
 
-  // Add a new champion (returns updated document + new index)
-  async addChampionToYear(
-    year: number,
-    champion: Champion
-  ): Promise<{ updatedResult: SportsResultDocument | null; newIndex: number }> {
-    const result = await SportsResultModelInstance.findOneAndUpdate(
-      { year },
-      { $push: { champions: champion }, lastUpdated: new Date() },
-      { new: true, upsert: true }
-    )
-      .lean()
-      .exec();
+  if (!doc) return null;
 
-    if (!result) return { updatedResult: null, newIndex: -1 };
+  return {
+    ...doc,
+    id: doc._id.toString(),
+  } as unknown as SportsResultDocument;
+}
 
-    const mapped = this.mapSportsResult(result);
-    const newIndex = result.champions.length - 1;
+// Add a new champion (returns updated document + new index)
+async addChampionToYear(
+  year: number,
+  champion: Champion
+): Promise<{ updatedResult: SportsResultDocument | null; newIndex: number }> {
+  const result = await SportsResultModelInstance.findOneAndUpdate(
+    { year },
+    { $push: { champions: champion }, lastUpdated: new Date() },
+    { new: true, upsert: true }
+  )
+    .lean()
+    .exec();
 
-    return { updatedResult: mapped, newIndex };
-  }
+  if (!result) return { updatedResult: null, newIndex: -1 };
 
-  // Update champion by array index
-  async updateChampionInYear(
-    year: number,
-    championIndex: number,
-    champion: Champion
-  ): Promise<SportsResultDocument | null> {
-    const doc = await SportsResultModelInstance.findOne({ year });
-    if (!doc || !doc.champions[championIndex]) return null;
+  const mapped = this.mapSportsResult(result);
+  const newIndex = result.champions.length - 1;
 
-    // Replace the champion at the given index (preserves MongoDB _id if exists)
-    doc.champions[championIndex] = champion as any; // 'as any' safe here — Mongoose handles _id internally
-    doc.lastUpdated = new Date();
-    await doc.save();
+  return { updatedResult: mapped, newIndex };
+}
 
-    return this.mapSportsResult(doc.toObject());
-  }
+// Update champion by array index
+async updateChampionInYear(
+  year: number,
+  championIndex: number,
+  champion: Champion
+): Promise<SportsResultDocument | null> {
+  const doc = await SportsResultModelInstance.findOne({ year });
+  if (!doc || !doc.champions[championIndex]) return null;
 
-  // Delete champion by array index + return mediaId for cleanup
-  async deleteChampionFromYear(
-    year: number,
-    championIndex: number
-  ): Promise<{ deletedChampion: Champion; mediaId?: string } | null> {
-    const doc = await SportsResultModelInstance.findOne({ year });
-    if (!doc || !doc.champions[championIndex]) return null;
+  doc.champions[championIndex] = champion as any;
+  doc.lastUpdated = new Date();
+  await doc.save();
 
-    const deleted = doc.champions[championIndex];
-    const mediaId = deleted.mediaId;
+  return this.mapSportsResult(doc.toObject());
+}
 
-    doc.champions.splice(championIndex, 1);
-    doc.lastUpdated = new Date();
-    await doc.save();
+// Delete champion by array index + return mediaId for cleanup
+async deleteChampionFromYear(
+  year: number,
+  championIndex: number
+): Promise<{ deletedChampion: Champion; mediaId?: string } | null> {
+  const doc = await SportsResultModelInstance.findOne({ year });
+  if (!doc || !doc.champions[championIndex]) return null;
 
-    return {
-      deletedChampion: {
-        name: deleted.name,
-        event: deleted.event,
-        position: deleted.position,
-        teamMembers: deleted.teamMembers || [],
-        mediaId: deleted.mediaId,
-        photoUrl: deleted.photoUrl,
-        level: deleted.level,
-        featured: deleted.featured,
-      },
-      mediaId,
-    };
-  }
+  const deleted = doc.champions[championIndex];
+  const mediaId = deleted.mediaId;
 
-  // Helper to reuse mapping logic
-  private mapSportsResult(doc: any): SportsResultDocument {
-    return {
-      ...doc,
-      id: doc._id.toString(),
-      lastUpdated: new Date(doc.lastUpdated),
-      events: (doc.events || []).map((e: any) => ({ name: e.name, category: e.category, gender: e.gender })),
-      champions: (doc.champions || []).map((c: any) => ({
-        name: c.name,
-        event: c.event,
-        position: c.position,
-        teamMembers: c.teamMembers || [],
-        mediaId: c.mediaId,
-        photoUrl: c.photoUrl,
-        level: c.level,
-        featured: c.featured,
-      })),
-    } as unknown as SportsResultDocument;
-  }
+  doc.champions.splice(championIndex, 1);
+  doc.lastUpdated = new Date();
+  await doc.save();
+
+  return {
+    deletedChampion: {
+      name: deleted.name,
+      event: deleted.event,
+      position: deleted.position,
+      teamMembers: deleted.teamMembers || [],
+      mediaId: deleted.mediaId,
+      photoUrl: deleted.photoUrl,
+      level: deleted.level,
+      featured: deleted.featured,
+    },
+    mediaId,
+  };
+}
+
+// Helper to reuse mapping logic
+private mapSportsResult(doc: any): SportsResultDocument {
+  return {
+    ...doc,
+    id: doc._id.toString(),
+    lastUpdated: new Date(doc.lastUpdated),
+    events: (doc.events || []).map((e: any) => ({ name: e.name, category: e.category, gender: e.gender })),
+    champions: (doc.champions || []).map((c: any) => ({
+      name: c.name,
+      event: c.event,
+      position: c.position,
+      teamMembers: c.teamMembers || [],
+      mediaId: c.mediaId,
+      photoUrl: c.photoUrl,
+      level: c.level,
+      featured: c.featured,
+    })),
+    slideshowImages: (doc.slideshowImages || []).map((img: any) => ({
+      mediaId: img.mediaId,
+      photoUrl: img.photoUrl,
+    })),
+  } as unknown as SportsResultDocument;
+}
 
   // Helper method for ArtsScienceResult
 private mapArtsScienceResult(doc: any): ArtsScienceResultDocument {
@@ -776,14 +789,18 @@ private mapArtsScienceResult(doc: any): ArtsScienceResultDocument {
             photoUrl: a.photoUrl,
             featured: a.featured,
         })),
+    slideshowImages: (event.slideshowImages || []).map((s: any) => ({
+      mediaId: s.mediaId,
+      photoUrl: s.photoUrl,
+    })),
     });
 
     return {
         ...doc,
         id: doc._id.toString(),
         lastUpdated: new Date(doc.lastUpdated),
-        kalolsavam: mapAchievements(doc.kalolsavam),
-        sasthrosavam: mapAchievements(doc.sasthrosavam),
+      kalolsavam: mapAchievements(doc.kalolsavam),
+      sasthrosavam: mapAchievements(doc.sasthrosavam),
     } as unknown as ArtsScienceResultDocument;
 }
 

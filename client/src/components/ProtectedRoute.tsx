@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
+import { SessionTimer } from "./SessionTimer";
 
 export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const [location, setLocation] = useLocation();
@@ -60,5 +61,12 @@ export const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   // ✅ If not verified:
   // - For /admin routes, user will already be redirected to /admin by useEffect
   // - For non-admin routes, show NotFound
-  return isVerified ? children : <NotFound />;
+  return isVerified ? (
+    <>
+      <SessionTimer />
+      {children}
+    </>
+  ) : (
+    <NotFound />
+  );
 };
