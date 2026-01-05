@@ -676,6 +676,7 @@ export default function AboutAdmin() {
                         setAboutData((prev) => ({ ...prev, images: updated }));
                       }}
                       className="flex gap-2"
+                      disabled={img.mediaId !== undefined || img.file !== undefined}
                     >
                       <ToggleGroupItem value="upload" aria-label="Upload">
                         Upload
@@ -693,7 +694,12 @@ export default function AboutAdmin() {
                         }
                       />
                     )}
-                    {img.mode === "url" && (
+                    {img.mode === "upload" && !isFallback(img) && (
+                      <p className="text-sm text-amber-600 dark:text-amber-400">
+                        Remove the saved image to upload a new one
+                      </p>
+                    )}
+                    {img.mode === "url" && isFallback(img) && (
                       <div className="flex gap-2">
                         <Input
                           type="text"
@@ -713,6 +719,11 @@ export default function AboutAdmin() {
                           OK
                         </Button>
                       </div>
+                    )}
+                    {img.mode === "url" && !isFallback(img) && (
+                      <p className="text-sm text-amber-600 dark:text-amber-400">
+                        Remove the saved image to add a new URL
+                      </p>
                     )}
                     {!isFallback(img) && (
                       <Button
