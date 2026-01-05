@@ -1,8 +1,34 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import Sitemap from "vite-plugin-sitemap";
+import fs from "fs";
+
+// Custom plugin to generate robots.txt
+const generateRobotsTxt: Plugin = {
+  name: "generate-robots-txt",
+  apply: "build",
+  enforce: "post",
+  async closeBundle() {
+    const robotsTxt = `# Robots.txt for nmhss.onrender.com
+User-agent: *
+Allow: /
+Allow: /api/media/
+
+# Allow scraping of media images via API endpoint
+Disallow: /admin
+
+# Sitemap
+Sitemap: https://nmhss.onrender.com/sitemap.xml
+`;
+    const outDir = path.resolve("dist/public");
+    // Add a small delay to ensure Sitemap plugin has finished
+    await new Promise(resolve => setTimeout(resolve, 100));
+    fs.writeFileSync(path.join(outDir, "robots.txt"), robotsTxt);
+    console.log("✓ robots.txt generated with media crawling rules");
+  },
+};
 
 export default defineConfig({
   plugins: [
@@ -19,9 +45,14 @@ export default defineConfig({
         "/academic-results",
         "/arts-science",
         "/news",
+        "/terms-of-service",
+        "/privacy-policy",
+        "/accessibility",
       ],
       outDir: "dist/public",
     }),
+
+    generateRobotsTxt,
 
     react(),
     runtimeErrorOverlay(),
