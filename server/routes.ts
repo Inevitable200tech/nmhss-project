@@ -203,7 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 1. Developer access request - generate and EMAIL code
-  app.post("/api/admin/developer-request", async (req, res) => {
+  app.post("/api/admin/developer-request",adminRateLimiter, async (req, res) => {
     try {
       const { email } = req.body;
 
@@ -278,7 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 2. Verify developer code and issue SECURE COOKIE
-  app.post("/api/admin/verify-developer-code", (req, res) => {
+  app.post("/api/admin/verify-developer-code",adminRateLimiter, (req, res) => {
     try {
       const { email, code } = req.body;
       const codeKey = `${email}-${code}`;
