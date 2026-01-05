@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, ChevronDown, ChevronUp, BookOpen, Medal, Palette, Book, NotebookPen, Newspaper, Calendar, Upload, Play, Mail, Loader2 } from "lucide-react";
+import { Menu, X, ChevronDown, ChevronUp, BookOpen, Medal, Palette, Book, NotebookPen, Newspaper, Calendar, Upload, Play, Mail, Loader2, HardDrive, Lock } from "lucide-react";
 import { useSound } from "@/hooks/use-sound";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -508,13 +508,6 @@ export default function AdminPage() {
               </a>
             </li>
             <li>
-              <a href="/admin-tutorial">
-                <Button variant="outline" className="w-full text-left flex items-center gap-2 bg-purple-900/50 hover:bg-purple-900/70 border-purple-800 text-purple-300" onMouseEnter={playHoverSound}>
-                  <Play className="w-4 h-4" /> Dashboard Tutorials
-                </Button>
-              </a>
-            </li>
-            <li>
               <a href="/admin-faculty">
                 <Button variant="outline" className="w-full text-left" onMouseEnter={playHoverSound}>
                   Edit Faculty Section
@@ -569,6 +562,20 @@ export default function AdminPage() {
                 </ul>
               </div>
             </li>
+            <li>
+              <a href="/admin-storage">
+                <Button variant="outline" className="w-full text-left" onMouseEnter={playHoverSound}>
+                  View Storage Analytics
+                </Button>
+              </a>
+            </li>
+            <li>
+              <a href="/admin-credentials">
+                <Button variant="outline" className="w-full text-left flex items-center gap-2 bg-green-900/50 hover:bg-green-900/70 border-green-800 text-green-300" onMouseEnter={playHoverSound}>
+                  <Lock className="w-4 h-4" /> Security Settings
+                </Button>
+              </a>
+            </li>
           </ul>
           <Button variant="outline" className="w-full mt-4 bg-red-800 hover:bg-red-700 border-red-700 text-white" onClick={handleLogout} onMouseEnter={playHoverSound}>
             Logout
@@ -590,6 +597,7 @@ export default function AdminPage() {
                 <li><a href="/admin-arts-science" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Palette className="w-5 h-5" /> Manage Arts / Science Fair</a></li>
                 <li><a href="/admin-sports-champions" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Medal className="w-5 h-5" /> Manage Sports Champions</a></li>
                 <li><a href="/admin-gallery" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><Upload className="w-5 h-5" /> Upload Media</a></li>
+                <li><a href="/admin-storage" className="text-gray-300 hover:text-cyan-500 transition flex items-center gap-2" onMouseEnter={playHoverSound}><HardDrive className="w-5 h-5" /> View Storage Analytics</a></li>
               </ul>
             </div>
             <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
