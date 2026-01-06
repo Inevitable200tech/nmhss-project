@@ -20,7 +20,12 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.status(503)
+     .json({
+       message: "The server is currently under maintenance. Please try again later."
+     });
+});
 
 // --- server/index.ts ---
 
